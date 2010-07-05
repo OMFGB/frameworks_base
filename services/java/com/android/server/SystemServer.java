@@ -47,6 +47,7 @@ import android.os.SystemProperties;
 import android.provider.Contacts.People;
 import android.provider.Settings;
 import android.server.BluetoothA2dpService;
+import android.server.BluetoothHidService;
 import android.server.BluetoothService;
 import android.server.search.SearchManagerService;
 import android.util.EventLog;
@@ -123,6 +124,7 @@ class ServerThread extends Thread {
         WindowManagerService wm = null;
         BluetoothService bluetooth = null;
         BluetoothA2dpService bluetoothA2dp = null;
+        BluetoothHidService bluetoothHid = null;
         HeadsetObserver headset = null;
         DockObserver dock = null;
         UsbService usb = null;
@@ -219,6 +221,10 @@ class ServerThread extends Thread {
                 bluetoothA2dp = new BluetoothA2dpService(context, bluetooth);
                 ServiceManager.addService(BluetoothA2dpService.BLUETOOTH_A2DP_SERVICE,
                                           bluetoothA2dp);
+                bluetoothHid = new BluetoothHidService(context, bluetooth);
+                ServiceManager.addService(BluetoothHidService.BLUETOOTH_HID_SERVICE,
+                                          bluetoothHid);
+                //Log.e(TAG, "Bluetooth HID Service");
 
                 int bluetoothOn = Settings.Secure.getInt(mContentResolver,
                     Settings.Secure.BLUETOOTH_ON, 0);

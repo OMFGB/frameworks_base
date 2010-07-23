@@ -487,6 +487,10 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION NID=" + cdmaSubscription[2] );
                     mMin = cdmaSubscription[3];
+                    if (cdmaSubscription.length > 4 ){
+                        mPrlVersion = cdmaSubscription[4];
+                    }
+                    Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION PRL version=" + mPrlVersion);
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION MDN=" + mMdn);
                     //Notify apps subscription info is ready
                     if (cdmaForSubscriptionInfoReadyRegistrants != null) {

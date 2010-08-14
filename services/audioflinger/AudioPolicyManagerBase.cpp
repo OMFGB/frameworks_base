@@ -1874,8 +1874,7 @@ float AudioPolicyManagerBase::computeVolume(int stream, int index, audio_io_hand
         AudioSystem::DEVICE_OUT_WIRED_HEADSET |
         AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)) &&
         ((getStrategy((AudioSystem::stream_type)stream) == STRATEGY_SONIFICATION) ||
-         (getStrategy((AudioSystem::stream_type)stream) == STRATEGY_MEDIA_SONIFICATION) ||
-         (stream == AudioSystem::SYSTEM)) &&
+         (getStrategy((AudioSystem::stream_type)stream) == STRATEGY_MEDIA_SONIFICATION)) &&
         streamDesc.mCanBeMuted) {
         float origVol = volume;
         char buf[PROPERTY_VALUE_MAX];

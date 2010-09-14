@@ -171,8 +171,6 @@ public abstract class UiccApplicationRecords extends Handler{
     // ***** Event Constants
     protected static final int EVENT_SET_MSISDN_DONE = 30;
 
-    protected abstract void onRadioOffOrNotAvailable();
-
     //***** Public Methods
     public AdnRecordCache getAdnCache() {
         return adnCache;

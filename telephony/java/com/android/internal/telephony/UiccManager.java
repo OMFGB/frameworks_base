@@ -50,6 +50,7 @@ public class UiccManager extends Handler{
     CommandsInterface mCi;
     Context mContext;
     UiccCard[] mUiccCards;
+    private boolean mRadioOn = false;
 
     private RegistrantList mIccChangedRegistrants = new RegistrantList();
     private CatService mCatService;
@@ -93,9 +94,17 @@ public class UiccManager extends Handler{
 
         switch (msg.what) {
             case EVENT_RADIO_ON:
+                mRadioOn = true;
+                Log.d(mLogTag, "Radio on -> Forcing sim status update");
+                sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
+                break;
             case EVENT_ICC_STATUS_CHANGED:
-                Log.d(mLogTag, "Received EVENT_ICC_STATUS_CHANGED, calling getIccCardStatus");
-                mCi.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, msg.obj));
+                if (mRadioOn) {
+                    Log.d(mLogTag, "Received EVENT_ICC_STATUS_CHANGED, calling getIccCardStatus");
+                    mCi.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, msg.obj));
+                } else {
+                    Log.d(mLogTag, "Received EVENT_ICC_STATUS_CHANGED while radio is not ON. Ignoring");
+                }
                 break;
             case EVENT_GET_ICC_STATUS_DONE:
                 ar = (AsyncResult)msg.obj;
@@ -119,6 +128,7 @@ public class UiccManager extends Handler{
                 }
                 break;
             case EVENT_RADIO_OFF_OR_UNAVAILABLE:
+                mRadioOn = false;
                 disposeCards();
                 break;
             default:
@@ -162,6 +172,7 @@ public class UiccManager extends Handler{
     private synchronized void disposeCards() {
         for (int i = mUiccCards.length - 1; i >= 0; i--) {
             if (mUiccCards[i] != null) {
+                Log.d(mLogTag, "Disposing card " + i);
                 mUiccCards[i].dispose();
                 mUiccCards[i] = null;
             }

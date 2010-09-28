@@ -33,9 +33,12 @@ public class MMDataConnection extends DataConnection {
     boolean DBG = true;
     DataConnectionTracker mDct;
 
+    private boolean mOmhEnabled = SystemProperties.getBoolean(
+                            TelephonyProperties.PROPERTY_OMH_ENABLED, false);
+
     private static final String LOG_TAG = "DATA";
 
-    private MMDataConnection(DataConnectionTracker dct, Context context, CommandsInterface ci, String name) {   
+    private MMDataConnection(DataConnectionTracker dct, Context context, CommandsInterface ci, String name) {
         super(context, ci, name);
         this.mDct = dct;
     }
@@ -71,7 +74,7 @@ public class MMDataConnection extends DataConnection {
             int authType = apn.authType;
             if (authType == -1) {
                 authType = (apn.user != null) ? RILConstants.SETUP_DATA_AUTH_PAP_CHAP
-                        : RILConstants.SETUP_DATA_AUTH_NONE;
+                    : RILConstants.SETUP_DATA_AUTH_NONE;
             }
             this.mCM.setupDataCall(
                     Integer.toString(radioTech),
@@ -81,11 +84,24 @@ public class MMDataConnection extends DataConnection {
         } else if (cp.dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP2_NAI) {
             this.mCM.setupDataCall(
                     Integer.toString(radioTech),
-                    //TODO - fill in this from DP
                     Integer.toString(0), null, null, null, Integer
                     .toString(RILConstants.SETUP_DATA_AUTH_PAP_CHAP), Integer
                     .toString(cp.ipv == IPVersion.IPV6 ? 1 : 0),
                     obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp));
+        } else if (cp.dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP2_OMH) {
+            if (mOmhEnabled) {
+                DataProfileOmh dp = (DataProfileOmh) cp.dp;
+
+                // Offset by DATA_PROFILE_OEM_BASE as this is modem provided profile id
+                String profileId = Integer.toString(dp.getProfileId() + RILConstants.DATA_PROFILE_OEM_BASE);
+                logd("OMH profileId:" + profileId);
+                this.mCM.setupDataCall(
+                        Integer.toString(radioTech),
+                        profileId, null, null, null, Integer
+                        .toString(RILConstants.SETUP_DATA_AUTH_PAP_CHAP), Integer
+                        .toString(cp.ipv == IPVersion.IPV6 ? 1 : 0),
+                        obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp));
+            }
         }
     }
 

@@ -22,6 +22,9 @@ class CdmaNAI extends DataProfile {
 
     /* TODO: This class is a TODO! */
 
+    /* ID of the profile in the modem */
+    private int mProfileId = 0;
+
     @Override
     boolean canHandleServiceType(DataServiceType type) {
         return true;
@@ -38,6 +41,10 @@ class CdmaNAI extends DataProfile {
     @Override
     DataProfileType getDataProfileType() {
         return DataProfileType.PROFILE_TYPE_3GPP2_NAI;
+    }
+
+    public int getProfileId() {
+        return mProfileId;
     }
 
     @Override

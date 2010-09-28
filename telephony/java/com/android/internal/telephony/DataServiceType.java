@@ -18,32 +18,42 @@ package com.android.internal.telephony;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 
+
+import android.os.SystemProperties;
 import android.text.TextUtils;
+import android.util.Log;
+import android.util.Slog;
+
 
 /*
  * more or less the same as APN type. TODO: fix this - As of now we keep the
  * id of the, type, as the same defined in Phone.
  */
-/*
- * priority - higher number means higher priority, TODO: this should be read
- * from some property or other OEM configurable file!
- */
 
-// TODO : is index necessary? may be useful to map with some property later
 enum DataServiceType {
-    SERVICE_TYPE_DEFAULT(0, 10),
-    SERVICE_TYPE_MMS(1, 20),
-    SERVICE_TYPE_SUPL(2, 30),
-    SERVICE_TYPE_DUN(3, 50),
-    SERVICE_TYPE_HIPRI(4, 400);
+    SERVICE_TYPE_DEFAULT(0),
+    SERVICE_TYPE_MMS(1),
+    SERVICE_TYPE_SUPL(2),
+    SERVICE_TYPE_DUN(3),
+    SERVICE_TYPE_HIPRI(4);
 
     int index;
     int priority;
 
-    private DataServiceType(int index, int priority) {
+    private static final String LOG_TAG = "DST";
+
+    /*
+     * Default service priorities - can be overridden by setting the
+     * "persist.telephony.ds.priorities" property.
+     */
+    private static final String DEFAULT_SERVICE_TYPE_PRIORITIES
+                                        = "0=10;1=20;2=30;3=50;4=400;";
+
+    private DataServiceType(int index) {
         this.index = index;
-        this.priority = priority;
+        this.priority = getServicePriorityFromProperty();
     }
 
     public int getid() {
@@ -51,24 +61,110 @@ enum DataServiceType {
     }
 
     /*
+     * Check if THIS service has the same priority as the service specified
+     * (ds)
+     */
+    public boolean isEqualPriority(DataServiceType ds) {
+        return priority == ds.priority;
+    }
+
+    /*
+     * Check if THIS service has the same Android Configured DEFAULT priority
+     * as the service specified (ds)
+     */
+    public boolean isEqualDefaultPriority(DataServiceType ds) {
+        return getServicePriorityFromProperty() == ds.getServicePriorityFromProperty();
+    }
+
+    /*
      * Check if THIS service has a higher priority than the service specified
      * (ds)
      */
     public boolean isHigherPriorityThan(DataServiceType ds) {
-        return priority > ds.priority;
+        if (isEqualPriority(ds))
+            return getServicePriorityFromProperty() > ds.getServicePriorityFromProperty();
+        else
+            return priority > ds.priority;
+    }
+
+    /*
+     * Check if THIS service has a higher Android Configured DEFAULT priority
+     * than the service specified (ds)
+     */
+    public boolean isHigherDefaultPriorityThan(DataServiceType ds) {
+        return getServicePriorityFromProperty() > ds.getServicePriorityFromProperty();
     }
 
     /* Check if THIS service has a lower priority than the service specified
      * (ds)
      */
     public boolean isLowerPriorityThan(DataServiceType ds) {
-        return priority < ds.priority;
+        if (isEqualPriority(ds))
+            return getServicePriorityFromProperty() < ds.getServicePriorityFromProperty();
+        else
+            return priority < ds.priority;
+    }
+
+    /* Check if THIS service has a lower Andriod Configured DEFAULT priority
+     * than the service specified (ds)
+     */
+    public boolean isLowerDefaultPriorityThan(DataServiceType ds) {
+        return getServicePriorityFromProperty() < ds.getServicePriorityFromProperty();
+    }
+
+    public void setPriority(int priority) {
+       this.priority = priority;
+    }
+
+    private static HashMap<Integer, Integer> parseServicePriorityString(String s) {
+
+        if (s == null) {
+            return null;
+        }
+
+        HashMap<Integer, Integer> h = new HashMap<Integer, Integer>();
+        try {
+            String[] t1 = s.split(";");
+            for (String t2 : t1) {
+                String value[] = t2.split("=");
+                h.put(Integer.parseInt(value[0]), Integer.parseInt(value[1]));
+            }
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Error parsing service priority string, ignoring " + s);
+            return null;
+        }
+        /*
+         * TODO : To check for completeness of the property
+         */
+        return h;
+    }
+
+    public int getServicePriorityFromProperty() {
+
+        String priorities = SystemProperties.get(
+                TelephonyProperties.PROPERTY_DATA_SERVICE_PRIORITIES);
+
+        HashMap <Integer, Integer> h = parseServicePriorityString(priorities);
+        if (h == null) {
+            h = parseServicePriorityString(DEFAULT_SERVICE_TYPE_PRIORITIES);
+            //must be non null;
+        }
+
+        return (Integer) h.get(this.index);
     }
 
     private static class ServicePriorityComparator implements Comparator<DataServiceType>
     {
         public int compare(DataServiceType ds1, DataServiceType ds2) {
-            return ds2.priority - ds1.priority; //descending
+            int secondPriority = ds2.priority;
+            int firstPriority = ds1.priority;
+
+            // if the priorities are equal, compare their default configured priorities
+            if (secondPriority == firstPriority) {
+                secondPriority = ds2.getServicePriorityFromProperty();
+                firstPriority = ds1.getServicePriorityFromProperty();
+            }
+            return secondPriority - firstPriority; //descending
         }
     };
 

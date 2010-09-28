@@ -28,7 +28,8 @@ public abstract class DataProfile {
         PROFILE_TYPE_3GPP_PID(0),
         PROFILE_TYPE_3GPP_APN(1),
         PROFILE_TYPE_3GPP2_PID(2),
-        PROFILE_TYPE_3GPP2_NAI(3);
+        PROFILE_TYPE_3GPP2_NAI(3),
+        PROFILE_TYPE_3GPP2_OMH(4);
 
         int id;
 

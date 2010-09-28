@@ -30,12 +30,16 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.provider.Telephony;
 import android.util.Log;
 
 import com.android.internal.telephony.DataConnectionTracker.State;
 import com.android.internal.telephony.Phone.IPVersion;
+import com.android.internal.telephony.DataProfile;
 import com.android.internal.telephony.DataProfile.DataProfileType;
+import com.android.internal.telephony.DataProfileOmh.DataProfileTypeModem;
+import com.android.internal.telephony.DataProfileOmh;
 
 /*
  * This class keeps track of the following :
@@ -50,6 +54,8 @@ public class DataProfileTracker extends Handler {
 
     private Context mContext;
 
+    private CommandsInterface mCm;
+
     private DataProfileDbObserver mDpObserver;
 
     /*
@@ -57,14 +63,44 @@ public class DataProfileTracker extends Handler {
      * DataServiceTypeInfo, that stores all metadata related to that service
      * type.
      */
+
     HashMap<DataServiceType, DataServiceInfo> dsMap;
+
+    HashMap<DataServiceType, Integer> mOmhServicePriorityMap;
 
     /* MCC/MNC of the current active operator */
     private String mOperatorNumeric;
     private RegistrantList mDataDataProfileDbChangedRegistrants = new RegistrantList();
     private ArrayList<DataProfile> mAllDataProfilesList = new ArrayList<DataProfile>();
 
+    /* NOTE: Assumption is that the modem profiles will not change without
+     * requiring a reboot. Modifications over the air is not supported.
+     * Modified or new RUIM cards inserted will require a reboot
+     */
+    // Enumerated list of DataProfile from the modem.
+    private ArrayList<DataProfile> mOmhDataProfilesList = new ArrayList<DataProfile>();
+
+    // Temp. DataProfile list from the modem.
+    private ArrayList<DataProfile> mTempOmhDataProfilesList = new ArrayList<DataProfile>();
+
+    /*
+     * Context for read profiles for OMH.
+     */
+    private int mOmhReadProfileContext = 0;
+
+    /*
+     * Count to track if all read profiles for OMH are completed or not.
+     */
+    private int mOmhReadProfileCount = 0;
+
+    private boolean mOmhEnabled = SystemProperties.getBoolean(
+                            TelephonyProperties.PROPERTY_OMH_ENABLED, false);
+
+    private static final int OMH_MAX_PRIORITY = 255;
+
     private static final int EVENT_DATA_PROFILE_DB_CHANGED = 1;
+    private static final int EVENT_READ_MODEM_PROFILES = 2;
+    private static final int EVENT_GET_DATA_CALL_PROFILE_DONE = 3;
 
     /*
      * Observer for keeping track of changes to the APN database.
@@ -80,9 +116,11 @@ public class DataProfileTracker extends Handler {
         }
     }
 
-    DataProfileTracker(Context context) {
+    DataProfileTracker(Context context, CommandsInterface ci) {
 
         mContext = context;
+
+        mCm = ci;
 
         /*
          * initialize data service type specific meta data
@@ -90,6 +128,13 @@ public class DataProfileTracker extends Handler {
         dsMap = new HashMap<DataServiceType, DataServiceInfo>();
         for (DataServiceType t : DataServiceType.values()) {
             dsMap.put(t, new DataServiceInfo(mContext, t));
+        }
+
+        if (mOmhEnabled) {
+            /*
+             * initialize data service type with arbitrated priorities mapping data
+             */
+            mOmhServicePriorityMap = new HashMap<DataServiceType, Integer>();
         }
 
         /*
@@ -107,13 +152,66 @@ public class DataProfileTracker extends Handler {
         // TODO Auto-generated method stub
     }
 
+    public int mapOmhPriorityToAndroidPriority(DataServiceType t, boolean isOmhProfileProvisioned) {
+        /*
+         * Per spec, for the OMH profiles, the value 'OMH_MAX_PRIORITY : 255' attributes
+         * to least priority. Reverse the value to be in consistent with android service type
+         * priorities (Greater the value, higher its priority) if service type is provisioned.
+         * If the service type is not provisioned, then set its priority
+         * to a least value (say zero).
+        */
+        int mappedPriority = 0;
+        if(isOmhProfileProvisioned) {
+            mappedPriority = (OMH_MAX_PRIORITY - mOmhServicePriorityMap.get(t));
+        }
+
+        return mappedPriority;
+    }
+
+    /*
+     * Retrieves the highest priority for all APP types except SUPL. Note that
+     * for SUPL, retrieve the least priority among its profiles.
+     */
+    public int omhListGetArbitratedPriority(ArrayList<DataProfile> dataProfileListModem,
+            DataServiceType ds) {
+        DataProfile profile = null;
+
+        for (DataProfile dp : dataProfileListModem) {
+            if (!((DataProfileOmh) dp).isValidPriority()) {
+                logw("[OMH] Invalid priority... skipping");
+                continue;
+            }
+
+            if (profile == null) {
+                profile = dp; // first hit
+            } else {
+                if (ds == DataServiceType.SERVICE_TYPE_SUPL) {
+                    // Choose the profile with lower priority
+                    profile = ((DataProfileOmh) dp).isPriorityLower(((DataProfileOmh) profile)
+                            .getPriority()) ? dp : profile;
+                } else {
+                    // Choose the profile with higher priority
+                    profile = ((DataProfileOmh) dp).isPriorityHigher(((DataProfileOmh) profile)
+                            .getPriority()) ? dp : profile;
+                }
+            }
+        }
+        return ((DataProfileOmh) profile).getPriority();
+    }
+
     public void handleMessage(Message msg) {
+        AsyncResult ar;
 
         switch (msg.what) {
             case EVENT_DATA_PROFILE_DB_CHANGED:
                 reloadAllDataProfiles(Phone.REASON_APN_CHANGED);
                 break;
-
+            case EVENT_READ_MODEM_PROFILES:
+                onReadDataprofilesFromModem();
+                break;
+            case EVENT_GET_DATA_CALL_PROFILE_DONE:
+                onGetDataCallProfileDone((AsyncResult) msg.obj, (int)msg.arg1 );
+                break;
             default:
                 logw("unhandled msg.what="+msg.what);
         }
@@ -146,9 +244,26 @@ public class DataProfileTracker extends Handler {
             }
         }
 
+        if (mOmhEnabled) {
+
+            /* handle omh */
+
+            if ((mOmhDataProfilesList != null) && (mOmhDataProfilesList.size() > 0)) {
+
+                updateDataServiceTypePrioritiesForOmh();
+
+                for (DataProfile dp :mOmhDataProfilesList) {
+                    logd("DataProfile from Modem " + dp);
+
+                    // Add to the master list of profiles
+                    allDataProfiles.add(dp);
+                }
+            }
+        }
+
         /*
-         * For supporting CDMA, for now, we just create a Data profile of TYPE NAI that supports
-         * all service types and add it to all DataProfiles.
+         * For supporting CDMA, for now, we just create a Data profile of TYPE NAI that
+         * supports all service types and add it to all DataProfiles.
          * TODO: this information should be read from apns-conf.xml / carriers db.
          */
         CdmaNAI cdmaNaiProfile = new CdmaNAI();
@@ -159,14 +274,15 @@ public class DataProfileTracker extends Handler {
          * re-populate them.
          */
         for (DataServiceType t : DataServiceType.values()) {
-            dsMap.get(t).mDataProfileList.clear();
+            dsMap.get(t).clearDataProfiles();
         }
 
         for (DataProfile dp : allDataProfiles) {
             logv("new dp found : "+dp.toString());
             for (DataServiceType t : DataServiceType.values()) {
-                if (dp.canHandleServiceType(t))
-                    dsMap.get(t).mDataProfileList.add(dp);
+                if (dp.canHandleServiceType(t)) {
+                    dsMap.get(t).addDataProfile(dp);
+                }
             }
         }
 
@@ -193,7 +309,7 @@ public class DataProfileTracker extends Handler {
         }
 
         ApnSetting newPreferredApn = getPreferredDefaultApnFromDb(dsMap
-                .get(DataServiceType.SERVICE_TYPE_DEFAULT).mDataProfileList);
+                .get(DataServiceType.SERVICE_TYPE_DEFAULT).getDataProfiles());
         if (isApnDifferent(newPreferredApn, mPreferredDefaultApn)) {
             logv("preferred apn has changed");
             hasProfileDbChanged = true;
@@ -207,6 +323,172 @@ public class DataProfileTracker extends Handler {
         }
 
         return hasProfileDbChanged;
+    }
+
+    private void updateDataServiceTypePrioritiesForOmh() {
+        /*
+         * Iterate through data service type list, to check if card had been
+         * provisioned for the ServiceType in question
+         */
+
+        for (DataServiceType t : DataServiceType.values()) {
+            int p = mapOmhPriorityToAndroidPriority(t, mOmhServicePriorityMap.containsKey(t));
+            logv("[OMH] Setting service priority: " + t + "= " + p);
+            t.setPriority(p);
+        }
+    }
+
+    /*
+     * Trigger modem read for data profiles
+     */
+    public void readDataprofilesFromModem() {
+        sendMessage(obtainMessage(EVENT_READ_MODEM_PROFILES));
+        return;
+    }
+
+    /*
+     * Reads all the data profiles from the modem
+     */
+    private void onReadDataprofilesFromModem() {
+
+       if (mOmhEnabled) {
+            mOmhReadProfileContext++;
+
+            mOmhReadProfileCount = 0; // Reset the count and list(s)
+            /* Clear out the modem profiles lists (main and temp) which were read/saved */
+            mOmhDataProfilesList.clear();
+            mTempOmhDataProfilesList.clear();
+            mOmhServicePriorityMap.clear();
+
+            // For all the service types known in modem, read the data profies
+            for (DataProfileTypeModem p : DataProfileTypeModem.values()) {
+                logd("Reading profiles for:" + p.getid());
+                mOmhReadProfileCount++;
+                mCm.getDataCallProfile(p.getid(), obtainMessage(EVENT_GET_DATA_CALL_PROFILE_DONE, //what
+                                                                mOmhReadProfileContext, //arg1
+                                                                0 , //arg2  -- ignore
+                                                                p));//userObj
+            }
+        }
+
+        return;
+    }
+
+    /*
+     * Process the response for the RIL request GET_DATA_CALL_PROFILE.
+     * Save the profile details received.
+     */
+    private void onGetDataCallProfileDone(AsyncResult ar, int context) {
+
+        if (ar.exception != null) {
+            loge("Exception in onOmhProfileDone:" + ar.exception);
+            return;
+        }
+
+       if (context != mOmhReadProfileContext) {
+            //we have other onReadOmhDataprofiles() on the way.
+            return;
+        }
+
+        // DataProfile list from the modem for a given SERVICE_TYPE. These may
+        // be from RUIM in case of OMH
+        ArrayList<DataProfile> dataProfileListModem = new ArrayList<DataProfile>();
+        dataProfileListModem = (ArrayList<DataProfile>)ar.result;
+
+        DataProfileTypeModem modemProfile = (DataProfileTypeModem)ar.userObj;
+
+        mOmhReadProfileCount--;
+
+        if (dataProfileListModem != null && dataProfileListModem.size() > 0) {
+            DataServiceType dst;
+
+            /* For the modem service type, get the android DataServiceType */
+            dst = modemProfile.getDataServiceType();
+
+            logd("[OMH] # profiles returned from modem:" + dataProfileListModem.size()
+                    + " for " + dst);
+
+            mOmhServicePriorityMap.put(dst,
+                    omhListGetArbitratedPriority(dataProfileListModem, dst));
+
+            for (DataProfile dp : dataProfileListModem) {
+
+                logd("[OMH] omh data profile from modem " + dp);
+
+                /* Store the modem profile type in the data profile */
+                ((DataProfileOmh)dp).setDataProfileTypeModem(modemProfile);
+
+                /* Look through mTempOmhDataProfilesList for existing profile id's
+                 * before adding it. This implies that the (similar) profile with same
+                 * priority already exists.
+                 */
+                DataProfileOmh omhDuplicatedp = getDuplicateProfile(dp);
+                if(null == omhDuplicatedp) {
+                    mTempOmhDataProfilesList.add(dp);
+                    ((DataProfileOmh)dp).addServiceType(DataProfileTypeModem.
+                            getDataProfileTypeModem(dst));
+                } else {
+                    /*  To share the already established data connection
+                     * (say between SUPL and DUN) in cases such as below:
+                     *  Ex:- SUPL+DUN [profile id 201, priority 1]
+                     *  'dp' instance is found at this point. Add the non-provisioned
+                     *   service type to this 'dp' instance
+                     */
+                    logd("[OMH] Duplicate Profile " + omhDuplicatedp);
+                    ((DataProfileOmh)omhDuplicatedp).addServiceType(DataProfileTypeModem.
+                            getDataProfileTypeModem(dst));
+                }
+            }
+        }
+
+        //(Re)Load APN List
+        if(mOmhReadProfileCount == 0) {
+            logd("[OMH] Modem omh profile read complete.");
+            addServiceTypeToUnSpecified();
+            mOmhDataProfilesList = mTempOmhDataProfilesList;
+            this.sendMessage(obtainMessage(EVENT_DATA_PROFILE_DB_CHANGED));
+        }
+
+        return;
+    }
+
+
+    /*
+     * returns the object 'OMH dataProfile' if a match with the same profile id exists
+     * in the enumerated list of OMH profile list
+     */
+    private DataProfileOmh getDuplicateProfile(DataProfile dp) {
+        for (DataProfile dataProfile : mTempOmhDataProfilesList) {
+            if (((DataProfileOmh)dp).getProfileId() ==
+                ((DataProfileOmh)dataProfile).getProfileId()){
+                return (DataProfileOmh)dataProfile;
+            }
+        }
+        return null;
+    }
+
+    /* For all the OMH service types not present in mOmhServicePriorityMap,
+     *  i;e; in other words, 'this' service type is not provisioned in the
+     *  card..... For such OMH service types, add to the UNSPECIFIED/DEFAULT data profile
+     *  from mTempOmhDataProfilesList
+     */
+    private void addServiceTypeToUnSpecified() {
+        for (DataServiceType t : DataServiceType.values()) {
+            if(!mOmhServicePriorityMap.containsKey(t)) {
+                // DataServiceType :t is not provisioned in the card
+                for (DataProfile dp : mTempOmhDataProfilesList) {
+                    // Iterate through the tempOmhDataList to get till UNSPECIFIED dp and add.
+                    if (((DataProfileOmh)dp).getDataProfileTypeModem() ==
+                        DataProfileTypeModem.PROFILE_TYPE_UNSPECIFIED) {
+                        ((DataProfileOmh)dp).addServiceType(DataProfileTypeModem.
+                                getDataProfileTypeModem(t));
+                        logd("[OMH] Service Type added to UNSPECIFIED is : " +
+                                DataProfileTypeModem.getDataProfileTypeModem(t));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /*
@@ -485,6 +767,10 @@ public class DataProfileTracker extends Handler {
             }
         }
         return different;
+    }
+
+    boolean isOmhEnabled() {
+        return mOmhEnabled;
     }
 
     private void logv(String msg) {

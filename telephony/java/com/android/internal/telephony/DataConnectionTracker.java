@@ -158,7 +158,7 @@ public abstract class DataConnectionTracker extends Handler {
         this.mCm = ci;
         this.mNotifier = notifier;
 
-        this.mDpt = new DataProfileTracker(context);
+        this.mDpt = new DataProfileTracker(context, ci);
     }
 
     public void setPhone(Phone p) {

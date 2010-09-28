@@ -332,6 +332,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         logv("SUPPORT_IPV4 = " + SUPPORT_IPV4);
         logv("SUPPORT_IPV6 = " + SUPPORT_IPV6);
         logv("SUPPORT_SERVICE_ARBITRATION = " + SUPPORT_SERVICE_ARBITRATION);
+        logv("SUPPORT_OMH = " + mDpt.isOmhEnabled());
     }
 
     public void dispose() {
@@ -483,6 +484,12 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     }
 
     protected void onRecordsLoaded() {
+
+        if (mDsst.mRuimRecords != null) {
+            /* read the modem profiles */
+            mDpt.readDataprofilesFromModem();
+        }
+
         updateOperatorNumericInDpt(REASON_ICC_RECORDS_LOADED);
         updateDataConnections(REASON_ICC_RECORDS_LOADED);
     }
@@ -1025,7 +1032,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         }
     }
 
-    /* disconnect exactly one data call whos priority is lower than serviceType */
+    /* disconnect exactly one data call whose priority is lower than serviceType
+     */
     private boolean disconnectOneLowPriorityDataCall(DataServiceType serviceType, String reason) {
         for (DataServiceType ds : DataServiceType.values()) {
             if (ds.isLowerPriorityThan(serviceType) && mDpt.isServiceTypeEnabled(ds)
@@ -1047,6 +1055,20 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 if (disconnectDone) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    /*
+     * Check if higher priority data call is active whose priority is greater
+     * than the specified service type.
+     */
+    private boolean isHigherPriorityDataCallActive(DataServiceType serviceType) {
+        for (DataServiceType ds : DataServiceType.values()) {
+            if (ds.isHigherPriorityThan(serviceType) && mDpt.isServiceTypeEnabled(ds)
+                    && mDpt.isServiceTypeActive(ds)) {
+                return true;
             }
         }
         return false;
@@ -1201,6 +1223,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                     }
                 }
             }
+
             /*
              * 2b : Bring up data calls as required.
              */
@@ -1391,6 +1414,25 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             notifyDataConnection(ds, ipv, reason);
             return false;
         }
+
+        /* For OMH arbitration, check if there is an existing OMH profile.
+         *
+         * If there is at least one, then we assume that the device is working in the
+         * OMH enabled mode and has one or more OMH profile(s) and needs arbitration.
+         * If not, we allow the device to operate using other non OMH profiles.
+         */
+        if(mDpt.isAnyDataProfileAvailable(DataProfileType.PROFILE_TYPE_3GPP2_OMH)) {
+            // If the call indeed got disconnected return, otherwise pass through
+            if (disconnectOneLowPriorityDataCall(ds, reason)) {
+                logw("[OMH] Lower/Equal priority call disconnected.");
+                return true;
+            }
+            if(isHigherPriorityDataCallActive(ds)) {
+                logw("[OMH] Higher priority call active. Ignoring setup data call request.");
+                return false;
+            }
+        }
+
         DataConnection dc = findFreeDataCall();
         if (dc == null) {
             // if this happens, it probably means that our data call list is not
@@ -1445,7 +1487,11 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         } else if (r.isGsm()) {
             type = DataProfileType.PROFILE_TYPE_3GPP_APN;
         } else {
-            type = DataProfileType.PROFILE_TYPE_3GPP2_NAI;
+            if (mDpt.isOmhEnabled()) {
+                type = DataProfileType.PROFILE_TYPE_3GPP2_OMH;
+            } else {
+                type = DataProfileType.PROFILE_TYPE_3GPP2_NAI;
+            }
         }
         return type;
     }

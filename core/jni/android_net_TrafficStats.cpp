@@ -55,12 +55,6 @@ static jlong readNumber(char const* filename) {
 #endif
 }
 
-// Return the number from the first file which exists and contains data
-static jlong tryBoth(char const* a, char const* b) {
-    jlong num = readNumber(a);
-    return num >= 0 ? num : readNumber(b);
-}
-
 // Returns the sum of numbers from the specified path under /sys/class/net/*,
 // -1 if no such file exists.
 static jlong readTotal(char const* suffix) {
@@ -91,32 +85,67 @@ static jlong readTotal(char const* suffix) {
 #endif
 }
 
+#define RMNET_PREFIX "rmnet"
+
+// Returns the sum of numbers from all the rmnet interfaces
+// -1 if no such file exists.
+static jlong readRmNetStats(char const* suffix) {
+#ifdef HAVE_ANDROID_OS
+    char filename[PATH_MAX] = "/sys/class/net/";
+    DIR *dir = opendir(filename);
+    if (dir == NULL) {
+        LOGE("Can't list %s: %s", filename, strerror(errno));
+        return -1;
+    }
+
+    int len = strlen(filename);
+    jlong total = -1;
+    jlong num = 0;
+    int ret = 0;
+    struct stat fstat;
+    while (struct dirent *entry = readdir(dir)) {
+        // Skip ., .., and localhost interfaces but match RMNET_PREFIX
+        if (entry->d_name[0] != '.' &&
+                strncmp(entry->d_name, "lo", 2) != 0 &&
+                strncmp(entry->d_name, RMNET_PREFIX, strlen(RMNET_PREFIX)) == 0) {
+            strlcpy(filename + len, entry->d_name, sizeof(filename) - len);
+            strlcat(filename, suffix, sizeof(filename));
+
+            num = readNumber(filename);
+
+            if (num >= 0) total = total < 0 ? num : total + num;
+        }
+    }
+
+    closedir(dir);
+    return total;
+#else  // Simulator
+    return -1;
+#endif
+}
+
 // Mobile stats get accessed a lot more often than total stats.
 // Note the individual files can come and go at runtime, so we check
 // each file every time (rather than caching which ones exist).
 
 static jlong getMobileTxPackets(JNIEnv* env, jobject clazz) {
-    return tryBoth(
-            "/sys/class/net/rmnet0/statistics/tx_packets",
-            "/sys/class/net/ppp0/statistics/tx_packets");
+    jlong stats = readRmNetStats("/statistics/tx_packets");
+    return stats >= 0 ? stats : readNumber("/sys/class/net/ppp0/statistics/tx_packets");
 }
 
 static jlong getMobileRxPackets(JNIEnv* env, jobject clazz) {
-    return tryBoth(
-            "/sys/class/net/rmnet0/statistics/rx_packets",
-            "/sys/class/net/ppp0/statistics/rx_packets");
+    jlong stats = readRmNetStats("/statistics/rx_packets");
+    return stats >= 0 ? stats : readNumber("/sys/class/net/ppp0/statistics/tx_packets");
 }
 
 static jlong getMobileTxBytes(JNIEnv* env, jobject clazz) {
-    return tryBoth(
-            "/sys/class/net/rmnet0/statistics/tx_bytes",
-            "/sys/class/net/ppp0/statistics/tx_bytes");
+    jlong stats = readRmNetStats("/statistics/tx_bytes");
+    return stats >= 0 ? stats : readNumber("/sys/class/net/ppp0/statistics/tx_packets");
 }
 
 static jlong getMobileRxBytes(JNIEnv* env, jobject clazz) {
-    return tryBoth(
-            "/sys/class/net/rmnet0/statistics/rx_bytes",
-            "/sys/class/net/ppp0/statistics/rx_bytes");
+    jlong stats = readRmNetStats("/statistics/rx_bytes");
+    return stats >= 0 ? stats : readNumber("/sys/class/net/ppp0/statistics/tx_packets");
 }
 
 // Total stats are read less often, so we're willing to put up

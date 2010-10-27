@@ -28,11 +28,15 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
+import android.net.IConnectivityManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.IBinder;
+import android.os.ServiceManager;
+import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -271,6 +275,31 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             mMasterDataEnabled = Settings.System.getInt(
                     mContext.getContentResolver(),
                     Settings.System.SOCKET_DATA_CALL_ENABLE, 1) > 0;
+        }
+
+        /* On startup, check with ConnectivityService(CS) if mobile data has
+         * been disabled from the phone settings.  CS processes this setting on
+         * startup and disables all service types via the
+         * PhoneInterfaceManager. In some cases the PhoneInterfaceManager is
+         * not started in time for CS to disable the service types, so, double
+         * checking here.
+         */
+        IBinder b = ServiceManager.getService(Context.CONNECTIVITY_SERVICE);
+        IConnectivityManager service = IConnectivityManager.Stub.asInterface(b);
+
+        try {
+            if (service.getMobileDataEnabled() == false) {
+                // Disable all data profiles
+                for (DataServiceType ds : DataServiceType.values()) {
+                    if (mDpt.isServiceTypeEnabled(ds)) {
+                        mDpt.setServiceTypeEnabled(ds, false);
+                        logd("Disabling ds" + ds);
+                    }
+                }
+            }
+        } catch(RemoteException e) {
+            // Could not find ConnectivityService, nothing to do, continue.
+            logw("Could not access Connectivity Service." + e);
         }
 
         //used in CDMA+NV case.

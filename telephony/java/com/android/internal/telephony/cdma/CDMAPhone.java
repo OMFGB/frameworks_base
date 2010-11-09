@@ -104,6 +104,7 @@ public class CDMAPhone extends PhoneBase {
     // Instance Variables
     CdmaCallTracker mCT;
     CdmaServiceStateTracker mSST;
+    CdmaSubscriptionSourceManager mCdmaSSM;
 
     /* icc stuff */
     UiccManager mUiccManager = null;
@@ -161,6 +162,8 @@ public class CDMAPhone extends PhoneBase {
         mSST = new CdmaServiceStateTracker (this);
         mDataConnection = dct;
         mDataConnection.setPhone(this);
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, ci, new Registrant(this,
+                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null));
 
         //TODO: fusion move RuimPhoneBookInterfaceManager functionality to IccPhoneBookIntManager
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
@@ -174,7 +177,6 @@ public class CDMAPhone extends PhoneBase {
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttach(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE, null);
-        mCM.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
         mUiccManager = UiccManager.getInstance(getContext(), mCM);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
@@ -227,7 +229,7 @@ public class CDMAPhone extends PhoneBase {
             mCM.unregisterForOn(this); //EVENT_RADIO_ON
             mSST.unregisterForNetworkAttach(this); //EVENT_REGISTERED_TO_NETWORK
             mCM.unSetOnSuppServiceNotification(this);
-            mCM.unregisterForCdmaSubscriptionSourceChanged(this);
+            mCdmaSSM.dispose(this);
             removeCallbacks(mExitEcmRunnable);
 
             mPendingMmis.clear();
@@ -982,13 +984,15 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_RADIO_ON:{
                 Log.d(LOG_TAG, "Event EVENT_RADIO_ON Received");
-                mCM.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                handleCdmaSubscriptionSource();
             }
             break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:{
-                Log.d(LOG_TAG, "EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED");
-                mCM.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                handleCdmaSubscriptionSource();
+
+                // Get the new device identity
+                mCM.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
             }
             break;
 
@@ -1001,29 +1005,6 @@ public class CDMAPhone extends PhoneBase {
                 Log.d(LOG_TAG, "Event EVENT_REGISTERED_TO_NETWORK Received");
             }
             break;
-
-            case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
-                ar = (AsyncResult) msg.obj;
-                if (ar.exception == null) {
-                    int newSubscriptionSource = ((int[]) ar.result)[0];
-
-                    if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                        Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource
-                                + " >> " + newSubscriptionSource);
-                        mCdmaSubscriptionSource = newSubscriptionSource;
-                        if (newSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-                            // NV is ready when subscription source is NV
-                            sendMessage(obtainMessage(EVENT_NV_READY));
-                        }
-                    }
-                } else {
-                    // GET_CDMA_SUBSCRIPTION is returning Failure. Probably because modem
-                    // created GSM Phone. If modem created GSMPhone, then PhoneProxy will
-                    // trigger a change in Phone objects and this object will be destroyed.
-                    Log.w(LOG_TAG, "Unable to get CDMA Subscription Source " + ar.exception);
-                }
-
-                break;
 
             case EVENT_NV_READY:{
                 Log.d(LOG_TAG, "Event EVENT_NV_READY Received");
@@ -1059,6 +1040,22 @@ public class CDMAPhone extends PhoneBase {
 
             default:{
                 super.handleMessage(msg);
+            }
+        }
+    }
+
+    /**
+     * Handles the call to get the subscription source
+     *
+     * @param holds the new CDMA subscription source value
+     */
+    private void handleCdmaSubscriptionSource() {
+        int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+        if (newSubscriptionSource != mCdmaSubscriptionSource) {
+            mCdmaSubscriptionSource = newSubscriptionSource;
+            if (newSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
+                // NV is ready when subscription source is NV
+                sendMessage(obtainMessage(EVENT_NV_READY));
             }
         }
     }

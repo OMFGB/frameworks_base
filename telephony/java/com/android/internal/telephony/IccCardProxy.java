@@ -29,6 +29,7 @@ import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface.RadioTechnologyFamily;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.UiccConstants.AppType;
 import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccConstants.CardState;
@@ -56,7 +57,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_RECORDS_LOADED = 7;
     private static final int EVENT_IMSI_READY = 8;
     private static final int EVENT_PERSO_LOCKED = 9;
-    private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE = 10;
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
 
     private Context mContext;
@@ -71,6 +71,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private UiccCard mUiccCard = null;
     private UiccCardApplication mApplication = null;
     private UiccApplicationRecords mAppRecords = null;
+    private CdmaSubscriptionSourceManager mCdmaSSM = null;
 
     private boolean mFirstRun = true;
     private boolean mRadioOn = false;
@@ -85,12 +86,13 @@ public class IccCardProxy extends Handler implements IccCard {
         super();
         this.mContext = mContext;
         this.cm = cm;
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(mContext, cm, new Registrant(this,
+                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null));
 
         mUiccManager = UiccManager.getInstance(mContext, cm);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         cm.registerForOn(this,EVENT_RADIO_ON, null);
         cm.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
-        cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
     }
 
     public void dispose() {
@@ -99,6 +101,7 @@ public class IccCardProxy extends Handler implements IccCard {
         mUiccManager = null;
         cm.unregisterForOn(this);
         cm.unregisterForOffOrNotAvailable(this);
+        mCdmaSSM.dispose(this);
     }
 
     /*
@@ -131,7 +134,7 @@ public class IccCardProxy extends Handler implements IccCard {
             //NV in which case we shouldn't broadcast any sim states changes if at the
             //same time ro.config.multimode_cdma property set to false.
             mInitialized = false;
-            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            handleCdmaSubscriptionSource();
         }
     }
 
@@ -183,36 +186,6 @@ public class IccCardProxy extends Handler implements IccCard {
                         mNetworkLockedRegistrants.notifyRegistrants();
                     }
                 }
-                break;
-            case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
-                if (((AsyncResult)msg.obj).exception != null) {
-                    Log.d(LOG_TAG, "Exception while getting Cdma subscription.");
-                    break;
-                } else if (((AsyncResult)msg.obj).result != null) {
-                    mCdmaSubscriptionFromNv =
-                        ((int[])((AsyncResult) msg.obj).result)[0] == CDMA_SUBSCRIPTION_NV;
-                    Log.d(LOG_TAG, "Received Cdma subscription source from NV: " +
-                            mCdmaSubscriptionFromNv);
-                } else {
-                    Log.d(LOG_TAG, "Sanity check failed. EVENT_GET_CDMA_SUBSCRIPTION_SOURCE " +
-                            "exception and result both null: " + ((AsyncResult)msg.obj).exception +
-                            " " + ((AsyncResult)msg.obj).result);
-                    break;
-                }
-                boolean newQuiteMode = mCdmaSubscriptionFromNv
-                        && (mCurrentAppType == AppFamily.APP_FAM_3GPP2) && !mIsMultimodeCdmaPhone;
-                if (mQuiteMode == false && newQuiteMode == true) {
-                    // Last thing to do before switching to quite mode is
-                    // broadcast ICC_READY
-                    Log.d(LOG_TAG, "Switching to QuiteMode.");
-                    broadcastIccStateChangedIntent(INTENT_VALUE_ICC_READY, null);
-                }
-                mQuiteMode = newQuiteMode;
-                Log.d(LOG_TAG, "QuiteMode is " + mQuiteMode + " (app_type: " +
-                        mCurrentAppType + " nv: " + mCdmaSubscriptionFromNv +
-                        " multimode: " + mIsMultimodeCdmaPhone + ")");
-                mInitialized = true;
-                sendMessage(obtainMessage(EVENT_ICC_CHANGED));
                 break;
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
                 updateQuiteMode();
@@ -739,5 +712,28 @@ public class IccCardProxy extends Handler implements IccCard {
                 Log.e(LOG_TAG, "This Personalization substate is not handled: " + state);
                 break;
         }
+    }
+
+    /**
+     * Handles the call to get the subscription source
+     *
+     * @param holds the new CDMA subscription source value
+     */
+    private void handleCdmaSubscriptionSource() {
+        int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+        mCdmaSubscriptionFromNv = newSubscriptionSource == CDMA_SUBSCRIPTION_NV;
+        boolean newQuiteMode = mCdmaSubscriptionFromNv
+                && (mCurrentAppType == AppFamily.APP_FAM_3GPP2) && !mIsMultimodeCdmaPhone;
+        if (mQuiteMode == false && newQuiteMode == true) {
+            // Last thing to do before switching to quite mode is
+            // broadcast ICC_READY
+            Log.d(LOG_TAG, "Switching to QuiteMode.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_READY, null);
+        }
+        mQuiteMode = newQuiteMode;
+        Log.d(LOG_TAG, "QuiteMode is " + mQuiteMode + " (app_type: " + mCurrentAppType + " nv: "
+                + mCdmaSubscriptionFromNv + " multimode: " + mIsMultimodeCdmaPhone + ")");
+        mInitialized = true;
+        sendMessage(obtainMessage(EVENT_ICC_CHANGED));
     }
 }

@@ -35,6 +35,7 @@ import android.net.IConnectivityManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Registrant;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.IBinder;
@@ -57,6 +58,7 @@ import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 import com.android.internal.telephony.Phone.IPVersion;
 import com.android.internal.telephony.Phone.DataActivityState;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 
 /*
  * Definitions:
@@ -168,6 +170,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     private boolean mDisconnectAllDataCalls = false;
     private boolean mDataCallSetupPending = false;
 
+    private CdmaSubscriptionSourceManager mCdmaSSM = null;
+
     /*
      * context to make sure the onUpdateDataConnections doesn't get executed
      * over and over again unnecessarily.
@@ -246,7 +250,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         /* CDMA only */
         mCm.registerForCdmaOtaProvision(this, EVENT_CDMA_OTA_PROVISION, null);
-        mDsst.registerForCdmaSubscriptonSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, ci, new Registrant(this,
+                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null));
 
         /* GSM only */
         mDsst.registerForPsRestrictedEnabled(this, EVENT_PS_RESTRICT_ENABLED, null);
@@ -351,7 +356,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mDsst.unregisterForDataRoamingOff(this);
         mDsst.unregisterForPsRestrictedEnabled(this);
         mDsst.unregisterForPsRestrictedDisabled(this);
-        mDsst.unRegisterForCdmaSubscriptonSourceChanged(this);
+        mCdmaSSM.dispose(this);
 
         mDpt.unregisterForDataProfileDbChanged(this);
 

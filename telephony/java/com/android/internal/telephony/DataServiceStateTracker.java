@@ -35,6 +35,7 @@ import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.cdma.CdmaRoamingInfoHelper;
 import com.android.internal.telephony.cdma.CdmaSubscriptionInfo;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.cdma.RuimRecords;
 import com.android.internal.telephony.gsm.RestrictedState;
@@ -55,7 +56,6 @@ public class DataServiceStateTracker extends Handler {
     private RegistrantList mDataConnectionAttachedRegistrants = new RegistrantList();
     private RegistrantList mDataConnectionDetachedRegistrants = new RegistrantList();
     private RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
-    private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mDataServiceStateRegistrants = new RegistrantList();
@@ -68,7 +68,6 @@ public class DataServiceStateTracker extends Handler {
 
     /* cdma only */
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_INFO = 14;
-    private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE = 15;
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 16;
     private static final int EVENT_GET_CDMA_PRL_VERSION = 17;
     private static final int EVENT_CDMA_PRL_VERSION_CHANGED = 18;
@@ -121,6 +120,7 @@ public class DataServiceStateTracker extends Handler {
     public int mCdmaSubscriptionSource = Phone.CDMA_SUBSCRIPTION_NV; /* assume NV */
     private CdmaSubscriptionInfo mCdmaSubscriptionInfo;
     private CdmaRoamingInfoHelper mCdmaRoamingInfo;
+    private CdmaSubscriptionSourceManager mCdmaSSM = null;
 
     /* gsm only stuff */
     private RestrictedState mRs;
@@ -143,6 +143,8 @@ public class DataServiceStateTracker extends Handler {
         /* stores cdma stuff */
         mCdmaSubscriptionInfo = new CdmaSubscriptionInfo();
         mCdmaRoamingInfo = new CdmaRoamingInfoHelper();
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, ci, new Registrant(this,
+                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null));
 
         mRs = new RestrictedState();
 
@@ -154,7 +156,6 @@ public class DataServiceStateTracker extends Handler {
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         //cdma only
-        cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
     }
 
@@ -167,35 +168,14 @@ public class DataServiceStateTracker extends Handler {
             case EVENT_RADIO_STATE_CHANGED:
                 pollState("radio state changed");
                 if (cm.getRadioState().isOn()) {
-                    cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                    handleCdmaSubscriptionSource();
                     cm.getCDMASubscription( obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_INFO));
                     cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
                 }
                 break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
-                break;
-
-            case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
-                if (ar.exception != null) {
-                    logw("cdma subscrion source query returned exception : " + ar.exception.toString());
-                } else {
-                    int newSubscriptionSource = ((int[]) ar.result)[0];
-
-                    if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                        Log.v(LOG_TAG, "cdma subscription Source changed : "
-                                + mCdmaSubscriptionSource + " >> " + newSubscriptionSource);
-                        mCdmaSubscriptionSource = newSubscriptionSource;
-
-                        if (newSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
-                            // NV is already ready, if subscription is NV.
-                            sendMessage(obtainMessage(EVENT_NV_READY));
-                        }
-                        mCdmaSubscriptionSourceChangedRegistrants.notifyRegistrants();
-                        pollState("cdma subscription source changed");
-                    }
-                }
+                handleCdmaSubscriptionSource();
                 break;
 
             case EVENT_ICC_CHANGED:
@@ -262,6 +242,23 @@ public class DataServiceStateTracker extends Handler {
             default:
                 Log.e(LOG_TAG, "Unhandled message with number: " + msg.what);
                 break;
+        }
+    }
+
+    /**
+     * Handles the call to get the subscription source
+     *
+     * @param holds the new CDMA subscription source value
+     */
+    private void handleCdmaSubscriptionSource() {
+        int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+        if (newSubscriptionSource != mCdmaSubscriptionSource) {
+            mCdmaSubscriptionSource = newSubscriptionSource;
+            if (newSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
+                // NV is ready when subscription source is NV
+                sendMessage(obtainMessage(EVENT_NV_READY));
+            }
+            pollState("cdma subscription source changed");
         }
     }
 
@@ -873,7 +870,7 @@ public class DataServiceStateTracker extends Handler {
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForDataNetworkStateChanged(this);
         cm.unregisterForRestrictedStateChanged(this);
-        cm.unregisterForCdmaSubscriptionSourceChanged(this);
+        mCdmaSSM.dispose(this);
 
         mUiccManager.unregisterForIccChanged(this);
 
@@ -1013,15 +1010,6 @@ public class DataServiceStateTracker extends Handler {
 
     public void unRegisterForRadioTechnologyChanged(Handler h) {
         mRadioTechChangedRegistrants.remove(h);
-    }
-
-    public void registerForCdmaSubscriptonSourceChanged(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        mCdmaSubscriptionSourceChangedRegistrants.add(r);
-    }
-
-    public void unRegisterForCdmaSubscriptonSourceChanged(Handler h) {
-        mCdmaSubscriptionSourceChangedRegistrants.remove(h);
     }
 
     /**

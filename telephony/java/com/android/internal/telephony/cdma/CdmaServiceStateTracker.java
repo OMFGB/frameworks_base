@@ -78,6 +78,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     RuimRecords mRuimRecords = null;
 
     int mCdmaSubscriptionSource = Phone.CDMA_SUBSCRIPTION_NV;
+    private CdmaSubscriptionSourceManager mCdmaSSM;
 
      /** if time between NTIZ updates is less than mNitzUpdateSpacing the update may be ignored. */
     private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
@@ -168,6 +169,9 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         cellLoc = new CdmaCellLocation();
         newCellLoc = new CdmaCellLocation();
         mSignalStrength = new SignalStrength();
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(phone.getContext(), cm,
+                new Registrant(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null));
+        mCdmaSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
 
         PowerManager powerManager =
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
@@ -179,7 +183,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
-        cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
 
         mUiccManager = UiccManager.getInstance(phone.getContext(), this.cm);
@@ -206,7 +209,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
-        cm.unregisterForCdmaSubscriptionSourceChanged(this);
+        mCdmaSSM.dispose(this);
         cm.unregisterForCdmaPrlChanged(this);
 
         //cleanup icc stuff
@@ -291,9 +294,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
         // Get Registration Information
         pollState();
-
-        // Signal strength polling stops when radio is off.
-        queueNextSignalStrengthPoll();
     }
 
     @Override
@@ -310,41 +310,20 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
         switch (msg.what) {
         case EVENT_RADIO_ON:
-            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            handleCdmaSubscriptionSource();
             cm.getCDMASubscription( obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
             cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
+
+            // Signal strength polling stops when radio is off.
+            queueNextSignalStrengthPoll();
             break;
 
         case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            handleCdmaSubscriptionSource();
             break;
 
         case EVENT_ICC_CHANGED:
             updateIccAvailability();
-            break;
-
-        case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
-            log("Received EVENT_GET_CDMA_SUBSCRIPTION_SOURCE: ");
-            ar = (AsyncResult) msg.obj;
-
-            if (ar.exception == null) {
-                int newSubscriptionSource = ((int[]) ar.result)[0];
-
-                if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                    Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource
-                        + " >> " + newSubscriptionSource);
-                     mCdmaSubscriptionSource = newSubscriptionSource;
-                     saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
-
-                     if (newSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
-                         //NV is ready when subscription source is NV
-                         sendMessage(obtainMessage(EVENT_NV_READY));
-                     }
-                }
-                pollState();
-            } else {
-                Log.w(LOG_TAG, "Error in parsing CDMA_SUBSCRIPTION_SOURCE:" +ar.exception);
-            }
             break;
 
         case EVENT_RUIM_READY:
@@ -373,11 +352,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RADIO_STATE_CHANGED:
-            if(cm.getRadioState() == CommandsInterface.RadioState.RADIO_ON) {
-                cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
-            } else {
-                mSubscriptionSourceUnknown = true;
-            }
             // This will do nothing in the 'radio not available' case.
             pollState();
             break;
@@ -574,6 +548,25 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     //***** Private Instance Methods
+
+    /**
+     * Handles the call to get the subscription source
+     *
+     * @param holds the new CDMA subscription source value
+     */
+    private void handleCdmaSubscriptionSource() {
+        int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+        if (newSubscriptionSource != mCdmaSubscriptionSource) {
+            mCdmaSubscriptionSource = newSubscriptionSource;
+            saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
+
+            if (newSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
+                // NV is ready when subscription source is NV
+                sendMessage(obtainMessage(EVENT_NV_READY));
+            }
+        }
+        pollState();
+    }
 
     @Override
     protected void updateSpnDisplay() {

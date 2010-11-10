@@ -29,7 +29,7 @@ class CdmaNAI extends DataProfile {
 
     @Override
     boolean canSupportIpVersion(IPVersion ipv) {
-        if (ipv == IPVersion.IPV4)
+        if (ipv == IPVersion.IPV4 || ipv == IPVersion.IPV6)
             return true;
         else
             return false;

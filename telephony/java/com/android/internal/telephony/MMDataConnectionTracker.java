@@ -48,6 +48,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
+import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.Log;
 
@@ -649,6 +650,15 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 if (dataConnectionUpdateReason == null) {
                     dataConnectionUpdateReason = REASON_NETWORK_DISCONNECT;
                 }
+            } else if (isIpAddrChanged(activeDC, dc)) {
+                /*
+                * TODO: Handle Gateway / DNS sever IP changes in a
+                *       similar fashion and to be  wrapped in a generic function.
+                */
+                logi("Ip address change detected on " + dc.toString());
+                logi("new IpAddr = " + activeDC.address + ",old IpAddr" + dc.getIpAddress());
+
+                tryDisconnectDataCall(dc, REASON_DATA_CONN_PROP_CHANGED);
             } else {
                 switch (activeDC.active) {
                     /*
@@ -726,6 +736,19 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 return states.get(i);
         }
         return null;
+    }
+
+    private boolean isIpAddrChanged(DataCallState activeDC, DataConnection dc ) {
+        boolean ipaddrChanged = false;
+        /* If old ip address is empty or NULL, do not treat it an as Ip Addr change.
+         * The data call is just setup we are receiving the IP address for the first time
+         */
+        if (!TextUtils.isEmpty(dc.getIpAddress())) {
+            if ((!(activeDC.address).equals(dc.getIpAddress()))) {
+                ipaddrChanged = true;
+            }
+        }
+        return ipaddrChanged;
     }
 
     @Override

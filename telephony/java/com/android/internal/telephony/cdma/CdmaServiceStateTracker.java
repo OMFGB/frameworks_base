@@ -902,39 +902,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    private static String networkTypeToString(int type) {
-        String ret = "unknown";
-
-        switch (type) {
-        case DATA_ACCESS_CDMA_IS95A:
-        case DATA_ACCESS_CDMA_IS95B:
-            ret = "CDMA";
-            break;
-        case DATA_ACCESS_CDMA_1xRTT:
-            ret = "CDMA - 1xRTT";
-            break;
-        case DATA_ACCESS_CDMA_EvDo_0:
-            ret = "CDMA - EvDo rev. 0";
-            break;
-        case DATA_ACCESS_CDMA_EvDo_A:
-            ret = "CDMA - EvDo rev. A";
-            break;
-        case DATA_ACCESS_CDMA_EvDo_B:
-            ret = "CDMA - EvDo rev. B";
-            break;
-        case DATA_ACCESS_EHRPD:
-            ret = "CDMA - EHRPD";
-            break;
-        default:
-            if (DBG) {
-                Log.e(LOG_TAG, "Wrong network. Can not return a string.");
-            }
-        break;
-        }
-
-        return ret;
-    }
-
     private void fixTimeZone(String isoCountryCode) {
         TimeZone zone = null;
         // If the offset is (0, false) and the time zone property
@@ -983,8 +950,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             ss.getState() == ServiceState.STATE_IN_SERVICE
             && newSS.getState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasNetworkTypeChanged = networkType != newNetworkType;
-
         boolean hasChanged = !newSS.equals(ss);
 
         boolean hasRoamingOn = !ss.getRoaming() && newSS.getRoaming();
@@ -1014,11 +979,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         networkType = newNetworkType;
 
         newSS.setStateOutOfService(); // clean slate for next time
-
-        if (hasNetworkTypeChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    networkTypeToString(networkType));
-        }
 
         if (hasRegistered) {
             networkAttachedRegistrants.notifyRegistrants();

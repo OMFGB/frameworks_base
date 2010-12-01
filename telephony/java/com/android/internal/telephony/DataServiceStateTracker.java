@@ -446,6 +446,58 @@ public class DataServiceStateTracker extends Handler {
         }
     }
 
+    private static String networkTypeToString(int type) {
+        String ret = "unknown";
+
+        switch (type) {
+            case ServiceState.RADIO_TECHNOLOGY_GPRS:
+                ret = "GPRS";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_EDGE:
+                ret = "EDGE";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_UMTS:
+                ret = "UMTS";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_IS95A:
+            case ServiceState.RADIO_TECHNOLOGY_IS95B:
+                ret = "CDMA";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_1xRTT:
+                ret = "CDMA - 1xRTT";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_0:
+                ret = "CDMA - EvDo rev. 0";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_A:
+                ret = "CDMA - EvDo rev. A";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_HSDPA:
+                ret = "HSDPA";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_HSUPA:
+                ret = "HSUPA";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_HSPA:
+                ret = "HSPA";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_EVDO_B:
+                ret = "CDMA - EvDo rev. B";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_EHRPD:
+                ret = "CDMA - EHRPD";
+                break;
+            case ServiceState.RADIO_TECHNOLOGY_LTE:
+                ret = "LTE";
+                break;
+            default:
+                Log.e(LOG_TAG, "Wrong network type: " + type);
+                break;
+        }
+
+        return ret;
+    }
+
     private void pollStateDone() {
         logv("Poll ServiceState done: oldSS=[" + mSs + "] newSS=[" + mNewSS + "]");
 
@@ -495,6 +547,9 @@ public class DataServiceStateTracker extends Handler {
 
         if (hasRadioTechChanged) {
             mRadioTechChangedRegistrants.notifyRegistrants();
+
+            SystemProperties.set(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+                    networkTypeToString(mSs.getRadioTechnology()));
         }
 
         if (hasRoamingOn) {

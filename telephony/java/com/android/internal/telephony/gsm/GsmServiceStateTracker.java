@@ -693,50 +693,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    private static String networkTypeToString(int type) {
-        //Network Type from GPRS_REGISTRATION_STATE
-        String ret = "unknown";
-
-        switch (type) {
-            case DATA_ACCESS_GPRS:
-                ret = "GPRS";
-                break;
-            case DATA_ACCESS_EDGE:
-                ret = "EDGE";
-                break;
-            case DATA_ACCESS_UMTS:
-                ret = "UMTS";
-                break;
-            case DATA_ACCESS_HSDPA:
-                ret = "HSDPA";
-                break;
-            case DATA_ACCESS_HSUPA:
-                ret = "HSUPA";
-                break;
-            case DATA_ACCESS_HSPA:
-                ret = "HSPA";
-                break;
-            case DATA_ACCESS_LTE:
-                ret = "LTE";
-                break;
-            case DATA_ACCESS_EHRPD:
-                ret = "EHRPD";
-                break;
-            default:
-                Log.e(LOG_TAG, "Wrong network type: " + Integer.toString(type));
-                break;
-        }
-
-        return ret;
-    }
-
     private void pollStateDone() {
         if (DBG) {
             Log.d(LOG_TAG, "Poll ServiceState done: " +
                 " oldSS=[" + ss + "] newSS=[" + newSS +
-                "] " +
-                " oldType=" + networkTypeToString(networkType) +
-                " newType=" + networkTypeToString(newNetworkType));
+                "] ");
         }
 
         boolean hasRegistered =
@@ -782,19 +743,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             GsmCellLocation loc = ((GsmCellLocation)phone.getCellLocation());
             if (loc != null) cid = loc.getCid();
             EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, networkType, newNetworkType);
-            Log.d(LOG_TAG,
-                    "RAT switched " + networkTypeToString(networkType) + " -> "
-                    + networkTypeToString(newNetworkType) + " at cell " + cid);
+            Log.d(LOG_TAG, "RAT switched " + networkType + " -> "
+                    + newNetworkType + " at cell " + cid);
         }
 
         networkType = newNetworkType;
 
         newSS.setStateOutOfService(); // clean slate for next time
-
-        if (hasNetworkTypeChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    networkTypeToString(networkType));
-        }
 
         if (hasRegistered) {
             networkAttachedRegistrants.notifyRegistrants();

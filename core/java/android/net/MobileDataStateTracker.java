@@ -325,9 +325,22 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                         + ", gw=" + newInfo.mGateway);
             }
         } else {
-            if (newInfo.mState == DataState.DISCONNECTED
-                    && newInfo.mInterfaceName != null) {
-                NetworkUtils.resetConnections(mMobileInfo.get(ipv).mInterfaceName);
+            if (newInfo.mState == DataState.DISCONNECTED) {
+                if (newInfo.mInterfaceName != null) {
+                    NetworkUtils.resetConnections(mMobileInfo.get(ipv).mInterfaceName);
+                }
+                /*
+                 * When network disconnects the data call, the routing table
+                 * entries corresponding to this interface are removed
+                 * automatically - update our flags to reflect this. Ideally
+                 * connectivity service should do this, but it may not if the
+                 * other IP version is active.
+                 */
+                if (mApnType.equals(Phone.APN_TYPE_DEFAULT)) {
+                    removeDefaultRoute(ipv);
+                } else {
+                    removePrivateDnsRoutes(ipv);
+                }
             }
         }
 

@@ -1244,33 +1244,34 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     private boolean isReadyForData() {
 
         //TODO: Check voice call state, emergency call back info
-        boolean isDataEnabled = isDataConnectivityEnabled();
+        boolean isReadyForData = isDataConnectivityEnabled();
 
         boolean roaming = mDsst.getDataServiceState().getRoaming();
-        isDataEnabled = isDataEnabled && (!roaming || getDataOnRoamingEnabled());
+        isReadyForData = isReadyForData && (!roaming || getDataOnRoamingEnabled());
 
         int dataRegState = this.mDsst.getDataServiceState().getState();
-
-        isDataEnabled = isDataEnabled
-                        && (dataRegState == ServiceState.STATE_IN_SERVICE || mNoAutoAttach);
-
         RadioTechnology r = getRadioTechnology();
+
+        isReadyForData = isReadyForData
+                        && ((dataRegState == ServiceState.STATE_IN_SERVICE
+                                && r != RadioTechnology.RADIO_TECH_UNKNOWN)
+                                || mNoAutoAttach);
 
         if (r.isGsm()
                 || r == RadioTechnology.RADIO_TECH_EHRPD
                 || (r.isUnknown() && mNoAutoAttach)) {
-            isDataEnabled = isDataEnabled && mDsst.mSimRecords != null
+            isReadyForData = isReadyForData && mDsst.mSimRecords != null
                     && mDsst.mSimRecords.getRecordsLoaded() && !mIsPsRestricted;
         }
 
         if (r.isCdma()) {
-            isDataEnabled = isDataEnabled
+            isReadyForData = isReadyForData
                     && (mDsst.mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV
                             || (mDsst.mRuimRecords != null
                                     && mDsst.mRuimRecords.getRecordsLoaded()));
         }
 
-        return isDataEnabled;
+        return isReadyForData;
     }
 
     /**

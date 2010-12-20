@@ -582,7 +582,7 @@ public final class MccTable
             int mcc, mnc;
 
             try {
-                mcc = Integer.parseInt(mccmnc.substring(0,3));
+                mcc = Integer.parseInt(mccmnc.substring(0, 3));
                 mnc = Integer.parseInt(mccmnc.substring(3));
             } catch (NumberFormatException e) {
                 Log.e(LOG_TAG, "Error parsing IMSI");

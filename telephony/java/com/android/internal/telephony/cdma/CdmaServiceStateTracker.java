@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,23 +40,19 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.Log;
-import android.util.Config;
 import android.util.TimeUtils;
 
 import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RegStateResponse;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
-import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccManager.AppFamily;
 
@@ -78,6 +75,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     UiccManager mUiccManager = null;
     UiccCardApplication m3gpp2Application = null;
     RuimRecords mRuimRecords = null;
+
+    int mCdmaSubscriptionSource = VoicePhone.CDMA_SUBSCRIPTION_NV;
 
      /** if time between NTIZ updates is less than mNitzUpdateSpacing the update may be ignored. */
     private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
@@ -103,11 +102,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     /**
      * Initially assume no data connection.
      */
-    private int cdmaDataConnectionState = ServiceState.STATE_OUT_OF_SERVICE;
-    private int newCdmaDataConnectionState = ServiceState.STATE_OUT_OF_SERVICE;
     private int mRegistrationState = -1;
-    private RegistrantList cdmaDataConnectionAttachedRegistrants = new RegistrantList();
-    private RegistrantList cdmaDataConnectionDetachedRegistrants = new RegistrantList();
     private RegistrantList cdmaForSubscriptionInfoReadyRegistrants = new RegistrantList();
     private RegistrantList cdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
 
@@ -144,10 +139,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     private boolean mIsMinInfoReady = false;
 
     private boolean isEriTextLoaded = false;
-    boolean isSubscriptionFromRuim = false;
-    private boolean mSubscriptionSourceUnknown = true;
-
-    private boolean mPendingRadioPowerOffAfterDataOff = false;
 
     /* Used only for debugging purposes. */
     private String mRegistrationDeniedReason;
@@ -180,6 +171,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
 
+        cm.registerForOn(this, EVENT_RADIO_ON, null);
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
@@ -194,18 +186,16 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         phone.registerForEriFileLoaded(this, EVENT_ERI_FILE_LOADED, null);
         cm.registerForCdmaOtaProvision(this,EVENT_OTA_PROVISION_STATUS_CHANGE, null);
 
-        // System setting property AIRPLANE_MODE_ON is set in Settings.
-        int airplaneMode = Settings.System.getInt(cr, Settings.System.AIRPLANE_MODE_ON, 0);
-        mDesiredPowerState = ! (airplaneMode > 0);
-
         cr.registerContentObserver(
                 Settings.System.getUriFor(Settings.System.AUTO_TIME), true,
                 mAutoTimeObserver);
         setSignalStrengthDefaultValues();
+
     }
 
     public void dispose() {
         // Unregister for all events.
+        cm.unregisterForOn(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForNetworkStateChanged(this);
 
@@ -246,44 +236,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
     void unregisterForNetworkAttach(Handler h) {
         networkAttachedRegistrants.remove(h);
-    }
-
-    /**
-     * Registration point for transition into Data attached.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForCdmaDataConnectionAttached(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        cdmaDataConnectionAttachedRegistrants.add(r);
-
-        if (cdmaDataConnectionState == ServiceState.STATE_IN_SERVICE) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForCdmaDataConnectionAttached(Handler h) {
-        cdmaDataConnectionAttachedRegistrants.remove(h);
-    }
-
-    /**
-     * Registration point for transition into Data detached.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForCdmaDataConnectionDetached(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        cdmaDataConnectionDetachedRegistrants.add(r);
-
-        if (cdmaDataConnectionState != ServiceState.STATE_IN_SERVICE) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForCdmaDataConnectionDetached(Handler h) {
-        cdmaDataConnectionDetachedRegistrants.remove(h);
     }
 
     /**
@@ -355,6 +307,9 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         switch (msg.what) {
+        case EVENT_RADIO_ON:
+            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            break;
 
         case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
             cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
@@ -367,34 +322,25 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
             log("Received EVENT_GET_CDMA_SUBSCRIPTION_SOURCE: ");
             ar = (AsyncResult) msg.obj;
+            int newSubscriptionSource = ((int[]) ar.result)[0];
 
-            if (ar.exception == null) {
-                int newSubscriptionSource = ((int[]) ar.result)[0]; // 0 - RUIM, 1 - NV
+            if (newSubscriptionSource != mCdmaSubscriptionSource) {
+                Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource
+                        + " >> " + newSubscriptionSource);
+                mCdmaSubscriptionSource = newSubscriptionSource;
+                saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
 
-                // Detect a subscription mode change and process it
-                if (mSubscriptionSourceUnknown || (isSubscriptionFromRuim !=
-                    (newSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM))) {
-                    mSubscriptionSourceUnknown = false;
-                    Log.v(LOG_TAG, "Subscription Source Changed : "
-                            + (isSubscriptionFromRuim ? "0" : "1") + " >> "
-                            + newSubscriptionSource);
-                    isSubscriptionFromRuim =
-                        (newSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM);
-                    saveCdmaSubscriptionSource(newSubscriptionSource);
-                    if (!isSubscriptionFromRuim) {
-                        // NV is ready when subscription source is NV
-                        sendMessage(obtainMessage(EVENT_NV_READY));
-                    }
-                    cdmaSubscriptionSourceChangedRegistrants.notifyRegistrants();
+                if (newSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
+                    //NV is ready when subscription source is NV
+                    sendMessage(obtainMessage(EVENT_NV_READY));
                 }
-            } else {
-                Log.w(LOG_TAG, "Error in parsing CDMA_SUBSCRIPTION_SOURCE:" +ar.exception);
             }
+            pollState();
             break;
 
         case EVENT_RUIM_READY:
-            // The RUIM is now ready i.e if it was locked it has been
-            // unlocked. At this stage, the radio is already powered on.
+
+            cm.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
             if (DBG) log("Receive EVENT_RUIM_READY and Send Request getCDMASubscription.");
             getSubscriptionInfoAndStartPollingThreads();
             break;
@@ -413,7 +359,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         case EVENT_GET_CDMA_PRL_VERSION :
             ar = (AsyncResult) msg.obj;
             if (ar.exception == null) {
-                mPrlVersion = (String) ar.result;
+                mPrlVersion = ((String[]) ar.result)[0];
             }
             break;
 
@@ -424,7 +370,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 mSubscriptionSourceUnknown = true;
             }
             // This will do nothing in the 'radio not available' case.
-            setPowerStateToDesired();
             pollState();
             break;
 
@@ -533,7 +478,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION NID=" + cdmaSubscription[2] );
                     mMin = cdmaSubscription[3];
-                    mPrlVersion = cdmaSubscription[4];
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION MDN=" + mMdn);
                     //Notify apps subscription info is ready
                     if (cdmaForSubscriptionInfoReadyRegistrants != null) {
@@ -610,16 +554,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             }
             break;
 
-        case EVENT_SET_RADIO_POWER_OFF:
-            synchronized(this) {
-                if (mPendingRadioPowerOffAfterDataOff) {
-                    if (DBG) log("EVENT_SET_RADIO_OFF, turn radio off now.");
-                    hangupAndPowerOff();
-                    mPendingRadioPowerOffAfterDataOff = false;
-                }
-            }
-            break;
-
         default:
             Log.e(LOG_TAG, "Unhandled message with number: " + msg.what);
         break;
@@ -686,10 +620,11 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         String plmn = "";
         boolean showPlmn = false;
         int rule = 0;
-        if (isSubscriptionFromRuim
+
+        if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_RUIM_SIM
                 && m3gpp2Application != null
                 && m3gpp2Application.getState() == AppState.APPSTATE_READY) {
-            // TODO RUIM SPN is not implemented, EF_SPN has to be read and Display Condition
+            // TODO RUIM SPN is not implemnted, EF_SPN has to be read and Display Condition
             //   Character Encoding, Language Indicator and SPN has to be set
             // rule = phone.mRuimRecords.getDisplayRule(ss.getOperatorNumeric());
             // spn = phone.mSIMRecords.getServiceProvideName();
@@ -760,7 +695,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         } else try {
             switch (what) {
             case EVENT_POLL_STATE_REGISTRATION_CDMA: // Handle RIL_REQUEST_REGISTRATION_STATE.
-                states = (String[])ar.result;
+                RegStateResponse r = (RegStateResponse)ar.result;
+                states = r.getRecord(0);
 
                 int registrationState = 4;     //[0] registrationState
                 int radioTechnology = -1;      //[3] radioTechnology
@@ -837,8 +773,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                         regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
                 newSS.setState (regCodeToServiceState(registrationState));
 
-                this.newCdmaDataConnectionState =
-                        radioTechnologyToDataServiceState(radioTechnology);
                 newSS.setRadioTechnology(radioTechnology);
                 newNetworkType = radioTechnology;
 
@@ -870,7 +804,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 String opNames[] = (String[])ar.result;
 
                 if (opNames != null && opNames.length >= 3) {
-                    if (!isSubscriptionFromRuim) {
+                    if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
                         // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
                         // ERI text, so here it is ignored what is coming from the modem.
                         newSS.setOperatorName(null, opNames[1], opNames[2]);
@@ -902,7 +836,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             }
 
             // Setting SS Roaming (general)
-            if (isSubscriptionFromRuim) {
+            if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_RUIM_SIM) {
                 newSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, newSS));
             } else {
                 newSS.setRoaming(mCdmaRoaming);
@@ -1091,17 +1025,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             ss.getState() == ServiceState.STATE_IN_SERVICE
             && newSS.getState() != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasCdmaDataConnectionAttached =
-            this.cdmaDataConnectionState != ServiceState.STATE_IN_SERVICE
-            && this.newCdmaDataConnectionState == ServiceState.STATE_IN_SERVICE;
-
-        boolean hasCdmaDataConnectionDetached =
-            this.cdmaDataConnectionState == ServiceState.STATE_IN_SERVICE
-            && this.newCdmaDataConnectionState != ServiceState.STATE_IN_SERVICE;
-
-        boolean hasCdmaDataConnectionChanged =
-                       cdmaDataConnectionState != newCdmaDataConnectionState;
-
         boolean hasNetworkTypeChanged = networkType != newNetworkType;
 
         boolean hasChanged = !newSS.equals(ss);
@@ -1113,11 +1036,10 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean hasLocationChanged = !newCellLoc.equals(cellLoc);
 
         // Add an event log when connection state changes
-        if (ss.getState() != newSS.getState() ||
-                cdmaDataConnectionState != newCdmaDataConnectionState) {
+        if (ss.getState() != newSS.getState()) {
             EventLog.writeEvent(EventLogTags.CDMA_SERVICE_STATE_CHANGE,
-                    ss.getState(), cdmaDataConnectionState,
-                    newSS.getState(), newCdmaDataConnectionState);
+                    ss.getState(),
+                    newSS.getState());
         }
 
         ServiceState tss;
@@ -1131,7 +1053,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         cellLoc = newCellLoc;
         newCellLoc = tcl;
 
-        cdmaDataConnectionState = newCdmaDataConnectionState;
         networkType = newNetworkType;
 
         newSS.setStateOutOfService(); // clean slate for next time
@@ -1146,7 +1067,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasChanged) {
-            if (!isSubscriptionFromRuim) {
+            if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the new ERI text
                 if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
@@ -1194,18 +1115,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
             updateSpnDisplay();
             phone.notifyServiceStateChanged(ss);
-        }
-
-        if (hasCdmaDataConnectionAttached) {
-            cdmaDataConnectionAttachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasCdmaDataConnectionDetached) {
-            cdmaDataConnectionDetachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasCdmaDataConnectionChanged || hasNetworkTypeChanged) {
-            phone.notifyDataConnection(null);
         }
 
         if (hasRoamingOn) {
@@ -1336,30 +1245,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-
-    private int radioTechnologyToDataServiceState(int code) {
-        int retVal = ServiceState.STATE_OUT_OF_SERVICE;
-        switch(code) {
-        case 0:
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-            break;
-        case 6: // RADIO_TECHNOLOGY_1xRTT
-        case 7: // RADIO_TECHNOLOGY_EVDO_0
-        case 8: // RADIO_TECHNOLOGY_EVDO_A
-        case 12: // RADIO_TECHNOLOGY_EVDO_B
-            retVal = ServiceState.STATE_IN_SERVICE;
-            break;
-        default:
-            Log.e(LOG_TAG, "Wrong radioTechnology code.");
-        break;
-        }
-        return(retVal);
-    }
-
     /** code is registration state 0-5 from TS 27.007 7.2 */
     private int regCodeToServiceState(int code) {
         phone.setPowerSaveStatus(false);
@@ -1380,15 +1265,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             Log.w(LOG_TAG, "unexpected service state " + code);
         return ServiceState.STATE_OUT_OF_SERVICE;
         }
-    }
-
-    /**
-     * @return The current CDMA data connection state. ServiceState.RADIO_TECHNOLOGY_1xRTT or
-     * ServiceState.RADIO_TECHNOLOGY_EVDO is the same as "attached" and
-     * ServiceState.RADIO_TECHNOLOGY_UNKNOWN is the same as detached.
-     */
-    /*package*/ int getCurrentCdmaDataConnectionState() {
-        return cdmaDataConnectionState;
     }
 
     /**
@@ -1711,17 +1587,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         return false;
     }
 
-    /**
-     * @return true if phone is camping on a technology
-     * that could support voice and data simultaneously.
-     */
-    boolean isConcurrentVoiceAndData() {
-        // Note: it needs to be confirmed which CDMA network types
-        // can support voice and data calls concurrently.
-        // For the time-being, the return value will be false.
-        return false;
-    }
-
     protected void log(String s) {
         Log.d(LOG_TAG, "[CdmaServiceStateTracker] " + s);
     }
@@ -1763,25 +1628,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         return mIsMinInfoReady;
     }
 
-    /**
-     * process the pending request to turn radio off after data is disconnected
-     *
-     * return true if there is pending request to process; false otherwise.
-     */
-    public boolean processPendingRadioPowerOffAfterDataOff() {
-        synchronized(this) {
-            if (mPendingRadioPowerOffAfterDataOff) {
-                if (DBG) log("Process pending request to turn radio off.");
-                removeMessages(EVENT_SET_RADIO_POWER_OFF);
-                hangupAndPowerOff();
-                mPendingRadioPowerOffAfterDataOff = false;
-                return true;
-            }
-            return false;
-        }
-    }
-
-    private void hangupAndPowerOff() {
+    private void hangupBeforePowerOff() {
         // hang up all active voice calls
         phone.mCT.ringingCall.hangupIfAlive();
         phone.mCT.backgroundCall.hangupIfAlive();

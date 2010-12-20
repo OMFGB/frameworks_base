@@ -384,6 +384,14 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCM.unSetOnUnsolOemHookExtApp(h);
     }
 
+    public void registerForCallReestablishInd(Handler h, int what, Object obj) {
+        mCM.registerForCallReestablishInd(h, what, obj);
+    }
+
+    public void unregisterForCallReestablishInd(Handler h) {
+        mCM.unregisterForCallReestablishInd(h);
+    }
+
     // Inherited documentation suffices.
     public void registerForIncomingRing(
             Handler h, int what, Object obj) {
@@ -1058,20 +1066,20 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
+     * Common error logger method for unexpected calls to GSM/WCDMA-only methods.
+     */
+    private void logUnexpectedGsmMethodCall(String name) {
+        Log.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
+                "called, GSMPhone inactive.");
+    }
+
+    /**
      * Common error logger method for unexpected calls to CDMA-only methods.
      */
     private void logUnexpectedCdmaMethodCall(String name)
     {
         Log.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
                 "called, CDMAPhone inactive.");
-    }
-
-    /**
-     * Common error logger method for unexpected calls to GSM/WCDMA-only methods.
-     */
-    private void logUnexpectedGsmMethodCall(String name) {
-        Log.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
-                "called, GSMPhone inactive.");
     }
 
     /**

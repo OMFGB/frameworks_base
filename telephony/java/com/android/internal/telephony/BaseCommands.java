@@ -68,6 +68,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCdmaFwdBurstDtmfRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStopRegistrants = new RegistrantList();
+    protected RegistrantList mCallReestablishIndRegistrants = new RegistrantList();
 
     protected Registrant mSMSRegistrant;
     protected Registrant mNITZTimeRegistrant;
@@ -554,6 +555,14 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForCdmaFwdContDtmfStop(Handler h) {
         mCdmaFwdContDtmfStopRegistrants.remove(h);
+    }
+
+    public void registerForCallReestablishInd(Handler h, int what, Object obj) {
+        mCallReestablishIndRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCallReestablishInd(Handler h) {
+        mCallReestablishIndRegistrants.remove(h);
     }
 
     //***** Protected Methods

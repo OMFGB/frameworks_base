@@ -63,7 +63,7 @@ public interface DataPhone {
 
     public enum IPVersion {
         IPV4, IPV6
-    }
+    };
 
     // Key used to read/write "disable data connection on boot" pref (used for testing)
     public static final String DATA_DISABLED_ON_BOOT_KEY = "disabled_on_boot_key";

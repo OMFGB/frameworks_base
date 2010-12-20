@@ -139,6 +139,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     private boolean mIsMinInfoReady = false;
 
     private boolean isEriTextLoaded = false;
+    private boolean mSubscriptionSourceUnknown = true;
 
     /* Used only for debugging purposes. */
     private String mRegistrationDeniedReason;

@@ -114,6 +114,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     protected static final int EVENT_PS_RESTRICT_DISABLED = 20;
 
     protected static final int EVENT_RECORDS_LOADED = 21;
+    protected static final int EVENT_ICC_CHANGED = 22;
 
    /*
      * Reasons for calling updateDataConnections()
@@ -140,6 +141,14 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     protected static final String REASON_DATA_NETWORK_ATTACH = "dataNetworkAttached";
     protected static final String REASON_DATA_NETWORK_DETACH = "dataNetworkDetached";
     protected static final String REASON_DATA_PROFILE_LIST_CHANGED = "dataProfileDbChanged";
+ 
+    /** Should be overridden in child classes */
+    protected static final AppFamily mAppFamily = AppFamily.APP_FAM_3GPP;
+
+    protected UiccManager mUiccManager = null;
+    private UiccCardApplication mUiccApplication = null;
+    private UiccCard mUiccCard = null;
+    protected UiccApplicationRecords mUiccAppRecords = null;
 
     /**
      * Default constructor
@@ -151,6 +160,9 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
         this.mNotifier = notifier;
 
         this.mDpt = new DataProfileTracker(context);
+        mUiccManager = UiccManager.getInstance();
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+
     }
 
     public void dispose() {
@@ -207,6 +219,10 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
 
             case EVENT_VOICE_CALL_ENDED:
                 onVoiceCallEnded();
+                break;
+
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
                 break;
 
             default:

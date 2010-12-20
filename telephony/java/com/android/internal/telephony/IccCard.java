@@ -24,6 +24,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.internal.telephony.PhoneBase;
@@ -56,6 +57,8 @@ public abstract class IccCard {
     static public final String INTENT_VALUE_ICC_NOT_READY = "NOT_READY";
     /* ABSENT means ICC is missing */
     static public final String INTENT_VALUE_ICC_ABSENT = "ABSENT";
+    /* CARD_IO_ERROR means for three consecutive times there was SIM IO error */
+    static public final String INTENT_VALUE_ICC_CARD_IO_ERROR = "CARD_IO_ERROR";
     /* LOCKED means ICC is locked by pin or by network */
     static public final String INTENT_VALUE_ICC_LOCKED = "LOCKED";
     /* READY means ICC is ready to access */
@@ -97,6 +100,7 @@ public abstract class IccCard {
         PUK_REQUIRED,
         NETWORK_LOCKED,
         READY,
+        CARD_IO_ERROR,
         NOT_READY;
 
         public boolean isPinLocked() {
@@ -392,6 +396,7 @@ public abstract class IccCard {
     private void handleIccCardStatus(IccCardStatus newCardStatus) {
         boolean transitionedIntoPinLocked;
         boolean transitionedIntoAbsent;
+        boolean transitionedIntoCardIOError;
         boolean transitionedIntoNetworkLocked;
 
         State oldState, newState;
@@ -407,6 +412,8 @@ public abstract class IccCard {
                  (oldState != State.PIN_REQUIRED && newState == State.PIN_REQUIRED)
               || (oldState != State.PUK_REQUIRED && newState == State.PUK_REQUIRED));
         transitionedIntoAbsent = (oldState != State.ABSENT && newState == State.ABSENT);
+        transitionedIntoCardIOError = (oldState != State.CARD_IO_ERROR
+                && newState == State.CARD_IO_ERROR);
         transitionedIntoNetworkLocked = (oldState != State.NETWORK_LOCKED
                 && newState == State.NETWORK_LOCKED);
 
@@ -420,6 +427,9 @@ public abstract class IccCard {
             if(mDbg) log("Notify SIM missing.");
             mAbsentRegistrants.notifyRegistrants();
             broadcastIccStateChangedIntent(INTENT_VALUE_ICC_ABSENT, null);
+        } else if (transitionedIntoCardIOError) {
+            if(mDbg) log("Notify SIM Card IO Error.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_CARD_IO_ERROR, null);
         } else if (transitionedIntoNetworkLocked) {
             if(mDbg) log("Notify SIM network locked.");
             mNetworkLockedRegistrants.notifyRegistrants();
@@ -595,7 +605,13 @@ public abstract class IccCard {
         }
 
         // this is common for all radio technologies
+        // Presently all SIM card statuses except card present are treated as
+        // ABSENT. Handling Card IO error case seperately.
         if (!mIccCardStatus.getCardState().isCardPresent()) {
+            if (mIccCardStatus.getCardState().isCardFaulty() &&
+                SystemProperties.getBoolean("persist.cust.tel.adapt",false)) {
+                return IccCard.State.CARD_IO_ERROR;
+            }
             return IccCard.State.ABSENT;
         }
 

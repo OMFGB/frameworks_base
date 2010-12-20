@@ -999,6 +999,9 @@ public class StatusBarPolicy {
         if (IccCard.INTENT_VALUE_ICC_ABSENT.equals(stateExtra)) {
             mSimState = IccCard.State.ABSENT;
         }
+        else if (IccCard.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(stateExtra)) {
+            mSimState = IccCard.State.CARD_IO_ERROR;
+        }
         else if (IccCard.INTENT_VALUE_ICC_READY.equals(stateExtra)) {
             mSimState = IccCard.State.READY;
         }

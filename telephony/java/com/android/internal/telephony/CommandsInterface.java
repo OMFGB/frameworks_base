@@ -255,6 +255,8 @@ public interface CommandsInterface {
     void unregisterForCallStateChanged(Handler h);
     void registerForNetworkStateChanged(Handler h, int what, Object obj);
     void unregisterForNetworkStateChanged(Handler h);
+    void registerForDataNetworkStateChanged(Handler h, int what, Object obj);
+    void unregisterForDataNetworkStateChanged(Handler h);
     void registerForDataStateChanged(Handler h, int what, Object obj);
     void unregisterForDataStateChanged(Handler h);
 
@@ -892,7 +894,7 @@ public interface CommandsInterface {
      * Please note that registration state 4 ("unknown") is treated
      * as "out of service" above
      */
-    void getGPRSRegistrationState (Message response);
+    void getDataRegistrationState (Message response);
 
     /**
      * response.obj.result is a String[3]
@@ -1382,15 +1384,13 @@ public interface CommandsInterface {
      *            the password for APN, or NULL
      * @param authType
      *            the PAP / CHAP auth type. Values is one of SETUP_DATA_AUTH_*
-     * @param protocol
-     *            one of the PDP_type values in TS 27.007 section 10.1.1.
-     *            For example, "IP", "IPV6", "IPV4V6", or "PPP".
+     * @param ipVersion
+     *            0 - IPV4, 1 - IPV6
      * @param result
      *            Callback message
      */
-    public void setupDataCall(String radioTechnology, String profile,
-            String apn, String user, String password, String authType,
-            String protocol, Message result);
+    public void setupDataCall(String radioTechnology, String profile, String apn,
+            String user, String password, String authType, String ipVersion, Message result);
 
     /**
      * Deactivate packet data connection

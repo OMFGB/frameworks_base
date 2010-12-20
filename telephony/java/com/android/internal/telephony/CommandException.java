@@ -42,6 +42,7 @@ public class CommandException extends RuntimeException {
         MODE_NOT_SUPPORTED,
         FDN_CHECK_FAILURE,
         ILLEGAL_SIM_OR_ME,
+        SETUP_DATA_CALL_FAILURE,
     }
 
     public CommandException(Error e) {
@@ -83,6 +84,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.FDN_CHECK_FAILURE);
             case RILConstants.ILLEGAL_SIM_OR_ME:
                 return new CommandException(Error.ILLEGAL_SIM_OR_ME);
+            case RILConstants.SETUP_DATA_CALL_FAILURE:
+                return new CommandException(Error.SETUP_DATA_CALL_FAILURE);
             default:
                 Log.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);

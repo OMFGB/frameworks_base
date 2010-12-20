@@ -28,6 +28,7 @@ package com.android.internal.telephony;
  * {@hide}
  */
 public interface RILConstants {
+    int RIL_MAX_NETWORKS = 2;                 // (from ril.h)
     // From the top of ril.cpp
     int RIL_ERRNO_INVALID_RESPONSE = -1;
 
@@ -53,6 +54,7 @@ public interface RILConstants {
     int ILLEGAL_SIM_OR_ME = 15;               /* network selection failure due
                                                  to wrong SIM/ME and no
                                                  retries needed */
+    int SETUP_DATA_CALL_FAILURE = 16;         /* setup data call failure */
 
     /* NETWORK_MODE_* See ril.h RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE */
     int NETWORK_MODE_WCDMA_PREF     = 0; /* GSM/WCDMA (WCDMA preferred) */
@@ -163,7 +165,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_LAST_CALL_FAIL_CAUSE = 18;
     int RIL_REQUEST_SIGNAL_STRENGTH = 19;
     int RIL_REQUEST_REGISTRATION_STATE = 20;
-    int RIL_REQUEST_GPRS_REGISTRATION_STATE = 21;
+    int RIL_REQUEST_DATA_REGISTRATION_STATE = 21;
     int RIL_REQUEST_OPERATOR = 22;
     int RIL_REQUEST_RADIO_POWER = 23;
     int RIL_REQUEST_DTMF = 24;
@@ -284,4 +286,6 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 1031;
     int RIL_UNSOL_CDMA_PRL_CHANGED = 1032;
     int RIL_UNSOL_VOICE_RADIO_TECH_CHANGED = 1034;
+    int RIL_UNSOL_TETHERED_MODE_STATE_CHANGED = 1036;
+    int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 1037;
 }

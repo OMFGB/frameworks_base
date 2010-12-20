@@ -44,6 +44,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mNotAvailRegistrants = new RegistrantList();
     protected RegistrantList mCallStateRegistrants = new RegistrantList();
     protected RegistrantList mNetworkStateRegistrants = new RegistrantList();
+    protected RegistrantList mDataNetworkStateRegistrants = new RegistrantList();
     protected RegistrantList mDataConnectionRegistrants = new RegistrantList();
     protected RegistrantList mVoiceRadioTechChangedRegistrants = new RegistrantList();
     protected RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
@@ -164,7 +165,6 @@ public abstract class BaseCommands implements CommandsInterface {
         }
     }
 
-
     public void registerForAvailable(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
 
@@ -236,6 +236,16 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForNetworkStateChanged(Handler h) {
         mNetworkStateRegistrants.remove(h);
+    }
+
+    public void registerForDataNetworkStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+
+        mDataNetworkStateRegistrants.add(r);
+    }
+
+    void unregisterForDataNetworkStateChanged(Handler h) {
+        mDataNetworkStateRegistrants.remove(h);
     }
 
     public void registerForDataStateChanged(Handler h, int what, Object obj) {

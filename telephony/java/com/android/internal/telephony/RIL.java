@@ -58,6 +58,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
+import com.android.internal.telephony.RegStateResponse;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 
@@ -1120,9 +1121,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     public void
-    getGPRSRegistrationState (Message result) {
+    getDataRegistrationState (Message result) {
         RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_GPRS_REGISTRATION_STATE, result);
+                = RILRequest.obtain(RIL_REQUEST_DATA_REGISTRATION_STATE, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
@@ -1353,8 +1354,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 : RILConstants.SETUP_DATA_AUTH_NONE;
 
         setupDataCall(Integer.toString(radioTechnology), profile, apn, user,
-                password, Integer.toString(authType),
-                RILConstants.SETUP_DATA_PROTOCOL_IP, result);
+                password, Integer.toString(authType), "IP", result);
 
     }
 
@@ -1368,8 +1368,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     public void
     setupDataCall(String radioTechnology, String profile, String apn,
-            String user, String password, String authType, String protocol,
-            Message result) {
+            String user, String password, String authType, String ipVersion, Message result) {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_SETUP_DATA_CALL, result);
 
@@ -1381,12 +1380,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         rr.mp.writeString(user);
         rr.mp.writeString(password);
         rr.mp.writeString(authType);
-        rr.mp.writeString(protocol);
+        rr.mp.writeString(ipVersion);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> "
                 + requestToString(rr.mRequest) + " " + radioTechnology + " "
                 + profile + " " + apn + " " + user + " "
-                + password + " " + authType + " " + protocol);
+                + password + " " + authType + " " + ipVersion);
 
         send(rr);
     }
@@ -2237,8 +2236,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_UDUB: ret =  responseVoid(p); break;
             case RIL_REQUEST_LAST_CALL_FAIL_CAUSE: ret =  responseInts(p); break;
             case RIL_REQUEST_SIGNAL_STRENGTH: ret =  responseSignalStrength(p); break;
-            case RIL_REQUEST_REGISTRATION_STATE: ret =  responseStrings(p); break;
-            case RIL_REQUEST_GPRS_REGISTRATION_STATE: ret =  responseStrings(p); break;
+            case RIL_REQUEST_REGISTRATION_STATE: ret =  responseRegState(p); break;
+            case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseRegState(p); break;
             case RIL_REQUEST_OPERATOR: ret =  responseStrings(p); break;
             case RIL_REQUEST_RADIO_POWER: ret =  responseVoid(p); break;
             case RIL_REQUEST_DTMF: ret =  responseVoid(p); break;
@@ -2438,6 +2437,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS: ret =  responseString(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT: ret =  responseString(p); break;
             case RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM: ret =  responseInts(p); break;
@@ -2508,6 +2508,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) unsljLog(response);
 
                 mCallStateRegistrants
+                    .notifyRegistrants(new AsyncResult(null, null, null));
+            break;
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED:
+                if (RILJ_LOGD) unsljLog(response);
+
+                mDataNetworkStateRegistrants
                     .notifyRegistrants(new AsyncResult(null, null, null));
             break;
             case RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED:
@@ -2796,6 +2802,28 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                                         new AsyncResult (null, ret, null));
                 }
         }
+    }
+
+    private Object
+    responseRegState(Parcel p) {
+        int num;
+        String regstates[][] = new String [RIL_MAX_NETWORKS][];
+
+        for (int i = 0; i < RIL_MAX_NETWORKS; ++i) {
+            num = p.readInt();
+            if (num == 0) {
+                regstates[i] = null;
+            } else {
+                regstates[i] = new String[num];
+                for (int j = 0; j < num; j++) {
+                    regstates[i][j] = p.readString();
+                }
+            }
+        }
+
+        RegStateResponse response = new RegStateResponse(regstates);
+
+        return response;
     }
 
     private boolean isQcUnsolOemHookResp(ByteBuffer oemHookResponse) {
@@ -3155,11 +3183,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             dataCall.active = p.readInt();
             dataCall.type = p.readString();
             dataCall.apn = p.readString();
-            String address = p.readString();
-            if (address != null) {
-                address = address.split(" ")[0];
-            }
-            dataCall.address = address;
+            dataCall.address = p.readString();
+            dataCall.mRadioTech = RadioTechnology.getRadioTechFromInt(p.readInt());
+            dataCall.inactiveReason = p.readInt();
 
             response.add(dataCall);
         }
@@ -3433,7 +3459,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_LAST_CALL_FAIL_CAUSE: return "LAST_CALL_FAIL_CAUSE";
             case RIL_REQUEST_SIGNAL_STRENGTH: return "SIGNAL_STRENGTH";
             case RIL_REQUEST_REGISTRATION_STATE: return "REGISTRATION_STATE";
-            case RIL_REQUEST_GPRS_REGISTRATION_STATE: return "GPRS_REGISTRATION_STATE";
+            case RIL_REQUEST_DATA_REGISTRATION_STATE: return "GPRS_REGISTRATION_STATE";
             case RIL_REQUEST_OPERATOR: return "OPERATOR";
             case RIL_REQUEST_RADIO_POWER: return "RADIO_POWER";
             case RIL_REQUEST_DTMF: return "DTMF";
@@ -3535,6 +3561,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED: return "UNSOL_RESPONSE_CALL_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED: return "UNSOL_RESPONSE_NETWORK_STATE_CHANGED";
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: return "RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED";
             case RIL_UNSOL_RESPONSE_NEW_SMS: return "UNSOL_RESPONSE_NEW_SMS";
             case RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT: return "UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT";
             case RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM: return "UNSOL_RESPONSE_NEW_SMS_ON_SIM";

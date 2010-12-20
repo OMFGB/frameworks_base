@@ -850,29 +850,30 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /**
-     * response.obj.result is an String[4]
-     * response.obj.result[0] is registration state 0-5 from TS 27.007 7.2
-     * response.obj.result[1] is LAC if registered or NULL if not
-     * response.obj.result[2] is CID if registered or NULL if not
-     * response.obj.result[3] indicates the available radio technology, where:
-     *      0 == unknown
-     *      1 == GPRS only
-     *      2 == EDGE
-     *      3 == UMTS
-     *
-     * valid LAC are 0x0000 - 0xffff
-     * valid CID are 0x00000000 - 0xffffffff
+     * response.obj.result is an String[14]
+     * See ril.h for details
      *
      * Please note that registration state 4 ("unknown") is treated
-     * as "out of service" in the Android telephony system
+     * as "out of service" above
      */
-    public void getGPRSRegistrationState (Message result) {
-        String ret[] = new String[4];
+    public void getDataRegistrationState (Message result) {
+        String ret[] = new String[14];
 
-        ret[0] = "5"; // registered roam
+        ret[0] = "5"; // registered roam (TODO: is there a better value?)
         ret[1] = null;
         ret[2] = null;
         ret[3] = "2";
+        ret[4] = null;
+        ret[5] = null;
+        ret[6] = null;
+        ret[7] = null;
+        ret[8] = null;
+        ret[9] = null;
+        ret[10] = null;
+        ret[11] = null;
+        ret[12] = null;
+        ret[13] = null;
+        ret[14] = null;
 
         resultSuccess(result, ret);
     }
@@ -961,9 +962,8 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(result);
     }
 
-    public void setupDataCall(String radioTechnology, String profile,
-            String apn, String user, String password, String authType,
-            String protocol, Message result) {
+    public void setupDataCall(String radioTechnology, String profile, String apn, String user,
+            String password, String authType, String ipVersion, Message result) {
         unimplemented(result);
     }
 
@@ -1492,5 +1492,4 @@ public final class SimulatedCommands extends BaseCommands
     public void getCdmaPrlVersion(Message response) {
         unimplemented(response);
     }
-
 }

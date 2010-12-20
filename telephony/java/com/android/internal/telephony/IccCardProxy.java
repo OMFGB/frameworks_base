@@ -34,6 +34,7 @@ import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccConstants.CardState;
 import com.android.internal.telephony.UiccConstants.PersoSubState;
 import com.android.internal.telephony.UiccManager.AppFamily;
+import static com.android.internal.telephony.VoicePhone.CDMA_SUBSCRIPTION_NV;
 
 /*
  * The Phone App UI and the external world assumes that there is only one icc card,
@@ -55,6 +56,8 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_RECORDS_LOADED = 7;
     private static final int EVENT_IMSI_READY = 8;
     private static final int EVENT_PERSO_LOCKED = 9;
+    private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE = 10;
+    private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
 
     private Context mContext;
     private CommandsInterface cm;
@@ -71,6 +74,12 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private boolean mFirstRun = true;
     private boolean mRadioOn = false;
+    private boolean mCdmaSubscriptionFromNv = false;
+    private boolean mIsMultimodeCdmaPhone =
+            SystemProperties.getBoolean("ro.config.multimode_cdma", false);
+    private boolean mQuiteMode = false; // when set to true IccCardProxy will not broadcast
+                                        // ACTION_SIM_STATE_CHANGED intents
+    private boolean mInitialized = false;
 
     public IccCardProxy(Context mContext, CommandsInterface cm) {
         super();
@@ -81,9 +90,7 @@ public class IccCardProxy extends Handler implements IccCard {
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         cm.registerForOn(this,EVENT_RADIO_ON, null);
         cm.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
-
-        //Force update
-        sendMessage(obtainMessage(EVENT_ICC_CHANGED));
+        cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
     }
 
     public void dispose() {
@@ -100,12 +107,30 @@ public class IccCardProxy extends Handler implements IccCard {
      */
     public void setVoiceRadioTech(RadioTechnologyFamily mVoiceRadioFamily) {
         Log.d(LOG_TAG, "Setting radio tech " + mVoiceRadioFamily);
-        if (mVoiceRadioFamily == RadioTechnologyFamily.RADIO_TECH_3GPP2)
+        if (mVoiceRadioFamily == RadioTechnologyFamily.RADIO_TECH_3GPP2) {
             mCurrentAppType = AppFamily.APP_FAM_3GPP2;
-        else
+        } else {
             mCurrentAppType = AppFamily.APP_FAM_3GPP;
+        }
+        updateQuiteMode();
+    }
 
-        sendMessage(obtainMessage(EVENT_ICC_CHANGED));
+    /** This function does not necessarily updates mQuiteMode right away
+     * In case of 3GPP2 subscription it needs more information (subscription source)
+     */
+    private void updateQuiteMode() {
+        if (mCurrentAppType == AppFamily.APP_FAM_3GPP) {
+            mInitialized = true;
+            mQuiteMode = false;
+            Log.d(LOG_TAG, "3GPP subscription -> QuiteMode: " + mQuiteMode);
+            sendMessage(obtainMessage(EVENT_ICC_CHANGED));
+        } else {
+            //In case of 3gpp2 we need to find out if subscription used is coming from
+            //NV in which case we shouldn't broadcast any sim states changes if at the
+            //same time ro.config.multimode_cdma property set to false.
+            mInitialized = false;
+            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+        }
     }
 
     public void handleMessage(Message msg) {
@@ -117,8 +142,10 @@ public class IccCardProxy extends Handler implements IccCard {
                 mRadioOn = true;
                 break;
             case EVENT_ICC_CHANGED:
-                updateIccAvailability();
-                updateStateProperty();
+                if (mInitialized) {
+                    updateIccAvailability();
+                    updateStateProperty();
+                }
                 break;
             case EVENT_ICC_ABSENT:
                 mAbsentRegistrants.notifyRegistrants();
@@ -151,6 +178,28 @@ public class IccCardProxy extends Handler implements IccCard {
                         mNetworkLockedRegistrants.notifyRegistrants();
                     }
                 }
+                break;
+            case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
+                if (((AsyncResult)msg.obj).result != null) {
+                    mCdmaSubscriptionFromNv =
+                        ((int[])((AsyncResult) msg.obj).result)[0] == CDMA_SUBSCRIPTION_NV;
+                    Log.d(LOG_TAG, "Received Cdma subscription source from NV: " +
+                            mCdmaSubscriptionFromNv);
+                } else {
+                    Log.d(LOG_TAG, "GET_CDMA_SUBSCRIPTION_SOURCE failed. " +
+                            "No problem, probably just gsm mode");
+                }
+                mQuiteMode = mCdmaSubscriptionFromNv &&
+                        (mCurrentAppType == AppFamily.APP_FAM_3GPP2) &&
+                        !mIsMultimodeCdmaPhone;
+                Log.d(LOG_TAG, "QuiteMode is " + mQuiteMode + " (app_type: " +
+                        mCurrentAppType + " nv: " + mCdmaSubscriptionFromNv +
+                        " multimode: " + mIsMultimodeCdmaPhone + ")");
+                mInitialized = true;
+                sendMessage(obtainMessage(EVENT_ICC_CHANGED));
+                break;
+            case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                updateQuiteMode();
                 break;
             default:
                 Log.e(LOG_TAG, "Unhandled message with number: " + msg.what);
@@ -226,6 +275,11 @@ public class IccCardProxy extends Handler implements IccCard {
 
     /* why do external apps need to use this? */
     public void broadcastIccStateChangedIntent(String value, String reason) {
+        if (mQuiteMode) {
+            Log.e(LOG_TAG, "QuiteMode: NOT Broadcasting intent ACTION_SIM_STATE_CHANGED " +  value
+                    + " reason " + reason);
+            return;
+        }
         Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         //TODO: Fusion - How do I get phoneName here?

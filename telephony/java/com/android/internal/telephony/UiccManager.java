@@ -211,6 +211,9 @@ public class UiccManager extends Handler{
         synchronized (mIccChangedRegistrants) {
             mIccChangedRegistrants.add(r);
         }
+        //Notify registrants soon after registering, so that it will get the latest ICC status,
+        //otherwise which may not happen until there is an actual change in ICC status.
+        r.notifyRegistrant();
     }
     public void unregisterForIccChanged(Handler h) {
         synchronized (mIccChangedRegistrants) {

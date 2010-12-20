@@ -50,6 +50,8 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected static final int DATA_ACCESS_LTE = 13;
 
+    protected static final int DATA_ACCESS_LTE = 13;
+
     protected CommandsInterface cm;
 
     public ServiceState ss;

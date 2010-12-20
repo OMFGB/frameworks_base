@@ -324,10 +324,10 @@ public class SipPhone extends SipPhoneBase {
         return ringingCall;
     }
 
-    public ServiceState getServiceState() {
+    public ServiceState getVoiceServiceState() {
         // FIXME: we may need to provide this when data connectivity is lost
         // or when server is down
-        return super.getServiceState();
+        return super.getVoiceServiceState();
     }
 
     private String getUriString(SipProfile p) {

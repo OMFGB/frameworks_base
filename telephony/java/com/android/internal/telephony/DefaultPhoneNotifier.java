@@ -94,14 +94,37 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     public void notifyDataConnection(Phone sender, String reason) {
         TelephonyManager telephony = TelephonyManager.getDefault();
+
+        /*
+         * Notify Data Connection is called by DCT, whenever there is a change in data connection state
+         * associated with <data service type / apn type, ipv>. We then pass the following information
+         * to Telephony Registry.
+         * 1. data connection State of service type <type> on IP Version <ipv>
+         * 2. reason why data connection state changed
+         * 3. apn/data profile through which <type> is active on <ipv>
+         * 4. interface through which <type> is active on <ipv>
+         * 5. ipv
+         */
+
+        Log.v("DATA", "[DefaultPhoneNotifier] : "
+                + type + ", " + ipv + ", " + sender.getDataConnectionState(type, ipv));
+
+        /* TODO : change telephony registry interface to accept String instead of String[] */
+        String typeArray[] = new String[1];
+        typeArray[0] =type;
+
+
         try {
             mRegistry.notifyDataConnection(
                     convertDataState(sender.getDataConnectionState()),
-                    sender.isDataConnectivityPossible(), reason,
-                    sender.getActiveApn(),
-                    sender.getActiveApnTypes(),
-                    sender.getInterfaceName(null),
-                    ((telephony!=null) ? telephony.getNetworkType() :
+                    convertDataState(sender.getDataConnectionState(type, ipv)),
+                    sender.isDataConnectivityPossible(),
+                    reason,
+                    sender.getActiveApn(type, ipv),
+                    typeArray,
+                    sender.getInterfaceName(type, ipv),
+                    /* TODO: pass up the IP type that this notification corresponds to */
+                    ((telephony != null) ? telephony.getNetworkType() :
                     TelephonyManager.NETWORK_TYPE_UNKNOWN),
                     sender.getGateway(null));
         } catch (RemoteException ex) {

@@ -469,6 +469,8 @@ public class TelephonyManager {
                 return "CDMA - EvDo rev. B";
             case NETWORK_TYPE_1xRTT:
                 return "CDMA - 1xRTT";
+           case NETWORK_TYPE_EVDO_B:
+                return "CDMA - EvDo rev. B";
             case NETWORK_TYPE_EHRPD:
                 return "CDMA - EHRPD";
             case NETWORK_TYPE_LTE:

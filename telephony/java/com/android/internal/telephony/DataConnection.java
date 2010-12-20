@@ -16,11 +16,15 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.gsm.ApnSetting;
-
+import com.android.internal.telephony.DataConnectionFailCause;
+import com.android.internal.telephony.DataProfile;
+import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.CommandsInterface.RadioTechnology;
+import com.android.internal.telephony.DataPhone.IPVersion;
 import com.android.internal.util.HierarchicalState;
 import com.android.internal.util.HierarchicalStateMachine;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
@@ -105,7 +109,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
         ERR_Stale,
         SUCCESS;
 
-        public FailCause mFailCause;
+        public DataConnectionFailCause mFailCause;
 
         @Override
         public String toString() {
@@ -124,13 +128,17 @@ public abstract class DataConnection extends HierarchicalStateMachine {
      * Used internally for saving connecting parameters.
      */
     protected static class ConnectionParams {
-        public ConnectionParams(ApnSetting apn, Message onCompletedMsg) {
-            this.apn = apn;
+        public ConnectionParams(RadioTechnology radioTech, DataProfile dp, IPVersion ipv, Message onCompletedMsg) {
+            this.radioTech = radioTech;
+            this.dp = dp;
+            this.ipv = ipv;
             this.onCompletedMsg = onCompletedMsg;
         }
 
         public int tag;
-        public ApnSetting apn;
+        public RadioTechnology radioTech;
+        public DataProfile dp;
+        public IPVersion ipv;
         public Message onCompletedMsg;
     }
 
@@ -157,89 +165,6 @@ public abstract class DataConnection extends HierarchicalStateMachine {
         public ResetSynchronouslyLock lockObj;
     }
 
-    /**
-     * Returned as the reason for a connection failure.
-     */
-    public enum FailCause {
-        NONE,
-        OPERATOR_BARRED,
-        INSUFFICIENT_RESOURCES,
-        MISSING_UNKNOWN_APN,
-        UNKNOWN_PDP_ADDRESS,
-        USER_AUTHENTICATION,
-        ACTIVATION_REJECT_GGSN,
-        ACTIVATION_REJECT_UNSPECIFIED,
-        SERVICE_OPTION_NOT_SUPPORTED,
-        SERVICE_OPTION_NOT_SUBSCRIBED,
-        SERVICE_OPTION_OUT_OF_ORDER,
-        NSAPI_IN_USE,
-        PROTOCOL_ERRORS,
-        REGISTRATION_FAIL,
-        GPRS_REGISTRATION_FAIL,
-        UNKNOWN,
-
-        RADIO_NOT_AVAILABLE;
-
-        public boolean isPermanentFail() {
-            return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
-                   (this == UNKNOWN_PDP_ADDRESS) || (this == USER_AUTHENTICATION) ||
-                   (this == ACTIVATION_REJECT_GGSN) || (this == ACTIVATION_REJECT_UNSPECIFIED) ||
-                   (this == SERVICE_OPTION_NOT_SUPPORTED) ||
-                   (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
-                   (this == PROTOCOL_ERRORS);
-        }
-
-        public boolean isEventLoggable() {
-            return (this == OPERATOR_BARRED) || (this == INSUFFICIENT_RESOURCES) ||
-                    (this == UNKNOWN_PDP_ADDRESS) || (this == USER_AUTHENTICATION) ||
-                    (this == ACTIVATION_REJECT_GGSN) || (this == ACTIVATION_REJECT_UNSPECIFIED) ||
-                    (this == SERVICE_OPTION_NOT_SUBSCRIBED) ||
-                    (this == SERVICE_OPTION_NOT_SUPPORTED) ||
-                    (this == SERVICE_OPTION_OUT_OF_ORDER) || (this == NSAPI_IN_USE) ||
-                    (this == PROTOCOL_ERRORS);
-        }
-
-        @Override
-        public String toString() {
-            switch (this) {
-            case NONE:
-                return "No Error";
-            case OPERATOR_BARRED:
-                return "Operator Barred";
-            case INSUFFICIENT_RESOURCES:
-                return "Insufficient Resources";
-            case MISSING_UNKNOWN_APN:
-                return "Missing / Unknown APN";
-            case UNKNOWN_PDP_ADDRESS:
-                return "Unknown PDP Address";
-            case USER_AUTHENTICATION:
-                return "Error User Authentication";
-            case ACTIVATION_REJECT_GGSN:
-                return "Activation Reject GGSN";
-            case ACTIVATION_REJECT_UNSPECIFIED:
-                return "Activation Reject unspecified";
-            case SERVICE_OPTION_NOT_SUPPORTED:
-                return "Data Not Supported";
-            case SERVICE_OPTION_NOT_SUBSCRIBED:
-                return "Data Not subscribed";
-            case SERVICE_OPTION_OUT_OF_ORDER:
-                return "Data Services Out of Order";
-            case NSAPI_IN_USE:
-                return "NSAPI in use";
-            case PROTOCOL_ERRORS:
-                return "Protocol Errors";
-            case REGISTRATION_FAIL:
-                return "Network Registration Failure";
-            case GPRS_REGISTRATION_FAIL:
-                return "Data Network Registration Failure";
-            case RADIO_NOT_AVAILABLE:
-                return "Radio Not Available";
-            default:
-                return "Unknown Data Error";
-            }
-        }
-    }
-
     // ***** Event codes for driving the state machine
     protected static final int EVENT_RESET = 1;
     protected static final int EVENT_CONNECT = 2;
@@ -253,15 +178,18 @@ public abstract class DataConnection extends HierarchicalStateMachine {
 
     //***** Member Variables
     protected int mTag;
-    protected PhoneBase phone;
+    protected Context mContext;
+    protected CommandsInterface mCM;
     protected int cid;
+    protected DataProfile mDataProfile;
+    protected IPVersion mIpv;
     protected String interfaceName;
     protected String ipAddress;
     protected String gatewayAddress;
     protected String[] dnsServers;
     protected long createTime;
     protected long lastFailTime;
-    protected FailCause lastFailCause;
+    protected DataConnectionFailCause lastFailCause;
     protected static final String NULL_IP = "0.0.0.0";
     Object userData;
 
@@ -270,18 +198,17 @@ public abstract class DataConnection extends HierarchicalStateMachine {
 
     protected abstract void onConnect(ConnectionParams cp);
 
-    protected abstract FailCause getFailCauseFromRequest(int rilCause);
-
     protected abstract boolean isDnsOk(String[] domainNameServers);
 
     protected abstract void log(String s);
 
 
    //***** Constructor
-    protected DataConnection(PhoneBase phone, String name) {
+    protected DataConnection(Context context, CommandsInterface ci, String name) {
         super(name);
         if (DBG) log("DataConnection constructor E");
-        this.phone = phone;
+        this.mCM = ci;
+        this.mContext = context;
         this.cid = -1;
         this.dnsServers = new String[2];
 
@@ -305,9 +232,9 @@ public abstract class DataConnection extends HierarchicalStateMachine {
      *          and is either a DisconnectParams or ConnectionParams.
      */
     private void tearDownData(Object o) {
-        if (phone.mCM.getRadioState().isOn()) {
+        if (mCM.getRadioState().isOn()) {
             if (DBG) log("tearDownData radio is on, call deactivateDataCall");
-            phone.mCM.deactivateDataCall(cid, obtainMessage(EVENT_DEACTIVATE_DONE, o));
+            mCM.deactivateDataCall(cid, obtainMessage(EVENT_DEACTIVATE_DONE, o));
         } else {
             if (DBG) log("tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately");
             AsyncResult ar = new AsyncResult(o, null, null);
@@ -321,7 +248,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
      * @param cp is the ConnectionParams
      * @param cause
      */
-    private void notifyConnectCompleted(ConnectionParams cp, FailCause cause) {
+    private void notifyConnectCompleted(ConnectionParams cp, DataConnectionFailCause cause) {
         Message connectionCompletedMsg = cp.onCompletedMsg;
         if (connectionCompletedMsg == null) {
             return;
@@ -330,7 +257,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
         long timeStamp = System.currentTimeMillis();
         connectionCompletedMsg.arg1 = cid;
 
-        if (cause == FailCause.NONE) {
+        if (cause == DataConnectionFailCause.NONE) {
             createTime = timeStamp;
             AsyncResult.forMessage(connectionCompletedMsg);
         } else {
@@ -375,8 +302,10 @@ public abstract class DataConnection extends HierarchicalStateMachine {
 
         this.createTime = -1;
         this.lastFailTime = -1;
-        this.lastFailCause = FailCause.NONE;
+        this.lastFailCause = DataConnectionFailCause.NONE;
 
+        mDataProfile = null;
+        mIpv = null;
         interfaceName = null;
         ipAddress = null;
         gatewayAddress = null;
@@ -402,9 +331,16 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                     && ((CommandException) (ar.exception)).getCommandError()
                     == CommandException.Error.RADIO_NOT_AVAILABLE) {
                 result = SetupResult.ERR_BadCommand;
-                result.mFailCause = FailCause.RADIO_NOT_AVAILABLE;
+                result.mFailCause = DataConnectionFailCause.RADIO_NOT_AVAILABLE;
+            } else if (ar.exception instanceof CommandException
+                    && ((CommandException)(ar.exception)).getCommandError() 
+                    == CommandException.Error.SETUP_DATA_CALL_FAILURE) {
+                result = SetupResult.ERR_Other;
+                int rilFailCause = ((int[]) (ar.result))[0];
+                result.mFailCause = DataConnectionFailCause.getDataCallSetupFailCause(rilFailCause);
             } else {
                 result = SetupResult.ERR_Other;
+                result.mFailCause = DataConnectionFailCause.UNKNOWN;
             }
         } else if (cp.tag != mTag) {
             if (DBG) {
@@ -419,6 +355,11 @@ public abstract class DataConnection extends HierarchicalStateMachine {
             if (response.length >= 2) {
                 cid = Integer.parseInt(response[0]);
                 interfaceName = response[1];
+                // connection is successful, so associate this dc with
+                // ipversion and data profile we used to setup this
+                // dataconnection with.
+                mIpv = cp.ipv;
+                mDataProfile = cp.dp;
                 if (response.length > 2) {
                     ipAddress = response[2];
                     String prefix = "net." + interfaceName + ".";
@@ -441,6 +382,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                 }
             } else {
                 result = SetupResult.ERR_Other;
+                result.mFailCause = DataConnectionFailCause.UNKNOWN;
             }
         }
 
@@ -469,7 +411,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                 case EVENT_CONNECT:
                     if (DBG) log("DcDefaultState: msg.what=EVENT_CONNECT, fail not expected");
                     ConnectionParams cp = (ConnectionParams) msg.obj;
-                    notifyConnectCompleted(cp, FailCause.UNKNOWN);
+                    notifyConnectCompleted(cp, DataConnectionFailCause.UNKNOWN);
                     break;
 
                 case EVENT_DISCONNECT:
@@ -494,10 +436,10 @@ public abstract class DataConnection extends HierarchicalStateMachine {
      */
     private class DcInactiveState extends HierarchicalState {
         private ConnectionParams mConnectionParams = null;
-        private FailCause mFailCause = null;
+        private DataConnectionFailCause mFailCause = null;
         private DisconnectParams mDisconnectParams = null;
 
-        public void setEnterNotificationParams(ConnectionParams cp, FailCause cause) {
+        public void setEnterNotificationParams(ConnectionParams cp, DataConnectionFailCause cause) {
             log("DcInactiveState: setEnterNoticationParams cp,cause");
             mConnectionParams = cp;
             mFailCause = cause;
@@ -594,7 +536,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                     switch (result) {
                         case SUCCESS:
                             // All is well
-                            mActiveState.setEnterNotificationParams(cp, FailCause.NONE);
+                            mActiveState.setEnterNotificationParams(cp, DataConnectionFailCause.NONE);
                             transitionTo(mActiveState);
                             break;
                         case ERR_BadCommand:
@@ -611,9 +553,8 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                             transitionTo(mDisconnectingBadDnsState);
                             break;
                         case ERR_Other:
-                            // Request the failure cause and process in this state
-                            phone.mCM.getLastDataCallFailCause(
-                                    obtainMessage(EVENT_GET_LAST_FAIL_DONE, cp));
+                            mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
+                            transitionTo(mInactiveState);
                             break;
                         case ERR_Stale:
                             // Request is stale, ignore.
@@ -621,31 +562,6 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                         default:
                             throw new RuntimeException("Unkown SetupResult, should not happen");
                     }
-                    retVal = true;
-                    break;
-
-                case EVENT_GET_LAST_FAIL_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    cp = (ConnectionParams) ar.userObj;
-                    FailCause cause = FailCause.UNKNOWN;
-
-                    if (cp.tag == mTag) {
-                        if (DBG) log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE");
-                        if (ar.exception == null) {
-                            int rilFailCause = ((int[]) (ar.result))[0];
-                            cause = getFailCauseFromRequest(rilFailCause);
-                        }
-                        // Transition to inactive but send notifications after
-                        // we've entered the mInactive state.
-                         mInactiveState.setEnterNotificationParams(cp, cause);
-                         transitionTo(mInactiveState);
-                    } else {
-                        if (DBG) {
-                            log("DcActivatingState EVENT_GET_LAST_FAIL_DONE is stale cp.tag="
-                                + cp.tag + ", mTag=" + mTag);
-                        }
-                    }
-
                     retVal = true;
                     break;
 
@@ -664,9 +580,9 @@ public abstract class DataConnection extends HierarchicalStateMachine {
      */
     private class DcActiveState extends HierarchicalState {
         private ConnectionParams mConnectionParams = null;
-        private FailCause mFailCause = null;
+        private DataConnectionFailCause mFailCause = null;
 
-        public void setEnterNotificationParams(ConnectionParams cp, FailCause cause) {
+        public void setEnterNotificationParams(ConnectionParams cp, DataConnectionFailCause cause) {
             log("DcInactiveState: setEnterNoticationParams cp,cause");
             mConnectionParams = cp;
             mFailCause = cause;
@@ -765,7 +681,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                         if (DBG) log("DcDisconnectingBadDnsState msg.what=EVENT_DEACTIVATE_DONE");
                         // Transition to inactive but send notifications after
                         // we've entered the mInactive state.
-                        mInactiveState.setEnterNotificationParams(cp, FailCause.UNKNOWN);
+                        mInactiveState.setEnterNotificationParams(cp, DataConnectionFailCause.UNKNOWN);
                         transitionTo(mInactiveState);
                     } else {
                         if (DBG) log("DcDisconnectingBadDnsState EVENT_DEACTIVE_DONE stale dp.tag="
@@ -814,28 +730,14 @@ public abstract class DataConnection extends HierarchicalStateMachine {
     }
 
     /**
-     * Connect to the apn and return an AsyncResult in onCompletedMsg.
-     * Used for cellular networks that use Acess Point Names (APN) such
-     * as GSM networks.
-     *
-     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
-     *        With AsyncResult.userObj set to the original msg.obj,
-     *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
-     * @param apn is the Acces Point Name to connect to
-     */
-    public void connect(Message onCompletedMsg, ApnSetting apn) {
-        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apn, onCompletedMsg)));
-    }
-
-    /**
-     * Connect to the apn and return an AsyncResult in onCompletedMsg.
+     * Connect to the data profile and return an AsyncResult in onCompletedMsg.
      *
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj,
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      */
-    public void connect(Message onCompletedMsg) {
-        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(null, onCompletedMsg)));
+    public void connect(RadioTechnology radioTech, DataProfile dp, IPVersion ipv, Message onCompletedMsg) {
+        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(radioTech, dp, ipv, onCompletedMsg)));
     }
 
     /**
@@ -870,6 +772,14 @@ public abstract class DataConnection extends HierarchicalStateMachine {
     public boolean isActive() {
         boolean retVal = getCurrentState() == mActiveState;
         return retVal;
+    }
+
+    public DataProfile getDataProfile() {
+        return mDataProfile;
+    }
+
+    public IPVersion getIpVersion() {
+        return mIpv;
     }
 
     /**
@@ -925,7 +835,7 @@ public abstract class DataConnection extends HierarchicalStateMachine {
     /**
      * @return the last cause of failure.
      */
-    public FailCause getLastFailCause() {
+    public DataConnectionFailCause getLastFailCause() {
         return lastFailCause;
     }
 }

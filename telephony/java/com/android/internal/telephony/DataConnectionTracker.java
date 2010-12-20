@@ -16,29 +16,33 @@
 
 package com.android.internal.telephony;
 
-import android.app.PendingIntent;
+import java.util.ArrayList;
+
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.os.RemoteException;
+import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
-import android.text.TextUtils;
+import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.os.SystemProperties;
 
-import java.util.ArrayList;
+import com.android.internal.telephony.DataProfile.DataProfileType;
 
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.gsm.SIMRecords;
 
 /**
  * {@hide}
- *
  */
-public abstract class DataConnectionTracker extends Handler {
+public abstract class DataConnectionTracker extends Handler implements DataPhone {
     protected static final boolean DBG = false;
-    protected final String LOG_TAG = "DataConnectionTracker";
+
+    protected final String LOG_TAG = "DATA";
 
     /**
      * IDLE: ready to start data connection setup, default state
@@ -74,270 +78,127 @@ public abstract class DataConnectionTracker extends Handler {
         DORMANT
     }
 
+    Context mContext;
+    CommandsInterface mCm;
+    PhoneNotifier mNotifier;
+    DataProfileTracker mDpt;
+
+    //set to false to disable *all* mobile data connections!
+    boolean mMasterDataEnabled = true;
+    boolean mDnsCheckDisabled = false;
+
     /***** Event Codes *****/
-    protected static final int EVENT_DATA_SETUP_COMPLETE = 1;
-    protected static final int EVENT_RADIO_AVAILABLE = 3;
-    protected static final int EVENT_RECORDS_LOADED = 4;
-    protected static final int EVENT_TRY_SETUP_DATA = 5;
-    protected static final int EVENT_DATA_STATE_CHANGED = 6;
-    protected static final int EVENT_POLL_PDP = 7;
-    protected static final int EVENT_GET_PDP_LIST_COMPLETE = 11;
-    protected static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 12;
-    protected static final int EVENT_VOICE_CALL_STARTED = 14;
-    protected static final int EVENT_VOICE_CALL_ENDED = 15;
-    protected static final int EVENT_GPRS_DETACHED = 19;
-    protected static final int EVENT_LINK_STATE_CHANGED = 20;
-    protected static final int EVENT_ROAMING_ON = 21;
-    protected static final int EVENT_ROAMING_OFF = 22;
-    protected static final int EVENT_ENABLE_NEW_APN = 23;
-    protected static final int EVENT_RESTORE_DEFAULT_APN = 24;
-    protected static final int EVENT_DISCONNECT_DONE = 25;
-    protected static final int EVENT_GPRS_ATTACHED = 26;
-    protected static final int EVENT_START_NETSTAT_POLL = 27;
-    protected static final int EVENT_START_RECOVERY = 28;
-    protected static final int EVENT_APN_CHANGED = 29;
-    protected static final int EVENT_CDMA_DATA_DETACHED = 30;
-    protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 31;
-    protected static final int EVENT_PS_RESTRICT_ENABLED = 32;
-    protected static final int EVENT_PS_RESTRICT_DISABLED = 33;
-    public static final int EVENT_CLEAN_UP_CONNECTION = 34;
-    protected static final int EVENT_CDMA_OTA_PROVISION = 35;
-    protected static final int EVENT_RESTART_RADIO = 36;
-    protected static final int EVENT_SET_MASTER_DATA_ENABLE = 37;
-    protected static final int EVENT_RESET_DONE = 38;
-    protected static final int EVENT_ICC_CHANGED = 39;
+    protected static final int EVENT_UPDATE_DATA_CONNECTIONS = 1;
+    protected static final int EVENT_SERVICE_TYPE_DISABLED = 2;
+    protected static final int EVENT_SERVICE_TYPE_ENABLED = 3;
+    protected static final int EVENT_DISCONNECT_DONE = 4;
+    protected static final int EVENT_CONNECT_DONE = 5;
+    protected static final int EVENT_VOICE_CALL_STARTED = 6;
+    protected static final int EVENT_VOICE_CALL_ENDED = 7;
+    protected static final int EVENT_RADIO_ON = 8;
+    protected static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 9;
+    protected static final int EVENT_DATA_CALL_LIST_CHANGED = 10;
+    protected static final int EVENT_DATA_CONNECTION_ATTACHED = 11;
+    protected static final int EVENT_DATA_CONNECTION_DETACHED = 12;
+    protected static final int EVENT_ROAMING_ON = 13;
+    protected static final int EVENT_ROAMING_OFF = 14;
+    protected static final int EVENT_DATA_PROFILE_DB_CHANGED = 15;
+    protected static final int EVENT_MASTER_DATA_ENABLED = 16;
+    protected static final int EVENT_MASTER_DATA_DISABLED = 17;
 
-    /***** Constants *****/
+    /* CDMA only */
+    protected static final int EVENT_CDMA_OTA_PROVISION = 18;
 
-    protected static final int APN_INVALID_ID = -1;
-    protected static final int APN_DEFAULT_ID = 0;
-    protected static final int APN_MMS_ID = 1;
-    protected static final int APN_SUPL_ID = 2;
-    protected static final int APN_DUN_ID = 3;
-    protected static final int APN_HIPRI_ID = 4;
-    protected static final int APN_NUM_TYPES = 5;
+    /* GSM only */
+    protected static final int EVENT_PS_RESTRICT_ENABLED = 19;
+    protected static final int EVENT_PS_RESTRICT_DISABLED = 20;
 
-    protected static final int DISABLED = 0;
-    protected static final int ENABLED = 1;
+    protected static final int EVENT_RECORDS_LOADED = 21;
 
-    // responds to the setDataEnabled call - used independently from the APN requests
-    protected boolean mMasterDataEnabled = true;
-
-    protected boolean[] dataEnabled = new boolean[APN_NUM_TYPES];
-    protected int enabledCount = 0;
-
-    /* Currently requested APN type */
-    protected String mRequestedApnType = Phone.APN_TYPE_DEFAULT;
-
-    /** Retry configuration: A doubling of retry times from 5secs to 30minutes */
-    protected static final String DEFAULT_DATA_RETRY_CONFIG = "default_randomization=2000,"
-        + "5000,10000,20000,40000,80000:5000,160000:5000,"
-        + "320000:5000,640000:5000,1280000:5000,1800000:5000";
-
-    /** Retry configuration for secondary networks: 4 tries in 20 sec */
-    protected static final String SECONDARY_DATA_RETRY_CONFIG =
-            "max_retries=3, 5000, 5000, 5000";
-
-    /** Slow poll when attempting connection recovery. */
-    protected static final int POLL_NETSTAT_SLOW_MILLIS = 5000;
-    /** Default ping deadline, in seconds. */
-    protected static final int DEFAULT_PING_DEADLINE = 5;
-    /** Default max failure count before attempting to network re-registration. */
-    protected static final int DEFAULT_MAX_PDP_RESET_FAIL = 3;
+   /*
+     * Reasons for calling updateDataConnections()
+     * TODO: This should be made in sync with those defined in Phone.java
+     */
+    protected static final String REASON_ROAMING_ON = "roamingOn";
+    protected static final String REASON_ROAMING_OFF = "roamingOff";
+    protected static final String REASON_SERVICE_TYPE_DISABLED = "apnTypeDisabled";
+    protected static final String REASON_SERVICE_TYPE_ENABLED = "apnTypeEnabled";
+    protected static final String REASON_MASTER_DATA_DISABLED = "masterDataDisabled";
+    protected static final String REASON_MASTER_DATA_ENABLED = "masterDataEnabled";
+    protected static final String REASON_ICC_RECORDS_LOADED = "iccRecordsLaded";
+    protected static final String REASON_CDMA_OTA_PROVISION = "cdmaOtaPovisioning";
+    protected static final String REASON_DEFAULT_DATA_DISABLED = "defaultDataDisabled";
+    protected static final String REASON_DEFAULT_DATA_ENABLED = "defaultDataEnabled";
+    protected static final String REASON_RADIO_ON = "radioOn";
+    protected static final String REASON_RADIO_OFF = "radioOff";
+    protected static final String REASON_VOICE_CALL_ENDED = "2GVoiceCallEnded";
+    protected static final String REASON_VOICE_CALL_STARTED = "2GVoiceCallStarted";
+    protected static final String REASON_PS_RESTRICT_ENABLED = "psRestrictEnabled";
+    protected static final String REASON_PS_RESTRICT_DISABLED = "psRestrictDisabled";
+    protected static final String REASON_RADIO_TECHNOLOGY_CHANGED = "radioTechnologyChanged";
+    protected static final String REASON_NETWORK_DISCONNECT = "networkOrModemDisconnect";
+    protected static final String REASON_DATA_NETWORK_ATTACH = "dataNetworkAttached";
+    protected static final String REASON_DATA_NETWORK_DETACH = "dataNetworkDetached";
+    protected static final String REASON_DATA_PROFILE_LIST_CHANGED = "dataProfileDbChanged";
 
     /**
-     * After detecting a potential connection problem, this is the max number
-     * of subsequent polls before attempting a radio reset.  At this point,
-     * poll interval is 5 seconds (POLL_NETSTAT_SLOW_MILLIS), so set this to
-     * poll for about 2 more minutes.
-     */
-    protected static final int NO_RECV_POLL_LIMIT = 24;
-
-    // 1 sec. default polling interval when screen is on.
-    protected static final int POLL_NETSTAT_MILLIS = 1000;
-    // 10 min. default polling interval when screen is off.
-    protected static final int POLL_NETSTAT_SCREEN_OFF_MILLIS = 1000*60*10;
-    // 2 min for round trip time
-    protected static final int POLL_LONGEST_RTT = 120 * 1000;
-    // 10 for packets without ack
-    protected static final int NUMBER_SENT_PACKETS_OF_HANG = 10;
-    // how long to wait before switching back to default APN
-    protected static final int RESTORE_DEFAULT_APN_DELAY = 1 * 60 * 1000;
-    // system property that can override the above value
-    protected static final String APN_RESTORE_DELAY_PROP_NAME = "android.telephony.apn-restore";
-    // represents an invalid IP address
-    protected static final String NULL_IP = "0.0.0.0";
-
-
-    // member variables
-    protected PhoneBase phone;
-    protected Activity activity = Activity.NONE;
-    protected State state = State.IDLE;
-    protected Handler mDataConnectionTracker = null;
-
-
-    protected long txPkts, rxPkts, sentSinceLastRecv;
-    protected int netStatPollPeriod;
-    protected int mNoRecvPollCount = 0;
-    protected boolean netStatPollEnabled = false;
-
-    /** Manage the behavior of data retry after failure */
-    protected RetryManager mRetryMgr = new RetryManager();
-
-    // wifi connection status will be updated by sticky intent
-    protected boolean mIsWifiConnected = false;
-
-    /** Intent sent when the reconnect alarm fires. */
-    protected PendingIntent mReconnectIntent = null;
-
-    /** CID of active data connection */
-    protected int cidActive;
-
-    /** Should be overridden in child classes */
-    protected static final AppFamily mAppFamily = AppFamily.APP_FAM_3GPP;
-
-    protected UiccManager mUiccManager = null;
-    private UiccCardApplication mUiccApplication = null;
-    private UiccCard mUiccCard = null;
-    protected UiccApplicationRecords mUiccAppRecords = null;
-
-   /**
      * Default constructor
      */
-    protected DataConnectionTracker(PhoneBase phone) {
+    protected DataConnectionTracker(Context context, PhoneNotifier notifier, CommandsInterface ci) {
         super();
-        this.phone = phone;
-        mUiccManager = UiccManager.getInstance();
-        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+        this.mContext = context;
+        this.mCm = ci;
+        this.mNotifier = notifier;
 
+        this.mDpt = new DataProfileTracker(context);
     }
 
-    public abstract void dispose();
-
-    public Activity getActivity() {
-        return activity;
+    public void dispose() {
+        mDpt.dispose();
+        mDpt = null;
     }
-
-    public State getState() {
-        return state;
-    }
-
-    public String getStateInString() {
-        switch (state) {
-            case IDLE:          return "IDLE";
-            case INITING:       return "INIT";
-            case CONNECTING:    return "CING";
-            case SCANNING:      return "SCAN";
-            case CONNECTED:     return "CNTD";
-            case DISCONNECTING: return "DING";
-            case FAILED:        return "FAIL";
-            default:            return "ERRO";
-        }
-    }
-
-    /**
-     * The data connection is expected to be setup while device
-     *  1. has Icc card
-     *  2. registered for data service
-     *  3. user doesn't explicitly disable data service
-     *  4. wifi is not on
-     *
-     * @return false while no data connection if all above requirements are met.
-     */
-    public abstract boolean isDataConnectionAsDesired();
-
-    //The data roaming setting is now located in the shared preferences.
-    //  See if the requested preference value is the same as that stored in
-    //  the shared values.  If it is not, then update it.
-    public void setDataOnRoamingEnabled(boolean enabled) {
-        if (getDataOnRoamingEnabled() != enabled) {
-            Settings.Secure.putInt(phone.getContext().getContentResolver(),
-                Settings.Secure.DATA_ROAMING, enabled ? 1 : 0);
-            if (phone.getServiceState().getRoaming()) {
-                if (enabled) {
-                    mRetryMgr.resetRetryCount();
-                }
-                sendMessage(obtainMessage(EVENT_ROAMING_ON));
-            }
-        }
-    }
-
-    //Retrieve the data roaming setting from the shared preferences.
-    public boolean getDataOnRoamingEnabled() {
-        try {
-            return Settings.Secure.getInt(phone.getContext().getContentResolver(),
-                Settings.Secure.DATA_ROAMING) > 0;
-        } catch (SettingNotFoundException snfe) {
-            return false;
-        }
-    }
-
-    public boolean getSocketDataCallEnabled() {
-        try {
-            return Settings.System.getInt(phone.getContext().getContentResolver(),
-                    Settings.System.SOCKET_DATA_CALL_ENABLE) > 0;
-        } catch (SettingNotFoundException snfe) {
-            // Data connection should be enabled by default.
-            // So returning true here.
-            return true;
-        }
-    }
-
-    // abstract handler methods
-    protected abstract boolean onTrySetupData(String reason);
-    protected abstract void onRoamingOff();
-    protected abstract void onRoamingOn();
-    protected abstract void onRadioAvailable();
-    protected abstract void onRadioOffOrNotAvailable();
-    protected abstract void onDataSetupComplete(AsyncResult ar);
-    protected abstract void onDisconnectDone(AsyncResult ar);
-    protected abstract void onResetDone(AsyncResult ar);
-    protected abstract void onVoiceCallStarted();
-    protected abstract void onVoiceCallEnded();
-    protected abstract void onCleanUpConnection(boolean tearDown, String reason);
 
     @Override
-    public void handleMessage (Message msg) {
+    public void handleMessage(Message msg) {
         switch (msg.what) {
-
-            case EVENT_ENABLE_NEW_APN:
-                onEnableApn(msg.arg1, msg.arg2);
+            case EVENT_RADIO_ON:
+                onRadioOn();
                 break;
 
-            case EVENT_TRY_SETUP_DATA:
-                String reason = null;
-                if (msg.obj instanceof String) {
-                    reason = (String)msg.obj;
-                }
-                onTrySetupData(reason);
+            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
+                onRadioOff();
+                break;
+
+            case EVENT_SERVICE_TYPE_DISABLED:
+                onServiceTypeDisabled((DataServiceType) msg.obj);
+                break;
+
+            case EVENT_SERVICE_TYPE_ENABLED:
+                onServiceTypeEnabled((DataServiceType) msg.obj);
+                break;
+
+            case EVENT_CONNECT_DONE:
+                onConnectDone((AsyncResult) msg.obj);
+                break;
+
+            case EVENT_DISCONNECT_DONE:
+                onDisconnectDone((AsyncResult) msg.obj);
+                break;
+
+            case EVENT_MASTER_DATA_DISABLED:
+                onMasterDataDisabled();
+                break;
+
+            case EVENT_MASTER_DATA_ENABLED:
+                onMasterDataEnabled();
                 break;
 
             case EVENT_ROAMING_OFF:
-                if (getDataOnRoamingEnabled() == false) {
-                    mRetryMgr.resetRetryCount();
-                }
                 onRoamingOff();
                 break;
 
             case EVENT_ROAMING_ON:
                 onRoamingOn();
-                break;
-
-            case EVENT_RADIO_AVAILABLE:
-                onRadioAvailable();
-                break;
-
-            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
-                onRadioOffOrNotAvailable();
-                break;
-
-            case EVENT_DATA_SETUP_COMPLETE:
-                cidActive = msg.arg1;
-                onDataSetupComplete((AsyncResult) msg.obj);
-                break;
-
-            case EVENT_DISCONNECT_DONE:
-                onDisconnectDone((AsyncResult) msg.obj);
                 break;
 
             case EVENT_VOICE_CALL_STARTED:
@@ -348,270 +209,323 @@ public abstract class DataConnectionTracker extends Handler {
                 onVoiceCallEnded();
                 break;
 
-            case EVENT_CLEAN_UP_CONNECTION:
-                boolean tearDown = (msg.arg1 == 0) ? false : true;
-                onCleanUpConnection(tearDown, (String)msg.obj);
-                break;
-
-            case EVENT_SET_MASTER_DATA_ENABLE:
-                boolean enabled = (msg.arg1 == ENABLED) ? true : false;
-                onSetDataEnabled(enabled);
-                break;
-
-            case EVENT_RESET_DONE:
-                onResetDone((AsyncResult) msg.obj);
-                break;
-
-            case EVENT_ICC_CHANGED:
-                updateIccAvailability();
-                break;
-
             default:
-                Log.e("DATA", "Unidentified event = " + msg.what);
-                break;
+                Log.e(LOG_TAG, "[DCT] Unhandle event : " + msg.what);
         }
     }
 
-    /**
-     * Report the current state of data connectivity (enabled or disabled)
-     * @return {@code false} if data connectivity has been explicitly disabled,
-     * {@code true} otherwise.
+    abstract protected void onServiceTypeEnabled(DataServiceType type);
+    abstract protected void onServiceTypeDisabled(DataServiceType type);
+    abstract protected void onDisconnectDone(AsyncResult obj);
+    abstract protected void onConnectDone(AsyncResult obj);
+    abstract protected void onRoamingOff();
+    abstract protected void onRoamingOn();
+    abstract protected void onVoiceCallStarted();
+    abstract protected void onVoiceCallEnded();
+    abstract protected void onRadioOn();
+    abstract protected void onRadioOff();
+    abstract protected void onMasterDataEnabled();
+    abstract protected void onMasterDataDisabled();
+    abstract protected boolean isConcurrentVoiceAndData();
+    abstract protected void setDataConnectionAsDesired(boolean desiredPowerState, Message onCompleteMsg);
+
+    synchronized public int disableApnType(String type) {
+
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(type);
+        if (serviceType == null) {
+            //unknown apn type!
+            return APN_REQUEST_FAILED;
+        }
+
+        /* mark service type as disabled */
+        mDpt.setServiceTypeEnabled(serviceType, false);
+
+        if (mDpt.isServiceTypeActive(serviceType) == false) {
+            // service type is already inactive.
+            // TODO: is APN_REQUEST_FAILED appropriate? or should it be
+            // APN_REQUEST_STARTED?
+            return APN_REQUEST_FAILED;
+        }
+
+        sendMessage(obtainMessage(EVENT_SERVICE_TYPE_DISABLED, serviceType));
+
+        return APN_REQUEST_STARTED;
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see
+     * com.android.internal.telephony.DataPhone#enableApnType(java.lang.String)
+     * Application has no way to request IPV4 or IPV6 to be enabled, so we
+     * enable both depending on whether supported data profiles are available.
      */
-    public synchronized boolean getDataEnabled() {
-        return dataEnabled[APN_DEFAULT_ID];
+    synchronized public int enableApnType(String type) {
+
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(type);
+        if (serviceType == null) {
+            //unknown apn type!
+            return APN_REQUEST_FAILED;
+        }
+
+        /* mark service type as enabled */
+        mDpt.setServiceTypeEnabled(serviceType, true);
+
+        if (mDpt.isServiceTypeActive(serviceType) == true) {
+            // service type is already active.
+            return APN_ALREADY_ACTIVE;
+        }
+
+        sendMessage(obtainMessage(EVENT_SERVICE_TYPE_ENABLED, serviceType));
+
+        return APN_REQUEST_STARTED;
     }
 
-    /**
-     * Report on whether data connectivity is enabled
-     * @return {@code false} if data connectivity has been explicitly disabled,
-     * {@code true} otherwise.
+    /*
+     * (non-Javadoc)
+     * @see com.android.internal.telephony.DataPhone#disableDataConnectivity()
+     * Disable ALL data!
      */
-    public boolean getAnyDataEnabled() {
-        return (enabledCount != 0);
-    }
-
-    protected abstract void startNetStatPoll();
-
-    protected abstract void stopNetStatPoll();
-
-    protected abstract void restartRadio();
-
-    protected abstract void log(String s);
-
-    protected int apnTypeToId(String type) {
-        if (TextUtils.equals(type, Phone.APN_TYPE_DEFAULT)) {
-            return APN_DEFAULT_ID;
-        } else if (TextUtils.equals(type, Phone.APN_TYPE_MMS)) {
-            return APN_MMS_ID;
-        } else if (TextUtils.equals(type, Phone.APN_TYPE_SUPL)) {
-            return APN_SUPL_ID;
-        } else if (TextUtils.equals(type, Phone.APN_TYPE_DUN)) {
-            return APN_DUN_ID;
-        } else if (TextUtils.equals(type, Phone.APN_TYPE_HIPRI)) {
-            return APN_HIPRI_ID;
-        } else {
-            return APN_INVALID_ID;
-        }
-    }
-
-    protected String apnIdToType(int id) {
-        switch (id) {
-        case APN_DEFAULT_ID:
-            return Phone.APN_TYPE_DEFAULT;
-        case APN_MMS_ID:
-            return Phone.APN_TYPE_MMS;
-        case APN_SUPL_ID:
-            return Phone.APN_TYPE_SUPL;
-        case APN_DUN_ID:
-            return Phone.APN_TYPE_DUN;
-        case APN_HIPRI_ID:
-            return Phone.APN_TYPE_HIPRI;
-        default:
-            Log.e(LOG_TAG, "Unknown id (" + id + ") in apnIdToType");
-            return Phone.APN_TYPE_DEFAULT;
-        }
-    }
-
-    protected abstract boolean isApnTypeActive(String type);
-
-    protected abstract boolean isApnTypeAvailable(String type);
-
-    protected abstract String[] getActiveApnTypes();
-
-    protected abstract String getActiveApnString();
-
-    public abstract ArrayList<DataConnection> getAllDataConnections();
-
-    protected abstract String getInterfaceName(String apnType);
-
-    protected abstract String getIpAddress(String apnType);
-
-    protected abstract String getGateway(String apnType);
-
-    protected abstract String[] getDnsServers(String apnType);
-
-    protected abstract void setState(State s);
-
-    protected synchronized boolean isEnabled(int id) {
-        if (id != APN_INVALID_ID) {
-            return dataEnabled[id];
-        }
-        return false;
-    }
-
-    /**
-     * Ensure that we are connected to an APN of the specified type.
-     * @param type the APN type (currently the only valid values
-     * are {@link Phone#APN_TYPE_MMS} and {@link Phone#APN_TYPE_SUPL})
-     * @return the result of the operation. Success is indicated by
-     * a return value of either {@code Phone.APN_ALREADY_ACTIVE} or
-     * {@code Phone.APN_REQUEST_STARTED}. In the latter case, a broadcast
-     * will be sent by the ConnectivityManager when a connection to
-     * the APN has been established.
-     */
-    public synchronized int enableApnType(String type) {
-        int id = apnTypeToId(type);
-        if (id == APN_INVALID_ID) {
-            return Phone.APN_REQUEST_FAILED;
-        }
-
-        if (DBG) Log.d(LOG_TAG, "enableApnType("+type+"), isApnTypeActive = "
-                + isApnTypeActive(type) + " and state = " + state);
-
-        if (!isApnTypeAvailable(type)) {
-            if (DBG) Log.d(LOG_TAG, "type not available");
-            return Phone.APN_TYPE_NOT_AVAILABLE;
-        }
-
-        // just because it's active doesn't mean we had it explicitly requested before
-        // (a broad default may handle many types).  make sure we mark it enabled
-        // so if the default is disabled we keep the connection for others
-        setEnabled(id, true);
-
-        if (isApnTypeActive(type)) {
-            if (state == State.INITING) return Phone.APN_REQUEST_STARTED;
-            else if (state == State.CONNECTED) return Phone.APN_ALREADY_ACTIVE;
-        }
-        return Phone.APN_REQUEST_STARTED;
-    }
-
-    /**
-     * The APN of the specified type is no longer needed. Ensure that if
-     * use of the default APN has not been explicitly disabled, we are connected
-     * to the default APN.
-     * @param type the APN type. The only valid values are currently
-     * {@link Phone#APN_TYPE_MMS} and {@link Phone#APN_TYPE_SUPL}.
-     * @return
-     */
-    public synchronized int disableApnType(String type) {
-        if (DBG) Log.d(LOG_TAG, "disableApnType("+type+")");
-        int id = apnTypeToId(type);
-        if (id == APN_INVALID_ID) {
-            return Phone.APN_REQUEST_FAILED;
-        }
-        if (isEnabled(id)) {
-            setEnabled(id, false);
-            if (isApnTypeActive(Phone.APN_TYPE_DEFAULT)) {
-                if (dataEnabled[APN_DEFAULT_ID]) {
-                    return Phone.APN_ALREADY_ACTIVE;
-                } else {
-                    return Phone.APN_REQUEST_STARTED;
-                }
-            } else {
-                return Phone.APN_REQUEST_STARTED;
-            }
-        } else {
-            return Phone.APN_REQUEST_FAILED;
-        }
-    }
-
-    private void setEnabled(int id, boolean enable) {
-        if (DBG) Log.d(LOG_TAG, "setEnabled(" + id + ", " + enable + ") with old state = " +
-                dataEnabled[id] + " and enabledCount = " + enabledCount);
-
-        Message msg = obtainMessage(EVENT_ENABLE_NEW_APN);
-        msg.arg1 = id;
-        msg.arg2 = (enable ? ENABLED : DISABLED);
-        sendMessage(msg);
-    }
-
-    protected synchronized void onEnableApn(int apnId, int enabled) {
-        if (DBG) {
-            Log.d(LOG_TAG, "EVENT_APN_ENABLE_REQUEST " + apnId + ", " + enabled);
-            Log.d(LOG_TAG, " dataEnabled = " + dataEnabled[apnId] +
-                    ", enabledCount = " + enabledCount +
-                    ", isApnTypeActive = " + isApnTypeActive(apnIdToType(apnId)));
-        }
-        if (enabled == ENABLED) {
-            if (!dataEnabled[apnId]) {
-                dataEnabled[apnId] = true;
-                enabledCount++;
-            }
-            String type = apnIdToType(apnId);
-            if (!isApnTypeActive(type)) {
-                mRequestedApnType = type;
-                onEnableNewApn();
-            }
-        } else {
-            // disable
-            if (dataEnabled[apnId]) {
-                dataEnabled[apnId] = false;
-                enabledCount--;
-                if (enabledCount == 0) {
-                    onCleanUpConnection(true, Phone.REASON_DATA_DISABLED);
-                } else if (dataEnabled[APN_DEFAULT_ID] == true &&
-                        !isApnTypeActive(Phone.APN_TYPE_DEFAULT)) {
-                    mRequestedApnType = Phone.APN_TYPE_DEFAULT;
-                    onEnableNewApn();
-                }
-            }
-        }
-    }
-
-    /**
-     * Called when we switch APNs.
-     *
-     * mRequestedApnType is set prior to call
-     * To be overridden.
-     */
-    protected void onEnableNewApn() {
-    }
-
-    /**
-     * Prevent mobile data connections from being established,
-     * or once again allow mobile data connections. If the state
-     * toggles, then either tear down or set up data, as
-     * appropriate to match the new state.
-     * <p>This operation only affects the default APN, and if the same APN is
-     * currently being used for MMS traffic, the teardown will not happen
-     * even when {@code enable} is {@code false}.</p>
-     * @param enable indicates whether to enable ({@code true}) or disable ({@code false}) data
-     * @return {@code true} if the operation succeeded
-     */
-    public boolean setDataEnabled(boolean enable) {
-        if (DBG) Log.d(LOG_TAG, "setDataEnabled(" + enable + ")");
-
-        Message msg = obtainMessage(EVENT_SET_MASTER_DATA_ENABLE);
-        msg.arg1 = (enable ? ENABLED : DISABLED);
-        sendMessage(msg);
+    public boolean disableDataConnectivity() {
+        mMasterDataEnabled = false;
+        sendMessage(obtainMessage(EVENT_MASTER_DATA_DISABLED));
         return true;
     }
 
-    protected void onSetDataEnabled(boolean enable) {
-        if (mMasterDataEnabled != enable) {
-            mMasterDataEnabled = enable;
-            if (enable) {
-                if (SystemProperties.getBoolean("persist.cust.tel.sdc.feature",false)) {
-                    if (!isEnabled(APN_DEFAULT_ID)) {
-                        setEnabled(APN_DEFAULT_ID, true);
-                    }
+    public boolean enableDataConnectivity() {
+        mMasterDataEnabled = true;
+        sendMessage(obtainMessage(EVENT_MASTER_DATA_ENABLED));
+        return true;
+    }
+
+    public boolean isDataConnectivityEnabled() {
+        return mMasterDataEnabled;
+    }
+
+    public DataState getDataConnectionState() {
+        /*
+         * return state as CONNECTED, if at least one data connection is active
+         * on either IPV4 or IPV6.
+         */
+        DataState ret = DataState.DISCONNECTED;
+        if (getDataServiceState().getState() != ServiceState.STATE_IN_SERVICE) {
+            // If we're out of service, open TCP sockets may still work
+            // but no data will flow
+            ret = DataState.DISCONNECTED;
+        } else {
+            /*
+             * TODO: we do not keep global data connection state in DCT now.
+             * Instead, state is associated with <apn type, ipv>. The following
+             * code will be simplified once this is done.
+             */
+            for (DataServiceType ds : DataServiceType.values()) {
+                if (mDpt.getState(ds, IPVersion.IPV4) == State.CONNECTED
+                        || mDpt.getState(ds, IPVersion.IPV6) == State.CONNECTED) {
+                    ret = DataState.CONNECTED;
+                    break;
                 }
-                mRetryMgr.resetRetryCount();
-                onTrySetupData(Phone.REASON_DATA_ENABLED);
-            } else {
-                onCleanUpConnection(true, Phone.REASON_DATA_DISABLED);
             }
         }
+        return ret;
+    }
+
+    public DataState getDataConnectionState(String apnType, IPVersion ipv) {
+
+        DataServiceType ds = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (ds == null || ipv == null)
+            return DataState.DISCONNECTED;
+
+        DataState ret = DataState.DISCONNECTED;
+
+        State dsState = mDpt.getState(ds, ipv);
+
+        if (getDataServiceState().getState() != ServiceState.STATE_IN_SERVICE) {
+            // If we're out of service, open TCP sockets may still work
+            // but no data will flow
+            ret = DataState.DISCONNECTED;
+        } else {
+            switch (dsState) {
+                case FAILED:
+                case IDLE:
+                    ret = DataState.DISCONNECTED;
+                    break;
+
+                case CONNECTED:
+                case DISCONNECTING:
+                    if (TelephonyManager.getDefault().getCallState() != TelephonyManager.CALL_STATE_IDLE
+                            && !isConcurrentVoiceAndData()) {
+                        ret = DataState.SUSPENDED;
+                    } else {
+                        ret = DataState.CONNECTED;
+                    }
+                    break;
+
+                case INITING:
+                case CONNECTING:
+                case SCANNING:
+                    ret = DataState.CONNECTING;
+                    break;
+            }
+        }
+
+        return ret;
+    }
+
+    public String getActiveApn() {
+        return getActiveApn(DataPhone.APN_TYPE_DEFAULT, IPVersion.IPV4);
+    }
+
+    public String getActiveApn(String apnType, IPVersion ipv) {
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (serviceType == null || ipv == null)
+            return null;
+
+        DataConnection dc = mDpt.getActiveDataConnection(serviceType, ipv);
+        if (dc == null)
+            return null;
+
+        DataProfile dp = dc.getDataProfile();
+        if (dp != null && dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP_APN) {
+            return ((ApnSetting) dp).apn.toString();
+        }
+
+        return null;
+    }
+
+    public String[] getActiveApnTypes() {
+        ArrayList<String> result = new ArrayList<String>();
+        for (DataServiceType ds : DataServiceType.values()) {
+            if (mDpt.isServiceTypeActive(ds))
+                result.add(ds.toApnTypeString());
+        }
+        String[] ret  = new String[result.size()];
+        return (String[]) result.toArray(ret);
+    }
+
+    // The data roaming setting is now located in the shared preferences.
+    // See if the requested preference value is the same as that stored in
+    // the shared values. If it is not, then update it.
+    public void setDataRoamingEnabled(boolean enabled) {
+        if (getDataRoamingEnabled() != enabled) {
+            Settings.Secure.putInt(mContext.getContentResolver(),
+                    Settings.Secure.DATA_ROAMING, enabled ? 1 : 0);
+            if (getDataServiceState().getRoaming()) {
+                sendMessage(obtainMessage(EVENT_ROAMING_ON));
+            }
+        }
+    }
+
+    // Retrieve the data roaming setting from the shared preferences.
+    public boolean getDataRoamingEnabled() {
+        try {
+            return Settings.Secure.getInt(mContext.getContentResolver(),
+                    Settings.Secure.DATA_ROAMING) > 0;
+        } catch (SettingNotFoundException snfe) {
+            return false;
+        }
+    }
+
+    public String[] getDnsServers(String apnType) {
+        return getDnsServers(apnType, IPVersion.IPV4);
+    }
+
+    public String[] getDnsServers(String apnType, IPVersion ipv) {
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (serviceType == null || ipv == null)
+            return null;
+
+        DataConnection dc = mDpt.getActiveDataConnection(serviceType, ipv);
+        if (dc != null) {
+            return dc.getDnsServers().clone();
+        }
+
+        return null;
+    }
+
+    public String getGateway(String apnType) {
+        return getGateway(apnType, IPVersion.IPV4);
+    }
+
+    public String getGateway(String apnType, IPVersion ipv) {
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (serviceType == null || ipv == null)
+            return null;
+
+        DataConnection dc = mDpt.getActiveDataConnection(serviceType, ipv);
+        if (dc != null) {
+            return dc.getGatewayAddress();
+        }
+
+        return null;
+    }
+
+    public String getInterfaceName(String apnType) {
+        return getInterfaceName(apnType, IPVersion.IPV4);
+    }
+
+    public String getInterfaceName(String apnType, IPVersion ipv) {
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (serviceType == null || ipv == null)
+            return null;
+
+        DataConnection dc = mDpt.getActiveDataConnection(serviceType, ipv);
+        if (dc != null) {
+            return dc.getInterface();
+        }
+
+        return null;
+    }
+
+    public String getIpAddress(String apnType) {
+        return getIpAddress(apnType, IPVersion.IPV4);
+    }
+
+    public String getIpAddress(String apnType, IPVersion ipv) {
+        DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(apnType);
+        if (serviceType == null || ipv == null)
+            return null;
+
+        DataConnection dc = mDpt.getActiveDataConnection(serviceType, ipv);
+        if (dc != null) {
+            return dc.getIpAddress();
+        }
+
+        return null;
+    }
+
+    void notifyDataConnection(DataServiceType ds, IPVersion ipv, String reason) {
+        mNotifier.notifyDataConnection(this, ds.toApnTypeString(), ipv, reason);
+    }
+
+    // notify data connection as failed - applicable for default type only?
+    void notifyDataConnectionFail(String reason) {
+        mNotifier.notifyDataConnectionFailed(this, reason);
+    }
+
+    public void getDataCallList(Message response) {
+        mCm.getDataCallList(response);
+    }
+
+    // Key used to read/write "disable DNS server check" pref (used for testing)
+    public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
+
+    /**
+     * Disables the DNS check (i.e., allows "0.0.0.0").
+     * Useful for lab testing environment.
+     * @param b true disables the check, false enables.
+     */
+    public void disableDnsCheck(boolean b) {
+        mDnsCheckDisabled = b;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putBoolean(DNS_SERVER_CHECK_DISABLED_KEY, b);
+        editor.commit();
+    }
+
+    /**
+     * Returns true if the DNS check is currently disabled.
+     */
+    public boolean isDnsCheckDisabled() {
+        return mDnsCheckDisabled;
     }
 
     void updateIccAvailability() {

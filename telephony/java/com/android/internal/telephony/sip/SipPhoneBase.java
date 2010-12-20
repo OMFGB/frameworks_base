@@ -102,7 +102,7 @@ abstract class SipPhoneBase extends PhoneBase {
         mRingbackRegistrants.notifyRegistrants(result);
     }
 
-    public ServiceState getServiceState() {
+    public ServiceState getVoiceServiceState() {
         // FIXME: we may need to provide this when data connectivity is lost
         // or when server is down
         ServiceState s = new ServiceState();
@@ -191,7 +191,7 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     public boolean canDial() {
-        int serviceState = getServiceState().getState();
+        int serviceState = getVoiceServiceState().getState();
         Log.v(LOG_TAG, "canDial(): serviceState = " + serviceState);
         if (serviceState == ServiceState.STATE_POWER_OFF) return false;
 

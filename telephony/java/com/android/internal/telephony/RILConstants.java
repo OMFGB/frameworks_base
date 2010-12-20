@@ -28,7 +28,7 @@ package com.android.internal.telephony;
  * {@hide}
  */
 public interface RILConstants {
-    int RIL_MAX_NETWORKS = 2;                 // (from ril.h)
+    int RIL_MAX_NETWORKS = 1;                 // (from ril.h)
     // From the top of ril.cpp
     int RIL_ERRNO_INVALID_RESPONSE = -1;
 

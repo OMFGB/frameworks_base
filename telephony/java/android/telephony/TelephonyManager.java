@@ -78,6 +78,10 @@ public class TelephonyManager {
     }
 
 
+    public static boolean isDsdsEnabled() {
+        return false;
+    }
+
     //
     // Broadcast Intent actions
     //

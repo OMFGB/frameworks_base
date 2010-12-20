@@ -238,6 +238,8 @@ public class PhoneProxy extends Handler implements Phone {
         Log.i(LOG_TAG, "Switching Voice Phone : " + mOutgoingPhoneName + " >>> "
                 + (newVoiceRadioTech.isGsm() ? "GSM" : "CDMA"));
 
+        /* TODO: Decide whether we want to keep both phones up all the time,
+         * or kill and start the one we need
         if (mActiveVoicePhone != null) {
             Log.v(LOG_TAG, "Disposing old phone..");
             if (mActiveVoicePhone instanceof GSMPhone) {
@@ -245,7 +247,7 @@ public class PhoneProxy extends Handler implements Phone {
             } else if (mActiveVoicePhone instanceof CDMAPhone) {
                 ((CDMAPhone) mActiveVoicePhone).dispose();
             }
-        }
+        }*/
 
         VoicePhone oldPhone = mActiveVoicePhone;
 

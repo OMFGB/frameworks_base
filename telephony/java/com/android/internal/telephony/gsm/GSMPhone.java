@@ -153,6 +153,7 @@ public class GSMPhone extends PhoneBase {
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
             mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
+            mSubInfo = new PhoneSubInfo(this);
         }
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);

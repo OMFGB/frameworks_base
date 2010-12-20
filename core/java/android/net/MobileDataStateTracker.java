@@ -16,18 +16,25 @@
 
 package android.net;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Message;
 import android.os.RemoteException;
 import android.os.Handler;
 import android.os.ServiceManager;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.DataPhone.DataState;
+import com.android.internal.telephony.DataPhone.IPVersion;
+
 import android.net.NetworkInfo.DetailedState;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -45,12 +52,21 @@ public class MobileDataStateTracker extends NetworkStateTracker {
     private static final String TAG = "MobileDataStateTracker";
     private static final boolean DBG = false;
 
-    private Phone.DataState mMobileDataState;
     private ITelephony mPhoneService;
 
     private String mApnType;
     private String mApnTypeToWatchFor;
-    private String mApnName;
+
+    //IPV4
+    private String mIpv4InterfaceName;
+    private Phone.DataState mIpv4MobileDataState;
+    private String mIpv4ApnName;
+
+    //IPV6
+    private String mIpv6InterfaceName;
+    private Phone.DataState mIpv6MobileDataState;
+    private String mIpv6ApnName;
+
     private boolean mEnabled;
     private BroadcastReceiver mStateReceiver;
 
@@ -88,53 +104,45 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             mEnabled = false;
         }
 
-        /*
-         * TODO: This list has to be made dynamic to report only those
-         * interfaces that this instance of mobile data state tracker is
-         * concerned with. Or else addPrivateDnsRoutes etc. gets ambiguous.
-         */
-        mDnsPropNames = new String[] {
-                "net.rmnet0.dns1", "net.rmnet0.dns2",
-                "net.rmnet1.dns1", "net.rmnet1.dns2",
-                "net.rmnet2.dns1", "net.rmnet2.dns2",
-                "net.rmnet3.dns1", "net.rmnet3.dns2",
-                "net.rmnet4.dns1", "net.rmnet4.dns2",
-                "net.rmnet5.dns1", "net.rmnet5.dns2",
-                "net.rmnet6.dns1", "net.rmnet6.dns2",
-                "net.rmnet7.dns1", "net.rmnet7.dns2",
-                "net.rmnet8.dns1", "net.rmnet8.dns2",
-                "net.rmnet9.dns1", "net.rmnet9.dns2",
-                "net.rmnet10.dns1", "net.rmnet10.dns2",
-                "net.eth0.dns1",
-                "net.eth0.dns2",
-                "net.eth0.dns3",
-                "net.eth0.dns4",
-                "net.gprs.dns1",
-                "net.gprs.dns2",
-                "net.ppp0.dns1",
-                "net.ppp0.dns2"};
-
+        logv("instance created. netType="+netType+", mApnType="+mApnType+", mApnTypeToWatchFor="+mApnTypeToWatchFor);
     }
 
     /**
      * Begin monitoring mobile data connectivity.
      */
     public void startMonitoring() {
+
+        /* TODO: ACTION_ANY_DATA_CONNECTION_STATE_CHANGED intent is broadcasted
+         * once for each <apn_type, ipVersion>. This intent is sticky, so the last
+         * intent sent out is cached. But this may not be the intent that this instance
+         * of mobile data state tracker is interested in. One way to fix this would be by
+         * querying data connection tracker directly at startup - but no such interface exists
+         * today!
+         */
         IntentFilter filter =
                 new IntentFilter(TelephonyIntents.ACTION_ANY_DATA_CONNECTION_STATE_CHANGED);
         filter.addAction(TelephonyIntents.ACTION_DATA_CONNECTION_FAILED);
         filter.addAction(TelephonyIntents.ACTION_SERVICE_STATE_CHANGED);
 
+        mIpv4MobileDataState = Phone.DataState.DISCONNECTED;
+        mIpv6MobileDataState = Phone.DataState.DISCONNECTED;
+
         mStateReceiver = new MobileDataStateReceiver();
         Intent intent = mContext.registerReceiver(mStateReceiver, filter);
-        if (intent != null)
-            mMobileDataState = getMobileDataState(intent);
-        else
-            mMobileDataState = Phone.DataState.DISCONNECTED;
+        if (intent != null) {
+            IPVersion ipv = getIpVersionFromIntent(intent);
+            if (ipv == IPVersion.IPV4) {
+                mIpv4MobileDataState = getMobileDataState(intent);
+            } else {
+                mIpv6MobileDataState = getMobileDataState(intent);
+            }
+        }
+
+        logv("initial state. v4=" + mIpv4MobileDataState + ", v6=" + mIpv4MobileDataState);
     }
 
     private Phone.DataState getMobileDataState(Intent intent) {
-        String str = intent.getStringExtra(Phone.STATE_KEY);
+        String str = intent.getStringExtra(Phone.DATA_APN_TYPE_STATE);
         if (str != null) {
             String apnTypeList =
                     intent.getStringExtra(Phone.DATA_APN_TYPES_KEY);
@@ -143,6 +151,14 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             }
         }
         return Phone.DataState.DISCONNECTED;
+    }
+
+    private IPVersion getIpVersionFromIntent(Intent intent) {
+        String str = intent.getStringExtra(Phone.DATA_IPVERSION_KEY);
+        if (str != null) {
+               return Enum.valueOf(IPVersion.class, str);
+        }
+        return IPVersion.IPV4; // default to V4
     }
 
     private boolean isApnTypeIncluded(String typeList) {
@@ -172,99 +188,117 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                 if (intent.getAction().equals(TelephonyIntents.
                         ACTION_ANY_DATA_CONNECTION_STATE_CHANGED)) {
                     Phone.DataState state = getMobileDataState(intent);
+                    IPVersion ipv = getIpVersionFromIntent(intent);
                     String reason = intent.getStringExtra(Phone.STATE_CHANGE_REASON_KEY);
                     String apnName = intent.getStringExtra(Phone.DATA_APN_KEY);
                     String apnTypeList = intent.getStringExtra(Phone.DATA_APN_TYPES_KEY);
-                    mApnName = apnName;
 
                     boolean unavailable = intent.getBooleanExtra(Phone.NETWORK_UNAVAILABLE_KEY,
                             false);
 
-                    // set this regardless of the apnTypeList.  It's all the same radio/network
+                    // set this regardless of the apnTypeList or IpVersion.  It's all the same radio/network
                     // underneath
                     mNetworkInfo.setIsAvailable(!unavailable);
 
-                    if (isApnTypeIncluded(apnTypeList)) {
-                        if (mEnabled == false) {
-                            // if we're not enabled but the APN Type is supported by this connection
-                            // we should record the interface name if one's provided.  If the user
-                            // turns on this network we will need the interfacename but won't get
-                            // a fresh connected message - TODO fix this when we get per-APN
-                            // notifications
-                            if (state == Phone.DataState.CONNECTED) {
-                                if (DBG) Log.d(TAG, "replacing old mInterfaceName (" +
-                                        mInterfaceName + ") with " +
-                                        intent.getStringExtra(Phone.DATA_IFACE_NAME_KEY) +
-                                        " for " + mApnType);
-                                mInterfaceName = intent.getStringExtra(Phone.DATA_IFACE_NAME_KEY);
-                            }
-                            return;
+                    if (isApnTypeIncluded(apnTypeList) == false)
+                        return; //not what we are looking for.
+
+                    logi("any dc state change intent received for " + apnTypeList + "/" + ipv
+                            + " with state  " + state + ". enabled=" + mEnabled);
+
+                    boolean needDetailedStateUpdate = false;
+                    boolean doReset = true;
+                    if (mIsDefaultOrHipri == true) {
+                        // both default and hipri must go down before we reset
+                        int typeToCheck = (Phone.APN_TYPE_DEFAULT.equals(mApnType) ?
+                                ConnectivityManager.TYPE_MOBILE_HIPRI :
+                                ConnectivityManager.TYPE_MOBILE);
+                        if (mConnectivityManager == null) {
+                            mConnectivityManager =
+                                    (ConnectivityManager)context.getSystemService(
+                                    Context.CONNECTIVITY_SERVICE);
                         }
-                    } else {
+                        if (mConnectivityManager != null) {
+                            NetworkInfo info = mConnectivityManager.getNetworkInfo(
+                                        typeToCheck);
+                            if (info != null && info.isConnected() == true) {
+                                doReset = false;
+                            }
+                        }
+                    }
+
+                    if (ipv == IPVersion.IPV6) {
+                        if (mIpv6MobileDataState != state) {
+                            logv("ipv6 state changed :" + mIpv6MobileDataState + " >> " + state);
+                            mIpv6MobileDataState = state;
+                            needDetailedStateUpdate = true;
+                        }
+                        if (state == DataState.CONNECTED) {
+                            mIpv6ApnName = apnName;
+                            mIpv6InterfaceName = intent.getStringExtra(Phone.DATA_IFACE_NAME_KEY);
+                            logv("setting ipv6 interface : " + mIpv6InterfaceName);
+                        } else if (state == DataState.DISCONNECTED) {
+                            if (doReset && mIpv6InterfaceName != null) {
+                                NetworkUtils.resetConnections(mIpv6InterfaceName);
+                                mIpv6InterfaceName = null;
+                            }
+                        }
+                    } else if (ipv == IPVersion.IPV4){
+                        if (mIpv4MobileDataState != state) {
+                            logv("ipv4 state changed :" + mIpv4MobileDataState + " >> " + state);
+                            mIpv4MobileDataState = state;
+                            needDetailedStateUpdate = true;
+                        }
+                        if (state == DataState.CONNECTED) {
+                            mIpv4ApnName = apnName;
+                            mIpv4InterfaceName = intent.getStringExtra(Phone.DATA_IFACE_NAME_KEY);
+                            logv("setting ipv4 interface : " + mIpv4InterfaceName);
+                        } else if (state == DataState.DISCONNECTED) {
+                            if (doReset && mIpv4InterfaceName != null) {
+                                NetworkUtils.resetConnections(mIpv4InterfaceName);
+                                mIpv4InterfaceName = null;
+                            }
+                        }
+                    }
+
+                    if (mEnabled == false) {
+                        /* we are disabled so there is no need to notify connectivity service. Moreover, we
+                         * cached the info in the last broadcast.
+                         */
                         return;
                     }
 
-                    if (DBG) Log.d(TAG, mApnType + " Received state= " + state + ", old= " +
-                            mMobileDataState + ", reason= " +
-                            (reason == null ? "(unspecified)" : reason) +
-                            ", apnTypeList= " + apnTypeList);
+                    /*
+                     * We keep separate states for v4 and v6 in mobile data state tracker, but
+                     * mNetworkinfo needs just one state. So we say CONNECTED if either v4 or v6
+                     * is connected. It doesn't matter which apnName is used though!
+                     */
+                    if (mIpv4MobileDataState == DataState.CONNECTED
+                        || mIpv6MobileDataState == DataState.CONNECTED) {
+                        state = DataState.CONNECTED;
+                    }
 
-                    if (mMobileDataState != state) {
-                        mMobileDataState = state;
+                    String extraInfo = "ipv4 apn name = " + mIpv4ApnName + "," +
+                            "ipv6 apn name = " + mIpv6ApnName;
+
+                    if (needDetailedStateUpdate) {
                         switch (state) {
                             case DISCONNECTED:
                                 if(isTeardownRequested()) {
                                     mEnabled = false;
                                     setTeardownRequested(false);
                                 }
-
-                                setDetailedState(DetailedState.DISCONNECTED, reason, apnName);
-                                boolean doReset = true;
-                                if (mIsDefaultOrHipri == true) {
-                                    // both default and hipri must go down before we reset
-                                    int typeToCheck = (Phone.APN_TYPE_DEFAULT.equals(mApnType) ?
-                                            ConnectivityManager.TYPE_MOBILE_HIPRI :
-                                            ConnectivityManager.TYPE_MOBILE);
-                                    if (mConnectivityManager == null) {
-                                        mConnectivityManager =
-                                                (ConnectivityManager)context.getSystemService(
-                                                Context.CONNECTIVITY_SERVICE);
-                                    }
-                                    if (mConnectivityManager != null) {
-                                        NetworkInfo info = mConnectivityManager.getNetworkInfo(
-                                                    typeToCheck);
-                                        if (info != null && info.isConnected() == true) {
-                                            doReset = false;
-                                        }
-                                    }
-                                }
-                                if (doReset && mInterfaceName != null) {
-                                    NetworkUtils.resetConnections(mInterfaceName);
-                                }
-                                // can't do this here - ConnectivityService needs it to clear stuff
-                                // it's ok though - just leave it to be refreshed next time
-                                // we connect.
-                                //if (DBG) Log.d(TAG, "clearing mInterfaceName for "+ mApnType +
-                                //        " as it DISCONNECTED");
-                                //mInterfaceName = null;
-                                //mDefaultGatewayAddr = 0;
+                                setDetailedState(DetailedState.DISCONNECTED, reason, extraInfo);
                                 break;
                             case CONNECTING:
-                                setDetailedState(DetailedState.CONNECTING, reason, apnName);
+                                setDetailedState(DetailedState.CONNECTING, reason, extraInfo);
                                 break;
                             case SUSPENDED:
-                                setDetailedState(DetailedState.SUSPENDED, reason, apnName);
+                                setDetailedState(DetailedState.SUSPENDED, reason, extraInfo);
                                 break;
                             case CONNECTED:
-                                mInterfaceName = intent.getStringExtra(Phone.DATA_IFACE_NAME_KEY);
-                                if (mInterfaceName == null) {
-                                    Log.d(TAG, "CONNECTED event did not supply interface name.");
-                                }
-                                mDefaultGatewayAddr = intent.getIntExtra(Phone.DATA_GATEWAY_KEY, 0);
-                                if (mDefaultGatewayAddr == 0) {
-                                    Log.d(TAG, "CONNECTED event did not supply a default gateway.");
-                                }
-                                setDetailedState(DetailedState.CONNECTED, reason, apnName);
+                                mDefaultGatewayAddr = intent.getByteArrayExtra(Phone.DATA_GATEWAY_KEY);
+                                setDetailedState(DetailedState.CONNECTED, reason, extraInfo);
                                 break;
                         }
                     }
@@ -273,7 +307,7 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                     mEnabled = false;
                     String reason = intent.getStringExtra(Phone.FAILURE_REASON_KEY);
                     String apnName = intent.getStringExtra(Phone.DATA_APN_KEY);
-                    if (DBG) Log.d(TAG, "Received " + intent.getAction() + " broadcast" +
+                    logi("Received " + intent.getAction() + " broadcast" +
                             reason == null ? "" : "(" + reason + ")");
                     setDetailedState(DetailedState.FAILED, reason, apnName);
                 }
@@ -362,6 +396,11 @@ public class MobileDataStateTracker extends NetworkStateTracker {
         case TelephonyManager.NETWORK_TYPE_EVDO_B:
             networkTypeStr = "evdo";
             break;
+        case TelephonyManager.NETWORK_TYPE_EHRPD:
+            networkTypeStr = "ehrpd";
+            break;
+        case TelephonyManager.NETWORK_TYPE_LTE:
+            networkTypeStr = "lte";
         }
         return "net.tcp.buffersize." + networkTypeStr;
     }
@@ -388,9 +427,40 @@ public class MobileDataStateTracker extends NetworkStateTracker {
         setTeardownRequested(false);
         switch (setEnableApn(mApnType, true)) {
             case Phone.APN_ALREADY_ACTIVE:
+                /* APN is already active, we are not going to any more intents from
+                 * data connection tracker, so we need to rebroadcast the intent.
+                 */
                 mEnabled = true;
-                //logv("dct reports apn already active. " + this);
-                //we will be sent intents again.
+
+                logv("dct reports apn already active. " + this);
+
+                setDetailedState(DetailedState.CONNECTING, Phone.REASON_APN_CHANGED, null);
+
+                /* trigger onReceive function to send updates to connectivity service */
+
+                Intent intent = new Intent(TelephonyIntents.
+                        ACTION_ANY_DATA_CONNECTION_STATE_CHANGED);
+                intent.putExtra(Phone.STATE_KEY, Phone.DataState.CONNECTED.toString());
+                intent.putExtra(Phone.STATE_CHANGE_REASON_KEY, Phone.REASON_APN_CHANGED);
+                intent.putExtra(Phone.DATA_APN_TYPES_KEY, mApnTypeToWatchFor);
+                intent.putExtra(Phone.NETWORK_UNAVAILABLE_KEY, false);
+
+                /* Once for IPV4 */
+                intent.putExtra(Phone.DATA_APN_KEY, mIpv4ApnName);
+                intent.putExtra(Phone.DATA_APN_TYPE_STATE, mIpv4MobileDataState.toString());
+                intent.putExtra(Phone.DATA_IPVERSION_KEY, IPVersion.IPV4.toString());
+                intent.putExtra(Phone.DATA_IFACE_NAME_KEY, mIpv4InterfaceName);
+                mIpv4MobileDataState = Phone.DataState.CONNECTING; //so that intent actually gets processed.
+                if (mStateReceiver != null) mStateReceiver.onReceive(mContext, intent);
+
+                /* Once for IPV6 */
+                intent.putExtra(Phone.DATA_APN_KEY, mIpv6ApnName);
+                intent.putExtra(Phone.DATA_APN_TYPE_STATE, mIpv6MobileDataState.toString());
+                intent.putExtra(Phone.DATA_IPVERSION_KEY, IPVersion.IPV6.toString());
+                intent.putExtra(Phone.DATA_IFACE_NAME_KEY, mIpv6InterfaceName);
+                mIpv6MobileDataState = Phone.DataState.CONNECTING;  //so that intent actually gets processed.
+                if (mStateReceiver != null) mStateReceiver.onReceive(mContext, intent);
+
                 break;
             case Phone.APN_REQUEST_STARTED:
                 mEnabled = true;
@@ -502,22 +572,131 @@ public class MobileDataStateTracker extends NetworkStateTracker {
      */
     @Override
     public boolean requestRouteToHost(InetAddress hostAddress) {
-        if (DBG) {
-            Log.d(TAG, "Requested host route to " + hostAddress.getHostAddress() +
-                    " for " + mApnType + "(" + mInterfaceName + ")");
+        String interfaceName = null;
+        if (hostAddress instanceof Inet4Address) {
+            interfaceName = mIpv4InterfaceName;
+        } else if (hostAddress instanceof Inet6Address) {
+            interfaceName = mIpv6InterfaceName;
         }
-        if (mInterfaceName != null) {
-            return NetworkUtils.addHostRoute(mInterfaceName, hostAddress);
+
+        logv("Requested host route to " + hostAddress.getHostAddress() +
+                " for " + mApnType + "(" + interfaceName + ")");
+
+        if (interfaceName != null) {
+            return NetworkUtils.addHostRoute(interfaceName, hostAddress);
         } else {
             return false;
         }
     }
 
+    /**
+     * Return the IP addresses of the DNS servers available for the current
+     * network interface.
+     * @return a list of DNS addresses, with no holes.
+     */
+    @Override
+    public String[] getNameServers() {
+        //null interfaces are fine - taken care of by getNameServerList()
+        String[] dnsPropNames = new String[] {
+                /* static list - emulator etc.. */
+                "net.eth0.dns1",
+                "net.eth0.dns2",
+                "net.eth0.dns3",
+                "net.eth0.dns4",
+                "net.gprs.dns1",
+                "net.gprs.dns2",
+                "net.ppp0.dns1",
+                "net.ppp0.dns2",
+                /* dynamic */
+                "net." + mIpv4InterfaceName + ".dns1",
+                "net." + mIpv4InterfaceName + ".dns2",
+                "net." + mIpv6InterfaceName + ".dns1",
+                "net." + mIpv6InterfaceName + ".dns2"
+            };
+        return getNameServerList(dnsPropNames);
+    }
+
+    private boolean mIpv4PrivateDnsRouteSet = false;
+
+    @Override
+    public void addPrivateDnsRoutes() {
+        if (DBG) {
+            logv("addPrivateDnsRoutes. " + this );
+            logv("  mIpv4InterfaceName = " + mIpv4InterfaceName +", mIpv4PrivateDnsRouteSet = "+mIpv4PrivateDnsRouteSet);
+        }
+
+        if (mIpv4InterfaceName != null && !mIpv4PrivateDnsRouteSet) {
+            for (String addrString : getNameServers()) {
+                if (addrString != null) {
+                    try {
+                        InetAddress inetAddress = InetAddress.getByName(addrString);
+                        if (inetAddress instanceof Inet4Address) {
+                            logv("  adding ipv4 dns " + addrString + " through "+mIpv4InterfaceName);
+                            NetworkUtils.addHostRoute(mIpv4InterfaceName, inetAddress);
+                        }
+                    } catch (UnknownHostException e) {
+                        logw(" DNS address " + addrString + " : Exception " + e);
+                    }
+                }
+            }
+            mIpv4PrivateDnsRouteSet = true;
+        }
+
+        /* For IPV6, assumption is that private routes will be set by the kernel */
+    }
+
+    @Override
+    public void removePrivateDnsRoutes() {
+        // TODO - we should do this explicitly but the NetUtils api doesnt
+        // support this yet - must remove all.  No worse than before
+        if (mIpv4InterfaceName != null && mIpv4PrivateDnsRouteSet) {
+            logv("remove ipv4 dns routes for " + mNetworkInfo.getTypeName() +
+                    " (" + mIpv4InterfaceName + ")");
+            NetworkUtils.removeHostRoutes(mIpv4InterfaceName);
+            mIpv4PrivateDnsRouteSet = false;
+        }
+    }
+
+    /**
+     * Record the detailed state of a network, and if it is a
+     * change from the previous state, send a notification to
+     * any listeners.
+     * @param state the new @{code DetailedState}
+     * @param reason a {@code String} indicating a reason for the state change,
+     * if one was supplied. May be {@code null}.
+     * @param extraInfo optional {@code String} providing extra information about the state change
+     */
+    @Override
+    public void setDetailedState(NetworkInfo.DetailedState state, String reason, String extraInfo) {
+
+        logv("setDetailed state :" + mNetworkInfo.getDetailedState() + " >>> " + state);
+
+        /*
+         * no need for old state != new state
+         *    - if we are IPV4 CONNECTED and now become IPV6 CONNECTED we need to notify ConnectivtyService.
+         *    - spurious notifications are avoided, as we do compare detailed states when processing the intent.
+         */
+        boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
+        String lastReason = mNetworkInfo.getReason();
+        /*
+         * If a reason was supplied when the CONNECTING state was entered, and
+         * no reason was supplied for entering the CONNECTED state, then retain
+         * the reason that was supplied when going to CONNECTING.
+         */
+        if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
+                && lastReason != null)
+            reason = lastReason;
+        mNetworkInfo.setDetailedState(state, reason, extraInfo);
+        Message msg = mTarget.obtainMessage(NetworkStateTracker.EVENT_STATE_CHANGED, mNetworkInfo);
+        msg.sendToTarget();
+    }
+
     @Override
     public String toString() {
-        StringBuffer sb = new StringBuffer("Mobile data state: ");
-
-        sb.append(mMobileDataState);
+        StringBuffer sb = new StringBuffer("Mobile data state: IPV4=");
+        sb.append(mIpv4MobileDataState);
+        sb.append(", IPV6=");
+        sb.append(mIpv6MobileDataState);
         return sb.toString();
     }
 
@@ -573,5 +752,27 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                 Log.e(TAG, "Error mapping networkType " + netType + " to apnType.");
                 return null;
         }
+    }
+
+    void loge(String string) {
+        Log.e(TAG, "[" + mApnType + "] " + string);
+    }
+
+    void logw(String string) {
+        Log.w(TAG, "[" + mApnType + "] " + string);
+    }
+
+    void logd(String string) {
+        Log.d(TAG, "[" + mApnType + "] " + string);
+    }
+
+    void logv(String string) {
+        if (DBG)
+            Log.v(TAG, "[" + mApnType + "] " + string);
+    }
+
+    void logi(String string) {
+        if (DBG)
+            Log.i(TAG, "[" + mApnType + "] " + string);
     }
 }

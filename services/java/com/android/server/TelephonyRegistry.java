@@ -30,6 +30,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Slog;
 
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import com.android.internal.telephony.DefaultPhoneNotifier;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.DataPhone;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.DataPhone.IPVersion;
 import com.android.server.am.BatteryStatsService;
 
 /**
@@ -82,17 +84,11 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
 
     private int mDataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
 
-    private int mDataConnectionState = TelephonyManager.DATA_CONNECTED;
+    private int mDataConnectionState = TelephonyManager.DATA_DISCONNECTED;
 
     private boolean mDataConnectionPossible = false;
 
     private String mDataConnectionReason = "";
-
-    private String mDataConnectionApn = "";
-
-    private String[] mDataConnectionApnTypes = null;
-
-    private String mDataConnectionInterfaceName = "";
 
     private Bundle mCellLocation = new Bundle();
 
@@ -352,9 +348,23 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
     }
 
-    public void notifyDataConnection(int anyDataConnectionState, int state, boolean isDataConnectivityPossible,
-            String reason, String apn, String[] apnTypes, String interfaceName, int networkType,
+    /*
+     * anyDataConnectionState - CONNECTED if at least one data connection is CONNECTED
+     * apnType, ipVersion - <apnType, ipVersion> tuple whose connection state has changed
+     * state - state of apnType on ipVersion
+     * apn - if state is CONNECTED, apn used for establishing apnType on ipVersion
+     * interfaceName - if state is CONNECTED, interfaceName used for apnType on ipVersion
+     * reason - reason that triggered
+     * isDataConnectivityPossible - if nw has camped, sim ready, etc.
+     * networkType - radio technology used
+     */
+    public void notifyDataConnection(
+            int anyDataConnectionState,
+            String apnType, String ipVersion,
+            int state, String apn, String interfaceName,
+            boolean isDataConnectivityPossible, int networkType, String reason,
             String gateway) {
+
         if (!checkNotifyPermission("notifyDataConnection()" )) {
             return;
         }
@@ -362,28 +372,30 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
                 + isDataConnectivityPossible + " reason=" + reason
                 + " interfaceName=" + interfaceName + " networkType=" + networkType);
         synchronized (mRecords) {
-            /* cache last notifcation - for logs only */
-            mDataConnectionState = state;
-            mDataConnectionPossible = isDataConnectivityPossible;
-            mDataConnectionReason = reason;
-            mDataConnectionApn = apn;
-            mDataConnectionApnTypes = apnTypes;
-            mDataConnectionInterfaceName = interfaceName;
-            mDataConnectionNetworkType = networkType;
+            /* notify clients only if there is a real change in data connection state */
+            if (mDataConnectionState != anyDataConnectionState) {
+                /* cache last notification for LISTEN_DATA_CONNECTION_STATE clients. */
+                mDataConnectionState = anyDataConnectionState;
+                mDataConnectionPossible = isDataConnectivityPossible;
+                mDataConnectionReason = reason;
+                mDataConnectionNetworkType = networkType;
 
-            for (int i = mRecords.size() - 1; i >= 0; i--) {
-                Record r = mRecords.get(i);
-                if ((r.events & PhoneStateListener.LISTEN_DATA_CONNECTION_STATE) != 0) {
-                    try {
-                        r.callback.onDataConnectionStateChanged(anyDataConnectionState, networkType);
-                    } catch (RemoteException ex) {
-                        remove(r.binder);
+                for (int i = mRecords.size() - 1; i >= 0; i--) {
+                    Record r = mRecords.get(i);
+                    if ((r.events & PhoneStateListener.LISTEN_DATA_CONNECTION_STATE) != 0) {
+                        try {
+                            r.callback.onDataConnectionStateChanged(anyDataConnectionState, networkType);
+                        } catch (RemoteException ex) {
+                            remove(r.binder);
+                        }
                     }
                 }
             }
         }
-        broadcastDataConnectionStateChanged(state, isDataConnectivityPossible, reason, apn,
-                apnTypes, interfaceName, gateway);
+
+        broadcastDataConnectionStateChanged(anyDataConnectionState, apnType, ipVersion, state, apn,
+                interfaceName, isDataConnectivityPossible, reason, gateway);
+
     }
 
     public void notifyDataConnectionFailed(String reason) {
@@ -470,8 +482,6 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
             pw.println("  mDataConnectionState=" + mDataConnectionState);
             pw.println("  mDataConnectionPossible=" + mDataConnectionPossible);
             pw.println("  mDataConnectionReason=" + mDataConnectionReason);
-            pw.println("  mDataConnectionApn=" + mDataConnectionApn);
-            pw.println("  mDataConnectionInterfaceName=" + mDataConnectionInterfaceName);
             pw.println("  mCellLocation=" + mCellLocation);
             pw.println("registrations: count=" + recordCount);
             for (int i = 0; i < recordCount; i++) {
@@ -544,37 +554,38 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         mContext.sendBroadcast(intent, android.Manifest.permission.READ_PHONE_STATE);
     }
 
-    private void broadcastDataConnectionStateChanged(int state,
-            boolean isDataConnectivityPossible,
-            String reason, String apn, String[] apnTypes, String interfaceName, String gateway) {
+    private void broadcastDataConnectionStateChanged(int anyDataConnectionState,
+            String apnType, String ipVersion,
+            int state, String apn, String interfaceName,
+            boolean isDataConnectivityPossible, String reason,
+            String gateway) {
         // Note: not reporting to the battery stats service here, because the
         // status bar takes care of that after taking into account all of the
         // required info.
         Intent intent = new Intent(TelephonyIntents.ACTION_ANY_DATA_CONNECTION_STATE_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra(Phone.STATE_KEY, DefaultPhoneNotifier.convertDataState(state).toString());
+        intent.putExtra(Phone.STATE_KEY, DefaultPhoneNotifier.convertDataState(anyDataConnectionState).toString());
         if (!isDataConnectivityPossible) {
             intent.putExtra(Phone.NETWORK_UNAVAILABLE_KEY, true);
         }
         if (reason != null) {
             intent.putExtra(Phone.STATE_CHANGE_REASON_KEY, reason);
         }
-        intent.putExtra(Phone.DATA_APN_KEY, apn);
-        String types = new String("");
-        if (apnTypes.length > 0) {
-            types = apnTypes[0];
-            for (int i = 1; i < apnTypes.length; i++) {
-                types = types+","+apnTypes[i];
-            }
-        }
-        intent.putExtra(Phone.DATA_APN_TYPES_KEY, types);
+        intent.putExtra(Phone.DATA_APN_TYPES_KEY, apnType);
+        intent.putExtra(Phone.DATA_IPVERSION_KEY, ipVersion);
+        intent.putExtra(Phone.DATA_APN_TYPE_STATE,
+                DefaultPhoneNotifier.convertDataState(state).toString());
         intent.putExtra(Phone.DATA_IFACE_NAME_KEY, interfaceName);
-        int gatewayAddr = 0;
+        byte[] gatewayAddr = null;
         if (gateway != null) {
-            gatewayAddr = NetworkUtils.v4StringToInt(gateway);
+            gatewayAddr = NetworkUtils.ipStringToByteArray(gateway);
         }
         intent.putExtra(DataPhone.DATA_GATEWAY_KEY, gatewayAddr);
 
+        intent.putExtra(Phone.DATA_APN_KEY, apn);
+
+        //TODO: perhaps sticky is not a good idea, as we broadcast for each <apn type/ip version>
+        //and last broadcast may not be very relevant.
         mContext.sendStickyBroadcast(intent);
     }
 

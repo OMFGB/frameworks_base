@@ -46,7 +46,7 @@ public abstract class NetworkStateTracker extends Handler {
     protected String mInterfaceName;
     protected String[] mDnsPropNames;
     private boolean mPrivateDnsRouteSet;
-    protected int mDefaultGatewayAddr;
+    protected byte[] mDefaultGatewayAddr;
     private boolean mTeardownRequested;
 
     private int mCachedGatewayAddr = 0;
@@ -165,7 +165,7 @@ public abstract class NetworkStateTracker extends Handler {
     }
 
     public void addDefaultRoute() {
-        if (mInterfaceName != null) {
+        if ((mInterfaceName != null) && (mDefaultGatewayAddr != null)) {
             if (DBG) {
                 Log.d(TAG, "addDefaultRoute for " + mNetworkInfo.getTypeName() +
                         " (" + mInterfaceName + "), GatewayAddr=" + mDefaultGatewayAddr +
@@ -182,14 +182,12 @@ public abstract class NetworkStateTracker extends Handler {
                 NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
             }
 
-            InetAddress inetAddress = NetworkUtils.intToInetAddress(mDefaultGatewayAddr);
+            InetAddress inetAddress = NetworkUtils.byteArrayToInetAddress(mDefaultGatewayAddr);
 
             if (inetAddress == null) {
                 if (DBG) Log.d(TAG, " Unable to add default route. mDefaultGatewayAddr Error");
             } else {
-                if (NetworkUtils.addRoute(mInterfaceName, inetAddress, 0)) {
-                    mDefaultRouteSet = true;
-                } else {
+                if (!NetworkUtils.addRoute(mInterfaceName, inetAddress, 0)) {
                     if (DBG) Log.d(TAG, "  Unable to add default route.");
                 }
             }

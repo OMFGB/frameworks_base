@@ -31,9 +31,10 @@ interface ITelephonyRegistry {
     void notifyMessageWaitingChanged(boolean mwi);
     void notifyCallForwardingChanged(boolean cfi);
     void notifyDataActivity(int state);
-    void notifyDataConnection(int anyDataConnectionState, int state, boolean isDataConnectivityPossible,
-            String reason, String apn, in String[] apnTypes, String interfaceName, int networkType,
-            String gateway);
+    void notifyDataConnection(int anyDataConnectionState, in String apnType, in String ipVersion,
+                              int state, String apn, String interfaceName,
+                              boolean isDataConnectivityPossible, int networkType, String reason,
+                              String gateway);
     void notifyDataConnectionFailed(String reason);
     void notifyCellLocation(in Bundle cellLocation);
 }

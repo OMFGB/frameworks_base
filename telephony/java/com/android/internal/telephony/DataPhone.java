@@ -73,6 +73,8 @@ public interface DataPhone {
     static final String STATE_CHANGE_REASON_KEY = "reason";
     static final String DATA_APN_TYPES_KEY = "apnType";
     static final String DATA_APN_KEY = "apn";
+    static final String DATA_IPVERSION_KEY = "ipVersion";
+    static final String DATA_APN_TYPE_STATE = "apnTypeState";
 
     static final String DATA_IFACE_NAME_KEY = "iface"; //ipv4 interface
     static final String DATA_GATEWAY_KEY = "gateway";
@@ -107,7 +109,6 @@ public interface DataPhone {
     static final String FEATURE_ENABLE_SUPL = "enableSUPL";
     static final String FEATURE_ENABLE_DUN = "enableDUN";
     static final String FEATURE_ENABLE_HIPRI = "enableHIPRI";
-    static final String FEATURE_ENABLE_VERIZON = "enableVerizon";
 
     /**
      * Return codes for <code>enableApnType()</code>
@@ -142,7 +143,9 @@ public interface DataPhone {
     static final String REASON_RADIO_TECHNOLOGY_CHANGED = "radioTechnologyChanged";
 
     /**
-     * Get the current DataState. No change notification exists at this
+     * Get the current data connection state. Returns CONNECTED, if at least
+     * one data connection is active on either IPV4 or IPV6.
+     * No change notification exists at this
      * interface -- use
      * {@link com.android.telephony.PhoneStateListener PhoneStateListener}
      * instead.
@@ -151,8 +154,8 @@ public interface DataPhone {
     DataState getDataConnectionState();
 
     /**
-     * Get the current DataState. No change notification exists at this
-     * interface -- use
+     * Get the current DataState for the specified apn type, on the specified ip version.
+     * No change notification exists at this interface -- use
      * {@link com.android.telephony.PhoneStateListener PhoneStateListener}
      * instead.
      */

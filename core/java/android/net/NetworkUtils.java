@@ -148,6 +148,27 @@ public class NetworkUtils {
         return result;
     }
 
+    public static byte[] ipStringToByteArray(String str) {
+        byte []result = null;
+        try {
+            InetAddress addr = InetAddress.getByName(str);
+            result = addr.getAddress();
+        } catch (UnknownHostException e) {
+            return null;
+        }
+        return result;
+    }
+
+    public static InetAddress byteArrayToInetAddress(byte []address) {
+        InetAddress result = null;
+        try {
+            result = InetAddress.getByAddress(address);
+        } catch (UnknownHostException e) {
+            return null;
+        }
+        return result;
+    }
+
     /**
      * Start the DHCP renew service for wimax,
      * This call blocks until it obtains a result (either success

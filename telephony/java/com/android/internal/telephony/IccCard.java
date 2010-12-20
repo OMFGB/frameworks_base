@@ -154,6 +154,10 @@ public interface IccCard {
 
     public void supplyPuk2(String puk2, String newPin2, Message onComplete);
 
+    /**
+     * @deprecated
+     * Use invokeDepersonalization from PhoneBase class instead.
+     */
     public void supplyNetworkDepersonalization(String pin, Message onComplete);
 
     /**

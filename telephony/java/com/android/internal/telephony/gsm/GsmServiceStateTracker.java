@@ -444,6 +444,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         int lac = -1;
 
         if (cellLoc != null) lac = cellLoc.getLac();
+        if (phone.mSIMRecords == null) return;
         needsUpdate = phone.mSIMRecords.updateEons(ss.getOperatorNumeric(), lac);
         if (needsUpdate) {
             String eonsLong = phone.mSIMRecords.getEons();

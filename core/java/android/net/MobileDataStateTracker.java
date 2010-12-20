@@ -87,9 +87,23 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             mEnabled = false;
         }
 
+        /*
+         * TODO: This list has to be made dynamic to report only those
+         * interfaces that this instance of mobile data state tracker is
+         * concerned with. Or else addPrivateDnsRoutes etc. gets ambiguous.
+         */
         mDnsPropNames = new String[] {
-                "net.rmnet0.dns1",
-                "net.rmnet0.dns2",
+                "net.rmnet0.dns1", "net.rmnet0.dns2",
+                "net.rmnet1.dns1", "net.rmnet1.dns2",
+                "net.rmnet2.dns1", "net.rmnet2.dns2",
+                "net.rmnet3.dns1", "net.rmnet3.dns2",
+                "net.rmnet4.dns1", "net.rmnet4.dns2",
+                "net.rmnet5.dns1", "net.rmnet5.dns2",
+                "net.rmnet6.dns1", "net.rmnet6.dns2",
+                "net.rmnet7.dns1", "net.rmnet7.dns2",
+                "net.rmnet8.dns1", "net.rmnet8.dns2",
+                "net.rmnet9.dns1", "net.rmnet9.dns2",
+                "net.rmnet10.dns1", "net.rmnet10.dns2",
                 "net.eth0.dns1",
                 "net.eth0.dns2",
                 "net.eth0.dns3",

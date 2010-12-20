@@ -41,6 +41,8 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
+import android.provider.Settings;
+import android.os.SystemClock;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -475,6 +477,10 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public boolean disableDataConnectivity() {
+        if (SystemProperties.getBoolean("persist.cust.tel.sdc.feature",false)) {
+            Settings.System.putInt(getContext().getContentResolver(),
+                    Settings.System.SOCKET_DATA_CALL_ENABLE, 0);
+        }
         return mDataConnection.setDataEnabled(false);
     }
 
@@ -781,6 +787,12 @@ public class CDMAPhone extends PhoneBase {
             // Do not allow data call to be enabled when emergency call is going on
             return false;
         } else {
+            if (SystemProperties.getBoolean("persist.cust.tel.sdc.feature",false)) {
+                Settings.System.putInt(getContext().getContentResolver(),
+                        Settings.System.SOCKET_DATA_CALL_ENABLE, 1);
+                SystemClock.sleep(10);
+            }
+
             return mDataConnection.setDataEnabled(true);
         }
     }

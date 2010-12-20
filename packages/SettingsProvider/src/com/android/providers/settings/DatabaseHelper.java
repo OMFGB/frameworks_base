@@ -1013,6 +1013,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     
             loadBooleanSetting(stmt, Settings.System.DIM_SCREEN,
                     R.bool.def_dim_screen);
+            loadSetting(stmt, Settings.System.SOCKET_DATA_CALL_ENABLE, 1);
             loadSetting(stmt, Settings.System.STAY_ON_WHILE_PLUGGED_IN,
                     "1".equals(SystemProperties.get("ro.kernel.qemu")) ? 1 : 0);
             loadIntegerSetting(stmt, Settings.System.SCREEN_OFF_TIMEOUT,
@@ -1077,6 +1078,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             if (stmt != null) stmt.close();
         }
     }
+
 
     private void loadUISoundEffectsSettings(SQLiteStatement stmt) {
         loadIntegerSetting(stmt, Settings.System.POWER_SOUNDS_ENABLED,

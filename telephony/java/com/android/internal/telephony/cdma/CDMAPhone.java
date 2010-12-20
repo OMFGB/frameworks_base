@@ -165,6 +165,7 @@ public class CDMAPhone extends PhoneBase {
 
         //TODO: fusion move RuimPhoneBookInterfaceManager functionality to IccPhoneBookIntManager
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
+        mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -238,6 +239,7 @@ public class CDMAPhone extends PhoneBase {
             mSST.dispose();
             mSMS.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
+            mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
 
@@ -251,6 +253,7 @@ public class CDMAPhone extends PhoneBase {
 
     public void removeReferences() {
             this.mRuimPhoneBookInterfaceManager = null;
+            this.mRuimSmsInterfaceManager = null;
             this.mSMS = null;
             this.mSubInfo = null;
 

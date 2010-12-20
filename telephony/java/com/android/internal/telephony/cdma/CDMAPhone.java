@@ -165,7 +165,6 @@ public class CDMAPhone extends PhoneBase {
 
         //TODO: fusion - RuimPhoneBookInterfaceManager expects mRuimRecords at start.
         //mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
-        mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -241,7 +240,6 @@ public class CDMAPhone extends PhoneBase {
 
             //TODO -  fusion
             //mRuimPhoneBookInterfaceManager.dispose();
-            mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
 
@@ -255,7 +253,6 @@ public class CDMAPhone extends PhoneBase {
 
     public void removeReferences() {
             this.mRuimPhoneBookInterfaceManager = null;
-            this.mRuimSmsInterfaceManager = null;
             this.mSMS = null;
             this.mSubInfo = null;
 
@@ -711,12 +708,6 @@ public class CDMAPhone extends PhoneBase {
         }
 
         return ret;
-    }
-
-   public boolean getIccRecordsLoaded() {
-        if (mRuimRecords != null) {
-            return mRuimRecords.getRecordsLoaded();
-        }
     }
 
     public boolean getIccRecordsLoaded() {

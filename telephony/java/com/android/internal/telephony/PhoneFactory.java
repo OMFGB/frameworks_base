@@ -110,14 +110,16 @@ public class PhoneFactory {
                 sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
 
                 int phoneType = getPhoneType(networkMode);
-                if (phoneType == Phone.PHONE_TYPE_GSM) {
-                    Log.i(LOG_TAG, "Creating GSMPhone");
+                DataPhone dct = new MMDataConnectionTracker(context, sPhoneNotifier,
+                        sCommandsInterface);
+                if (phoneType == VoicePhone.PHONE_TYPE_GSM) {
                     sProxyPhone = new PhoneProxy(new GSMPhone(context,
-                            sCommandsInterface, sPhoneNotifier));
-                } else if (phoneType == Phone.PHONE_TYPE_CDMA) {
-                    Log.i(LOG_TAG, "Creating CDMAPhone");
+                            sCommandsInterface, sPhoneNotifier), dct);
+                    Log.i(LOG_TAG, "Creating GSMPhone");
+                } else if (phoneType == VoicePhone.PHONE_TYPE_CDMA) {
                     sProxyPhone = new PhoneProxy(new CDMAPhone(context,
-                            sCommandsInterface, sPhoneNotifier));
+                            sCommandsInterface, sPhoneNotifier), dct);
+                    Log.i(LOG_TAG, "Creating CDMAPhone");
                 }
 
                 sMadeDefaults = true;
@@ -168,16 +170,16 @@ public class PhoneFactory {
        return sProxyPhone;
     }
 
-    public static Phone getCdmaPhone() {
+    public static VoicePhone getCdmaPhone() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
+            VoicePhone phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
             return phone;
         }
     }
 
-    public static Phone getGsmPhone() {
+    public static VoicePhone getGsmPhone() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new GSMPhone(sContext, sCommandsInterface, sPhoneNotifier);
+            VoicePhone phone = new GSMPhone(sContext, sCommandsInterface, sPhoneNotifier);
             return phone;
         }
     }

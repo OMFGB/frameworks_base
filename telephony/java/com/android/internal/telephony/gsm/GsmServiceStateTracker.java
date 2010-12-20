@@ -23,6 +23,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
@@ -444,25 +445,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             default:
                 Log.e(LOG_TAG, "Unhandled message with number: " + msg.what);
             break;
-        }
-    }
-
-    @Override
-    protected void powerOffRadioSafely() {
-        // clean data connection
-        DataConnectionTracker dcTracker = phone.mDataConnection;
-        Message msg = dcTracker.obtainMessage(DataConnectionTracker.EVENT_CLEAN_UP_CONNECTION);
-        msg.arg1 = 1; // tearDown is true
-        msg.obj = GSMPhone.REASON_RADIO_TURNED_OFF;
-        dcTracker.sendMessage(msg);
-
-        // poll data state up to 15 times, with a 100ms delay
-        // totaling 1.5 sec. Normal data disable action will finish in 100ms.
-        for (int i = 0; i < MAX_NUM_DATA_STATE_READS; i++) {
-            if (dcTracker.getState() != DataConnectionTracker.State.CONNECTED
-                    && dcTracker.getState() != DataConnectionTracker.State.DISCONNECTING) {
-                Log.d(LOG_TAG, "Data shutdown complete.");
-                break;
         }
     }
 
@@ -941,41 +923,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 if (needsSpnUpdate) {
                     updateSpnDisplay();
                 }
-                break;
-        }
-    }
-
-    void updateIccAvailability() {
-
-        UiccCardApplication new3gppApplication = mUiccManager
-                .getCurrentApplication(AppFamily.APP_FAM_3GPP);
-
-        if (m3gppApplication != new3gppApplication) {
-            if (m3gppApplication != null) {
-                log("Removing stale 3gpp Application.");
-                m3gppApplication.unregisterForReady(this);
-                if (mSIMRecords != null) {
-                    mSIMRecords.unregisterForRecordsEvents(this);
-                    mSIMRecords.unregisterForRecordsLoaded(this);
-                    mSIMRecords = null;
-                }
-                m3gppApplication = null;
-            }
-            if (new3gppApplication != null) {
-                log("New 3gpp application found");
-                m3gppApplication = new3gppApplication;
-                m3gppApplication.registerForReady(this, EVENT_SIM_READY, null);
-                mSIMRecords = (SIMRecords) m3gppApplication.getApplicationRecords();
-                mSIMRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
-                mSIMRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
-            }
-        }
-    }
-
-    private void processIccRecordEvents(int eventCode) {
-        switch (eventCode) {
-            case SIMRecords.EVENT_SPN:
-                updateSpnDisplay();
                 break;
         }
     }

@@ -48,10 +48,6 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int DATA_ACCESS_LTE = 13;
     protected static final int DATA_ACCESS_EHRPD = 14;
 
-    protected static final int DATA_ACCESS_LTE = 13;
-
-    protected static final int DATA_ACCESS_LTE = 13;
-
     protected CommandsInterface cm;
 
     public ServiceState ss;
@@ -65,7 +61,6 @@ public abstract class ServiceStateTracker extends Handler {
      * expected responses in this pollingContext.
      */
     protected int[] pollingContext;
-    protected boolean mDesiredPowerState;
 
     /**
      * By default, strength polling is enabled.  However, if we're
@@ -93,7 +88,6 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_NETWORK_STATE_CHANGED             = 2;
     protected static final int EVENT_GET_SIGNAL_STRENGTH               = 3;
     protected static final int EVENT_POLL_STATE_REGISTRATION           = 4;
-    protected static final int EVENT_POLL_STATE_GPRS                   = 5;
     protected static final int EVENT_POLL_STATE_OPERATOR               = 6;
     protected static final int EVENT_POLL_SIGNAL_STRENGTH              = 10;
     protected static final int EVENT_NITZ_TIME                         = 11;
@@ -107,7 +101,6 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_GET_PREFERRED_NETWORK_TYPE        = 19;
     protected static final int EVENT_SET_PREFERRED_NETWORK_TYPE        = 20;
     protected static final int EVENT_RESET_PREFERRED_NETWORK_TYPE      = 21;
-    protected static final int EVENT_CHECK_REPORT_GPRS                 = 22;
     protected static final int EVENT_RESTRICTED_STATE_CHANGED          = 23;
 
     /** CDMA events */
@@ -174,10 +167,6 @@ public abstract class ServiceStateTracker extends Handler {
 
     }
 
-    public boolean getDesiredPowerState() {
-        return mDesiredPowerState;
-    }
-
     /**
      * Registration point for combined roaming on
      * combined roaming is true when roaming is true and ONS differs SPN
@@ -234,13 +223,6 @@ public abstract class ServiceStateTracker extends Handler {
                 obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
     }
 
-    public void
-    setRadioPower(boolean power) {
-        mDesiredPowerState = power;
-
-        setPowerStateToDesired();
-    }
-
     /**
      * These two flags manage the behavior of the cell lock -- the
      * lock should be held if either flag is true.  The intention is
@@ -284,14 +266,6 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected abstract void handlePollStateResult(int what, AsyncResult ar);
     protected abstract void updateSpnDisplay();
-    protected abstract void setPowerStateToDesired();
-
-    /**
-     * Clean up existing voice and data connection then turn off radio power.
-     *
-     * Hang up the existing voice calls to decrease call drop rate.
-     */
-    protected abstract void powerOffRadioSafely();
 
     /** Cancel a pending (if any) pollState() operation */
     protected void cancelPollState() {

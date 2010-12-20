@@ -76,6 +76,40 @@ public class TelephonyIntents {
     public static final String ACTION_RADIO_TECHNOLOGY_CHANGED
             = "android.intent.action.RADIO_TECHNOLOGY";
     /**
+     * <p>Broadcast Action: Voice Call Started.</p>
+     *
+     * <p class="note">
+     * You can <em>not</em> receive this through components declared
+     * in manifests, only by explicitly registering for it with
+     * {@link android.content.Context#registerReceiver(android.content.BroadcastReceiver,
+     * android.content.IntentFilter) Context.registerReceiver()}.
+     *
+     * <p class="note">
+     * Requires no permission.
+     *
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     */
+    public static final String ACTION_VOICE_CALL_STARTED
+            = "android.intent.action.VOICE_CALL_STARTED";
+    /**
+     * <p>Broadcast Action: Voice Call Ended.</p>
+     *
+     * <p class="note">
+     * You can <em>not</em> receive this through components declared
+     * in manifests, only by explicitly registering for it with
+     * {@link android.content.Context#registerReceiver(android.content.BroadcastReceiver,
+     * android.content.IntentFilter) Context.registerReceiver()}.
+     *
+     * <p class="note">
+     * Requires no permission.
+     *
+     * <p class="note">This is a protected intent that can only be sent
+     * by the system.
+     */
+    public static final String ACTION_VOICE_CALL_ENDED
+            = "android.intent.action.VOICE_CALL_ENDED";
+    /**
      * <p>Broadcast Action: The emergency callback mode is changed.
      * <ul>
      *   <li><em>phoneinECMState</em> - A boolean value,true=phone in ECM, false=ECM off</li>

@@ -43,9 +43,9 @@ public class WapPushOverSms {
      */
     private final int WAKE_LOCK_TIMEOUT = 5000;
 
-    public WapPushOverSms(Phone phone, SMSDispatcher smsDispatcher) {
+    public WapPushOverSms(Context context, SMSDispatcher smsDispatcher) {
         mSmsDispatcher = smsDispatcher;
-        mContext = phone.getContext();
+        mContext = context;
     }
 
     /**

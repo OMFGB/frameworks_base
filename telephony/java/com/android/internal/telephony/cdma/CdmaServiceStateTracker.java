@@ -42,6 +42,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.TimeUtils;
 
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCard;
@@ -365,7 +366,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RADIO_STATE_CHANGED:
-            if(cm.getRadioState() == RadioState.RADIO_ON) {
+            if(cm.getRadioState() == CommandsInterface.RadioState.RADIO_ON) {
                 cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
             } else {
                 mSubscriptionSourceUnknown = true;
@@ -562,57 +563,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     //***** Private Instance Methods
-
-    @Override
-    protected void setPowerStateToDesired() {
-        // If we want it on and it's off, turn it on
-        if (mDesiredPowerState
-            && cm.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
-            cm.setRadioPower(true, null);
-        } else if (!mDesiredPowerState && cm.getRadioState().isOn()) {
-            DataConnectionTracker dcTracker = phone.mDataConnection;
-            if (! dcTracker.isDataConnectionAsDesired()) {
-                EventLog.writeEvent(EventLogTags.DATA_NETWORK_STATUS_ON_RADIO_OFF,
-                        dcTracker.getStateInString(),
-                        dcTracker.getAnyDataEnabled() ? 1 : 0);
-            }
-
-            // If it's on and available and we want it off gracefully
-            powerOffRadioSafely();
-        } // Otherwise, we're in the desired state
-    }
-
-    @Override
-    protected void powerOffRadioSafely(){
-        // clean data connection
-        DataConnectionTracker dcTracker = phone.mDataConnection;
-
-        Message msg = dcTracker.obtainMessage(DataConnectionTracker.EVENT_CLEAN_UP_CONNECTION);
-        msg.arg1 = 1; // tearDown is true
-        msg.obj = CDMAPhone.REASON_RADIO_TURNED_OFF;
-        dcTracker.sendMessage(msg);
-
-        synchronized(this) {
-            if (!mPendingRadioPowerOffAfterDataOff) {
-                DataConnectionTracker.State currentState = dcTracker.getState();
-                if (currentState != DataConnectionTracker.State.CONNECTED
-                        && currentState != DataConnectionTracker.State.DISCONNECTING
-                        && currentState != DataConnectionTracker.State.INITING) {
-                    if (DBG) log("Data disconnected, turn off radio right away.");
-                    hangupAndPowerOff();
-                }
-                else if (sendEmptyMessageDelayed(EVENT_SET_RADIO_POWER_OFF, 30000)) {
-                    if (DBG) {
-                        log("Wait up to 30 sec for data to disconnect, then turn off radio.");
-                    }
-                    mPendingRadioPowerOffAfterDataOff = true;
-                } else {
-                    Log.w(LOG_TAG, "Cannot send delayed Msg, turn off radio right away.");
-                    hangupAndPowerOff();
-                }
-            }
-        }
-    }
 
     @Override
     protected void updateSpnDisplay() {

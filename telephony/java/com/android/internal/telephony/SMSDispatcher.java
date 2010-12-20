@@ -113,7 +113,7 @@ public abstract class SMSDispatcher extends Handler {
     /** Radio is ON */
     static final protected int EVENT_RADIO_ON = 12;
 
-    protected Phone mPhone;
+    protected VoicePhone mPhone;
     protected Context mContext;
     protected ContentResolver mResolver;
     protected CommandsInterface mCm;
@@ -220,7 +220,7 @@ public abstract class SMSDispatcher extends Handler {
 
     protected SMSDispatcher(PhoneBase phone) {
         mPhone = phone;
-        mWapPush = new WapPushOverSms(phone, this);
+        mWapPush = new WapPushOverSms(phone.getContext(), this);
         mContext = phone.getContext();
         mResolver = mContext.getContentResolver();
         mCm = phone.mCM;

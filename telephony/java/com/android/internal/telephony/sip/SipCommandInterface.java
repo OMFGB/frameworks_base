@@ -381,8 +381,4 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void invokeDepersonalization(String pin, int type, Message response) {
     }
-
-    void setFacilityLock (int slot, String aid, String facility, boolean lockState, String password,
-        int serviceClass, Message response) {
-    }
 }

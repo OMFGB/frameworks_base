@@ -359,7 +359,7 @@ public class CdmaConnection extends Connection {
             buf.append(postDialString.substring(nextPostDialChar));
             postDialString = buf.toString();
             nextPostDialChar = 0;
-            if (Phone.DEBUG_PHONE) {
+            if (VoicePhone.DEBUG_PHONE) {
                 log("proceedAfterWildChar: new postDialString is " +
                         postDialString);
             }
@@ -490,7 +490,7 @@ public class CdmaConnection extends Connection {
 
         newParent = parentFromDCState(dc.state);
 
-        if (Phone.DEBUG_PHONE) log("parent= " +parent +", newParent= " + newParent);
+        if (VoicePhone.DEBUG_PHONE) log("parent= " +parent +", newParent= " + newParent);
 
         if (!equalsHandlesNulls(address, dc.number)) {
             if (Phone.DEBUG_PHONE) log("update: phone # changed!");
@@ -585,7 +585,7 @@ public class CdmaConnection extends Connection {
 
         // bug #678474: incoming call interpreted as missed call, even though
         // it sounds like the user has picked up the call.
-        if (Phone.DEBUG_PHONE) {
+        if (VoicePhone.DEBUG_PHONE) {
             log("onConnectedInOrOut: connectTime=" + connectTime);
         }
 

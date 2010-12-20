@@ -74,6 +74,7 @@ public interface DataPhone {
     static final String DATA_APN_KEY = "apn";
 
     static final String DATA_IFACE_NAME_KEY = "iface"; //ipv4 interface
+    static final String DATA_GATEWAY_KEY = "gateway";
     static final String DATA_IFACE_IPV6_NAME_KEY = "ifaceIpv6";
     static final String NETWORK_UNAVAILABLE_KEY = "networkUnvailable";
 
@@ -145,6 +146,7 @@ public interface DataPhone {
      * {@link com.android.telephony.PhoneStateListener PhoneStateListener}
      * instead.
      */
+    @Deprecated
     DataState getDataConnectionState();
 
     /**

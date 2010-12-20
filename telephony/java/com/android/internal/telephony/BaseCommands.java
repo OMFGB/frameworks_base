@@ -245,7 +245,7 @@ public abstract class BaseCommands implements CommandsInterface {
         mDataNetworkStateRegistrants.add(r);
     }
 
-    void unregisterForDataNetworkStateChanged(Handler h) {
+    public void unregisterForDataNetworkStateChanged(Handler h) {
         mDataNetworkStateRegistrants.remove(h);
     }
 

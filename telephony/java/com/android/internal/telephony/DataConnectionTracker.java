@@ -162,7 +162,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
         this.mNotifier = notifier;
 
         this.mDpt = new DataProfileTracker(context);
-        mUiccManager = UiccManager.getInstance();
+        mUiccManager = UiccManager.getInstance(context, ci);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
     }

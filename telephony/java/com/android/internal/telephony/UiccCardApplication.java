@@ -59,13 +59,15 @@ public class UiccCardApplication {
     private boolean       mPin1Replaced;
     private PinState      mPin1State;
     private PinState      mPin2State;
-    private boolean mIccFdnAvailable = true; // Default is enabled.
+    private boolean       mIccFdnEnabled = false; // Default to disabled.
+    private boolean       mIccFdnAvailable = true; // Default is enabled.
     private int mPin1RetryCount = -1;
     private int mPin2RetryCount = -1;
 
     private UiccApplicationRecords mUiccApplicationRecords;
     private IccFileHandler mIccFh;
 
+    private boolean mDesiredFdnEnabled;
     private boolean mDestroyed = false; //set to true once this App is commanded to be disposed of.
 
     private CommandsInterface mCi;
@@ -124,6 +126,11 @@ public class UiccCardApplication {
         mPin2State = as.pin2;
         if (mAppState != as.app_state) {
             Log.d(mLogTag, mAppType + " changed state: " + mAppState + " -> " + as.app_state);
+            // If the app state turns to APPSTATE_READY, then query FDN status,
+            //as it might have failed in earlier attempt.
+            if (as.app_state == UiccConstants.AppState.APPSTATE_READY) {
+                queryFdnAvailable();
+            }
             mAppState = as.app_state;
             notifyLockedRegistrants();
             notifyReadyRegistrants();
@@ -445,10 +452,7 @@ public class UiccCardApplication {
      *         false for ICC fdn disabled
      */
      public boolean getIccFdnEnabled() {
-        return mPin2State == PinState.PINSTATE_ENABLED_NOT_VERIFIED ||
-               mPin2State == PinState.PINSTATE_ENABLED_VERIFIED ||
-               mPin2State == PinState.PINSTATE_ENABLED_BLOCKED ||
-               mPin2State == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
+         return mIccFdnEnabled;
      }
 
      /**
@@ -503,6 +507,7 @@ public class UiccCardApplication {
      public void setIccFdnEnabled (boolean enabled,
              String password, Message onComplete) {
          int serviceClassX;
+         mDesiredFdnEnabled = enabled;
          serviceClassX = CommandsInterface.SERVICE_CLASS_VOICE +
                  CommandsInterface.SERVICE_CLASS_DATA +
                  CommandsInterface.SERVICE_CLASS_FAX +
@@ -594,14 +599,20 @@ public class UiccCardApplication {
 
         int[] ints = (int[])ar.result;
         if (ints.length != 0) {
-            if (ints[0] != 2) {
-                mIccFdnAvailable = true;
-            } else {
+            //0 - Available & Disabled, 1-Available & Enabled, 2-Unavailable.
+            if (ints[0] == 2) {
+                mIccFdnEnabled = false;
                 mIccFdnAvailable = false;
+            } else {
+                mIccFdnEnabled = (ints[0] == 1) ? true : false;
+                mIccFdnAvailable = true;
             }
-            if(mDbg) log("Query facility FDN : FDN service available: "  + mIccFdnAvailable);
+            if (mDbg) {
+                log("Query facility FDN : FDN service available: "+ mIccFdnAvailable
+                                                     +" enabled: "  + mIccFdnEnabled);
+            }
         } else {
-            Log.e(mLogTag, "[IccCard] Bogus facility lock response");
+            Log.e(mLogTag, "Bogus facility lock response");
         }
     }
 
@@ -676,7 +687,9 @@ public class UiccCardApplication {
                     ar = (AsyncResult)msg.obj;
 
                     if (ar.exception == null) {
-                        if (mDbg) log("EVENT_CHANGE_FACILITY_FDN_DONE ");
+                        mIccFdnEnabled = mDesiredFdnEnabled;
+                        if (mDbg) log("EVENT_CHANGE_FACILITY_FDN_DONE: " +
+                                "Enabled= " + mIccFdnEnabled);
                     } else {
                         if (ar.result != null) {
                             parsePinPukErrorResult(ar, false);

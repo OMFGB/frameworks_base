@@ -70,6 +70,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStopRegistrants = new RegistrantList();
     protected RegistrantList mCallReestablishIndRegistrants = new RegistrantList();
+    protected RegistrantList mRestrictedStateRegistrants = new RegistrantList();
 
     protected Registrant mSMSRegistrant;
     protected Registrant mCdmaSMSRegistrant;
@@ -87,7 +88,6 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mEmergencyCallbackModeRegistrant;
     protected Registrant mIccRefreshRegistrant;
     protected Registrant mRingRegistrant;
-    protected Registrant mRestrictedStateRegistrant;
     protected Registrant mGsmBroadcastSmsRegistrant;
 
     // Network Mode received from PhoneFactory
@@ -429,12 +429,13 @@ public abstract class BaseCommands implements CommandsInterface {
         mVoicePrivacyOffRegistrants.remove(h);
     }
 
-    public void setOnRestrictedStateChanged(Handler h, int what, Object obj) {
-        mRestrictedStateRegistrant = new Registrant (h, what, obj);
+    public void registerForRestrictedStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mRestrictedStateRegistrants.add(r);
     }
 
-    public void unSetOnRestrictedStateChanged(Handler h) {
-        mRestrictedStateRegistrant.clear();
+    public void unregisterForRestrictedStateChanged(Handler h) {
+        mRestrictedStateRegistrants.remove(h);
     }
 
     public void registerForDisplayInfo(Handler h, int what, Object obj) {

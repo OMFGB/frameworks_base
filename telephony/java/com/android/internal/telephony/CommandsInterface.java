@@ -398,14 +398,13 @@ public interface CommandsInterface {
     /**
      * Sets the handler for RESTRICTED_STATE changed notification,
      * eg, for Domain Specific Access Control
-     * unlike the register* methods, there's only one signal strength handler
      *
      * AsyncResult.result is an int[1]
      * response.obj.result[0] is a bitmask of RIL_RESTRICTED_STATE_* values
      */
 
-    void setOnRestrictedStateChanged(Handler h, int what, Object obj);
-    void unSetOnRestrictedStateChanged(Handler h);
+    void registerForRestrictedStateChanged(Handler h, int what, Object obj);
+    void unregisterForRestrictedStateChanged(Handler h);
 
     /**
      * Sets the handler for Supplementary Service Notifications.

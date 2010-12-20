@@ -190,7 +190,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
-        cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
+        cm.registerForRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
 
         mUiccManager = UiccManager.getInstance(phone.getContext(), this.cm);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
@@ -215,7 +215,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForNetworkStateChanged(this);
 
         cm.unSetOnSignalStrengthUpdate(this);
-        cm.unSetOnRestrictedStateChanged(this);
+        cm.unregisterForRestrictedStateChanged(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
 
@@ -424,7 +424,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_RESTRICTED_STATE_CHANGED:
                 // This is a notification from
-                // CommandsInterface.setOnRestrictedStateChanged
+                // CommandsInterface.registerForRestrictedStateChanged
 
                 Log.d(LOG_TAG, "[DSAC DEB] " + "EVENT_RESTRICTED_STATE_CHANGED");
 

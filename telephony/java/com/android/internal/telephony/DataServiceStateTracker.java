@@ -150,7 +150,7 @@ public class DataServiceStateTracker extends Handler {
         cm.registerForDataNetworkStateChanged(this, EVENT_DATA_NETWORK_STATE_CHANGED, null);
 
         //gsm only
-        cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
+        cm.registerForRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         //cdma only
@@ -861,7 +861,7 @@ public class DataServiceStateTracker extends Handler {
         // Unregister for all events.
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForDataNetworkStateChanged(this);
-        cm.unSetOnRestrictedStateChanged(this);
+        cm.unregisterForRestrictedStateChanged(this);
         cm.unregisterForCdmaSubscriptionSourceChanged(this);
 
         mUiccManager.unregisterForIccChanged(this);

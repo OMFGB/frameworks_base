@@ -560,7 +560,7 @@ public interface CommandsInterface {
     void unregisterForT53AudioControlInfo(Handler h);
 
     /**
-     * Fires on if Modem enters Emergency Callback mode
+     * Fires on if Modem enters or exits Emergency Callback mode
      */
     void setEmergencyCallbackMode(Handler h, int what, Object obj);
 

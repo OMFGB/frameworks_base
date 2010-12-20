@@ -86,6 +86,7 @@ public class CDMAPhone extends PhoneBase {
     static final String LOG_TAG = "CDMA";
     private static final boolean DBG = true;
 
+    private static final int EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE = 100;
     // Min values used to by needsActivation
     private static final String UNACTIVATED_MIN2_VALUE = "000000";
     private static final String UNACTIVATED_MIN_VALUE = "1111110111";
@@ -170,7 +171,7 @@ public class CDMAPhone extends PhoneBase {
         mCM.registerForOn(this, EVENT_RADIO_ON, null);
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttach(this, EVENT_REGISTERED_TO_NETWORK, null);
-        mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
+        mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE, null);
         mCM.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
         mUiccManager = UiccManager.getInstance(getContext(), mCM);
@@ -850,16 +851,16 @@ public class CDMAPhone extends PhoneBase {
         if (mEcmExitRespRegistrant != null) {
             mEcmExitRespRegistrant.notifyRegistrant(ar);
         }
-        // if exiting ecm success
-        if (ar.exception == null) {
+        // if unsolicited or sucess exiting ecm
+        if (ar == null || ar.exception == null) {
             if (mIsPhoneInEcmState) {
                 mIsPhoneInEcmState = false;
                 setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+                // send an Intent
+                sendEmergencyCallbackModeChange();
+                // Enable data call
+                mCT.enableDataCall();
             }
-            // send an Intent
-            sendEmergencyCallbackModeChange();
-            // Enable data call
-            mCT.enableDataCall();
         }
     }
 
@@ -950,12 +951,17 @@ public class CDMAPhone extends PhoneBase {
                 processIccRecordEvents((Integer)ar.result);
                 break;
 
-            case EVENT_EMERGENCY_CALLBACK_MODE_ENTER:{
-                handleEnterEmergencyCallbackMode(msg);
+            case EVENT_EMERGENCY_CALLBACK_MODE:{
+                ar = (AsyncResult) msg.obj;
+                boolean enter = (Boolean) ar.result;
+                if (enter)
+                    handleEnterEmergencyCallbackMode(msg);
+                else
+                    handleExitEmergencyCallbackMode(msg);
             }
             break;
 
-            case  EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE:{
+            case  EVENT_EMERGENCY_CALLBACK_MODE_EXIT:{
                 handleExitEmergencyCallbackMode(msg);
             }
             break;
@@ -1039,6 +1045,11 @@ public class CDMAPhone extends PhoneBase {
                     AsyncResult.forMessage(onComplete, ar.result, ar.exception);
                     onComplete.sendToTarget();
                 }
+            }
+            break;
+
+            case EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE: {
+                handleExitEmergencyCallbackMode(msg);
             }
             break;
 

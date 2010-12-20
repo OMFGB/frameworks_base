@@ -156,6 +156,12 @@ public interface IccCard {
 
     public void supplyNetworkDepersonalization(String pin, Message onComplete);
 
+    /**
+     * Check whether fdn (fixed dialing number) service is available.
+     * @return true if ICC fdn service available
+     *         false if ICC fdn service not available
+     */
+     public boolean getIccFdnAvailable();
 
     /**
      * Check whether ICC pin lock is enabled
@@ -174,6 +180,17 @@ public interface IccCard {
      *         false for ICC fdn disabled
      */
     public boolean getIccFdnEnabled();
+
+     /**
+     * @return No. of Attempts remaining to unlock PIN1/PUK1
+     */
+    public int getIccPin1RetryCount();
+
+    /**
+     * @return No. of Attempts remaining to unlock PIN2/PUK2
+     */
+    public int getIccPin2RetryCount();
+
 
      /**
       * Set the ICC pin lock enabled or disabled
@@ -252,6 +269,16 @@ public interface IccCard {
     /**
      * @return true if a ICC card is present
      */
-
     public boolean hasIccCard();
+
+    /**
+     * @return true if ICC card is PIN2 blocked
+     */
+    public boolean getIccPin2Blocked();
+
+    /**
+     * @return true if ICC card is PUK2 blocked
+     */
+    public boolean getIccPuk2Blocked();
+
 }

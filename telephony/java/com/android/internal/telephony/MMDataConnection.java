@@ -63,7 +63,7 @@ public class MMDataConnection extends DataConnection {
 
         logi("Connecting : dataProfile = " + cp.dp.toString());
 
-        int radioTech = cp.radioTech.isCdma() ? 1 : 0;
+        int radioTech = cp.radioTech.isCdma() ? 0 : 1;
 
         /* case APN */
         if (cp.dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP_APN) {

@@ -66,6 +66,10 @@ public interface RILConstants {
     int NETWORK_MODE_EVDO_NO_CDMA   = 6; /* EvDo only */
     int NETWORK_MODE_GLOBAL         = 7; /* GSM/WCDMA, CDMA, and EvDo (auto mode, according to PRL)
                                             AVAILABLE Application Settings menu*/
+    int NETWORK_MODE_CDMA_AND_LTE_EVDO  = 8;  /* CDMA + LTE/EvDo auto */
+    int NETWORK_MODE_GSM_WCDMA_LTE      = 9;  /* GSM/WCDMA/LTE auto */
+    int NETWORK_MODE_GLOBAL_LTE         = 10; /* CDMA/EvDo/GSM/WCDMA/LTE auto */
+    int NETWORK_MODE_LTE_ONLY           = 11; /* LTE only */
     int PREFERRED_NETWORK_MODE      = NETWORK_MODE_WCDMA_PREF;
 
     /* CDMA subscription source. See ril.h RIL_REQUEST_CDMA_SET_SUBSCRIPTION */
@@ -244,6 +248,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING = 103;
     int RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE = 104;
     int RIL_REQUEST_CDMA_PRL_VERSION = 105;
+    int RIL_REQUEST_VOICE_RADIO_TECH = 106;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
     int RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED = 1001;
@@ -278,4 +283,5 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_RESEND_INCALL_MUTE = 1030;
     int RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 1031;
     int RIL_UNSOL_CDMA_PRL_CHANGED = 1032;
+    int RIL_UNSOL_VOICE_RADIO_TECH_CHANGED = 1034;
 }

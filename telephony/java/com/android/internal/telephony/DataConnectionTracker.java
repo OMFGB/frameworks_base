@@ -94,7 +94,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final int EVENT_START_RECOVERY = 28;
     protected static final int EVENT_APN_CHANGED = 29;
     protected static final int EVENT_CDMA_DATA_DETACHED = 30;
-    protected static final int EVENT_NV_READY = 31;
+    protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 31;
     protected static final int EVENT_PS_RESTRICT_ENABLED = 32;
     protected static final int EVENT_PS_RESTRICT_DISABLED = 33;
     public static final int EVENT_CLEAN_UP_CONNECTION = 34;

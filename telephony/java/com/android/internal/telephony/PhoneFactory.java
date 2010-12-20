@@ -137,15 +137,19 @@ public class PhoneFactory {
         case RILConstants.NETWORK_MODE_CDMA:
         case RILConstants.NETWORK_MODE_CDMA_NO_EVDO:
         case RILConstants.NETWORK_MODE_EVDO_NO_CDMA:
+        case RILConstants.NETWORK_MODE_CDMA_AND_LTE_EVDO:
             return Phone.PHONE_TYPE_CDMA;
 
         case RILConstants.NETWORK_MODE_WCDMA_PREF:
         case RILConstants.NETWORK_MODE_GSM_ONLY:
         case RILConstants.NETWORK_MODE_WCDMA_ONLY:
         case RILConstants.NETWORK_MODE_GSM_UMTS:
+        case RILConstants.NETWORK_MODE_GSM_WCDMA_LTE:
             return Phone.PHONE_TYPE_GSM;
 
         case RILConstants.NETWORK_MODE_GLOBAL:
+        case RILConstants.NETWORK_MODE_GLOBAL_LTE:
+        case RILConstants.NETWORK_MODE_LTE_ONLY:
             return Phone.PHONE_TYPE_CDMA;
         default:
             return Phone.PHONE_TYPE_GSM;

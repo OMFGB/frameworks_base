@@ -84,7 +84,7 @@ public final class RuimRecords extends IccRecords {
         recordsToLoad = 0;
 
 
-        p.mCM.registerForRUIMReady(this, EVENT_RUIM_READY, null);
+        p.mRuimCard.registerForReady(this, EVENT_RUIM_READY, null);
         p.mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         // NOTE the EVENT_SMS_ON_RUIM is not registered
         p.mCM.setOnIccRefresh(this, EVENT_RUIM_REFRESH, null);
@@ -96,7 +96,7 @@ public final class RuimRecords extends IccRecords {
 
     public void dispose() {
         //Unregister for all events
-        phone.mCM.unregisterForRUIMReady(this);
+        ((CDMAPhone) phone).mRuimCard.unregisterForReady(this);
         phone.mCM.unregisterForOffOrNotAvailable( this);
         phone.mCM.unSetOnIccRefresh(this);
     }
@@ -192,6 +192,7 @@ public final class RuimRecords extends IccRecords {
                     "[" + msg.what + "] while being destroyed. Ignoring.");
             return;
         }
+
         try { switch (msg.what) {
             case EVENT_RUIM_READY:
                 onRuimReady();

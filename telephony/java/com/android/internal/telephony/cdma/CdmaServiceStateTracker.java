@@ -30,6 +30,7 @@ import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.provider.Settings.Secure;
 import android.provider.Settings.SettingNotFoundException;
 import android.provider.Telephony.Intents;
 import android.telephony.ServiceState;
@@ -47,9 +48,11 @@ import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.CommandsInterface.RadioState;
 
 import java.util.Arrays;
 import java.util.Calendar;
@@ -96,6 +99,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     private RegistrantList cdmaDataConnectionAttachedRegistrants = new RegistrantList();
     private RegistrantList cdmaDataConnectionDetachedRegistrants = new RegistrantList();
     private RegistrantList cdmaForSubscriptionInfoReadyRegistrants = new RegistrantList();
+    private RegistrantList cdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
 
     /**
      * Sometimes we get the NITZ time before we know what country we
@@ -136,7 +140,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     private boolean mIsMinInfoReady = false;
 
     private boolean isEriTextLoaded = false;
-    private boolean isSubscriptionFromRuim = false;
+    boolean isSubscriptionFromRuim = false;
+    private boolean mSubscriptionSourceUnknown = true;
 
     private boolean mPendingRadioPowerOffAfterDataOff = false;
 
@@ -171,16 +176,14 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
 
-        cm.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
+        cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
 
-        cm.registerForRUIMReady(this, EVENT_RUIM_READY, null);
-
-        cm.registerForNVReady(this, EVENT_NV_READY, null);
         phone.registerForEriFileLoaded(this, EVENT_ERI_FILE_LOADED, null);
         cm.registerForCdmaOtaProvision(this,EVENT_OTA_PROVISION_STATUS_CHANGE, null);
 
@@ -198,17 +201,18 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
     public void dispose() {
         // Unregister for all events.
-        cm.unregisterForAvailable(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForNetworkStateChanged(this);
-        cm.unregisterForRUIMReady(this);
-        cm.unregisterForNVReady(this);
+        phone.mRuimCard.unregisterForReady(this);
+
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
         phone.mRuimRecords.unregisterForRecordsLoaded(this);
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
+        cm.unregisterForCdmaSubscriptionSourceChanged(this);
+        cm.unregisterForCdmaPrlChanged(this);
     }
 
     @Override
@@ -286,6 +290,43 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         cdmaForSubscriptionInfoReadyRegistrants.remove(h);
     }
 
+    /**
+     * Registration point for NV ready
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForCdmaSubscriptionSourceChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        cdmaSubscriptionSourceChangedRegistrants.add(r);
+    }
+
+    public void unregisterForCdmaSubscriptionSourceChanged(Handler h) {
+        cdmaSubscriptionSourceChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Save current source of cdma subscription
+     * @param source - 1 for NV, 0 for RUIM
+     */
+    private void saveCdmaSubscriptionSource(int source) {
+        Log.d(LOG_TAG, "Storing cdma subscription source: " + source);
+        Secure.putInt(phone.getContext().getContentResolver(),
+                Secure.CDMA_SUBSCRIPTION_MODE,
+                source );
+    }
+
+    private void getSubscriptionInfoAndStartPollingThreads() {
+        cm.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
+        cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
+
+        // Get Registration Information
+        pollState();
+
+        // Signal strength polling stops when radio is off.
+        queueNextSignalStrengthPoll();
+    }
+
     @Override
     public void handleMessage (Message msg) {
         AsyncResult ar;
@@ -297,42 +338,79 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                     "[" + msg.what + "] while being destroyed. Ignoring.");
             return;
         }
+
         switch (msg.what) {
-        case EVENT_RADIO_AVAILABLE:
+
+        case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+            cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            break;
+
+        case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
+            log("Received EVENT_GET_CDMA_SUBSCRIPTION_SOURCE: ");
+            ar = (AsyncResult) msg.obj;
+
+            if (ar.exception == null) {
+                int newSubscriptionSource = ((int[]) ar.result)[0]; // 0 - RUIM, 1 - NV
+
+                // Detect a subscription mode change and process it
+                if (mSubscriptionSourceUnknown || (isSubscriptionFromRuim !=
+                    (newSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM))) {
+                    mSubscriptionSourceUnknown = false;
+                    Log.v(LOG_TAG, "Subscription Source Changed : "
+                            + (isSubscriptionFromRuim ? "0" : "1") + " >> "
+                            + newSubscriptionSource);
+                    isSubscriptionFromRuim =
+                        (newSubscriptionSource == RILConstants.SUBSCRIPTION_FROM_RUIM);
+                    saveCdmaSubscriptionSource(newSubscriptionSource);
+                    if (!isSubscriptionFromRuim) {
+                        // NV is ready when subscription source is NV
+                        sendMessage(obtainMessage(EVENT_NV_READY));
+                    } else {
+                        phone.mRuimCard.registerForReady(this, EVENT_RUIM_READY, null);
+                    }
+                    cdmaSubscriptionSourceChangedRegistrants.notifyRegistrants();
+                }
+            } else {
+                Log.w(LOG_TAG, "Error in parsing CDMA_SUBSCRIPTION_SOURCE:" +ar.exception);
+            }
             break;
 
         case EVENT_RUIM_READY:
             // The RUIM is now ready i.e if it was locked it has been
             // unlocked. At this stage, the radio is already powered on.
-            isSubscriptionFromRuim = true;
             if (mNeedToRegForRuimLoaded) {
                 phone.mRuimRecords.registerForRecordsLoaded(this,
                         EVENT_RUIM_RECORDS_LOADED, null);
                 mNeedToRegForRuimLoaded = false;
             }
-
-            cm.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
             if (DBG) log("Receive EVENT_RUIM_READY and Send Request getCDMASubscription.");
-
-            // Restore the previous network selection.
-            pollState();
-
-            // Signal strength polling stops when radio is off.
-            queueNextSignalStrengthPoll();
+            getSubscriptionInfoAndStartPollingThreads();
             break;
 
         case EVENT_NV_READY:
-            isSubscriptionFromRuim = false;
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA
             // subscription info.
-            cm.getCDMASubscription( obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
-            pollState();
-            // Signal strength polling stops when radio is off.
-            queueNextSignalStrengthPoll();
+            getSubscriptionInfoAndStartPollingThreads();
+            break;
+
+        case EVENT_CDMA_PRL_VERSION_CHANGED :
+            cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
+            break;
+
+        case EVENT_GET_CDMA_PRL_VERSION :
+            ar = (AsyncResult) msg.obj;
+            if (ar.exception == null) {
+                mPrlVersion = (String) ar.result;
+            }
             break;
 
         case EVENT_RADIO_STATE_CHANGED:
+            if(cm.getRadioState() == RadioState.RADIO_ON) {
+                cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            } else {
+                mSubscriptionSourceUnknown = true;
+            }
             // This will do nothing in the 'radio not available' case.
             setPowerStateToDesired();
             pollState();
@@ -346,7 +424,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             // This callback is called when signal strength is polled
             // all by itself.
 
-            if (!(cm.getRadioState().isOn()) || (cm.getRadioState().isGsm())) {
+            if (!(cm.getRadioState().isOn())) {
                 // Polling will continue when radio turns back on.
                 return;
             }
@@ -415,7 +493,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
             if (ar.exception == null) {
                 String cdmaSubscription[] = (String[])ar.result;
-                if (cdmaSubscription != null && cdmaSubscription.length >= 5) {
+                if (cdmaSubscription != null && cdmaSubscription.length >= 4) {
                     mMdn = cdmaSubscription[0];
                     if (cdmaSubscription[1] != null) {
                         String[] sid = cdmaSubscription[1].split(",");
@@ -595,7 +673,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         String plmn = "";
         boolean showPlmn = false;
         int rule = 0;
-        if (cm.getRadioState().isRUIMReady()) {
+        if (isSubscriptionFromRuim && phone.mRuimCard.getState() == IccCard.State.READY) {
             // TODO RUIM SPN is not implemented, EF_SPN has to be read and Display Condition
             //   Character Encoding, Language Indicator and SPN has to be set
             // rule = phone.mRuimRecords.getDisplayRule(ss.getOperatorNumeric());
@@ -777,7 +855,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 String opNames[] = (String[])ar.result;
 
                 if (opNames != null && opNames.length >= 3) {
-                    if (cm.getRadioState().isNVReady()) {
+                    if (!isSubscriptionFromRuim) {
                         // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
                         // ERI text, so here it is ignored what is coming from the modem.
                         newSS.setOperatorName(null, opNames[1], opNames[2]);
@@ -899,18 +977,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             mGotCountryCode = false;
 
             pollStateDone();
-            break;
-
-        case SIM_NOT_READY:
-        case SIM_LOCKED_OR_ABSENT:
-        case SIM_READY:
-            log("Radio Technology Change ongoing, setting SS to off");
-            newSS.setStateOff();
-            newCellLoc.setStateInvalid();
-            setSignalStrengthDefaultValues();
-            mGotCountryCode = false;
-
-            // NOTE: pollStateDone() is not needed in this case
             break;
 
         default:
@@ -1065,7 +1131,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasChanged) {
-            if (cm.getRadioState().isNVReady()) {
+            if (!isSubscriptionFromRuim) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the new ERI text
                 if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
@@ -1181,7 +1247,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private void
     queueNextSignalStrengthPoll() {
-        if (dontPollSignalStrength || (cm.getRadioState().isGsm())) {
+        if (dontPollSignalStrength) {
             // The radio is telling us about signal strength changes
             // we don't have to ask it
             return;

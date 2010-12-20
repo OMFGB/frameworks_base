@@ -28,18 +28,18 @@ public final class SimCard extends IccCard {
     SimCard(GSMPhone phone) {
         super(phone, "GSM", true);
 
-        mPhone.mCM.registerForSIMLockedOrAbsent(mHandler, EVENT_ICC_LOCKED_OR_ABSENT, null);
+        mPhone.mCM.registerForOn(mHandler, EVENT_RADIO_ON, null);
         mPhone.mCM.registerForOffOrNotAvailable(mHandler, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        mPhone.mCM.registerForSIMReady(mHandler, EVENT_ICC_READY, null);
+        mPhone.mCM.registerForIccStatusChanged(mHandler, EVENT_ICC_STATUS_CHANGED, null);
         updateStateProperty();
     }
 
     @Override
     public void dispose() {
         //Unregister for all events
-        mPhone.mCM.unregisterForSIMLockedOrAbsent(mHandler);
         mPhone.mCM.unregisterForOffOrNotAvailable(mHandler);
-        mPhone.mCM.unregisterForSIMReady(mHandler);
+        mPhone.mCM.unregisterForOn(mHandler);
+        mPhone.mCM.unregisterForIccStatusChanged(mHandler);
     }
 
     @Override

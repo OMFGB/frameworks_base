@@ -140,13 +140,14 @@ public class GSMPhone extends PhoneBase {
         }
 
         mCM.setPhoneType(Phone.PHONE_TYPE_GSM);
+        mSimCard = new SimCard(this);
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
         mSMS = new GsmSMSDispatcher(this);
         mIccFileHandler = new SIMFileHandler(this);
         mSIMRecords = new SIMRecords(this);
         mDataConnection = new GsmDataConnectionTracker (this);
-        mSimCard = new SimCard(this);
+
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
             mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);

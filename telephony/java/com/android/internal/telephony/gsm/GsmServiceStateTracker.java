@@ -207,13 +207,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
 
         cm.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        cm.registerForOn(this, EVENT_RADIO_ON, null);
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
-        cm.registerForSIMReady(this, EVENT_SIM_READY, null);
 
         // system setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.System.getInt(
@@ -237,9 +237,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     public void dispose() {
         // Unregister for all events.
         cm.unregisterForAvailable(this);
+        cm.unregisterForOn(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForNetworkStateChanged(this);
-        cm.unregisterForSIMReady(this);
+        phone.mSimCard.unregisterForReady(this);
 
         phone.mSIMRecords.unregisterForRecordsLoaded(this);
         cm.unSetOnSignalStrengthUpdate(this);
@@ -360,6 +361,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 //setPowerStateToDesired();
                 break;
 
+            case EVENT_RADIO_ON:
+                phone.mSimCard.registerForReady(this, EVENT_SIM_READY, null);
+                break;
+
             case EVENT_SIM_READY:
                 // The SIM is now ready i.e if it was locked
                 // it has been unlocked. At this stage, the radio is already
@@ -397,7 +402,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 // This callback is called when signal strength is polled
                 // all by itself
 
-                if (!(cm.getRadioState().isOn()) || (cm.getRadioState().isCdma())) {
+                if (!(cm.getRadioState().isOn())) {
                     // Polling will continue when radio turns back on and not CDMA
                     return;
                 }
@@ -801,20 +806,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 pollStateDone();
             break;
 
-            case RUIM_NOT_READY:
-            case RUIM_READY:
-            case RUIM_LOCKED_OR_ABSENT:
-            case NV_NOT_READY:
-            case NV_READY:
-                Log.d(LOG_TAG, "Radio Technology Change ongoing, setting SS to off");
-                newSS.setStateOff();
-                newCellLoc.setStateInvalid();
-                setSignalStrengthDefaultValues();
-                mGotCountryCode = false;
-
-                //NOTE: pollStateDone() is not needed in this case
-                break;
-
             default:
                 // Issue all poll-related commands at once
                 // then count down the responses, which
@@ -865,6 +856,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
             case DATA_ACCESS_HSPA:
                 ret = "HSPA";
+                break;
+            case DATA_ACCESS_LTE:
+                ret = "LTE";
                 break;
             default:
                 Log.e(LOG_TAG, "Wrong network type: " + Integer.toString(type));
@@ -1115,7 +1109,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     private void queueNextSignalStrengthPoll() {
-        if (dontPollSignalStrength || (cm.getRadioState().isCdma())) {
+        if (dontPollSignalStrength) {
             // The radio is telling us about signal strength changes
             // we don't have to ask it
             return;

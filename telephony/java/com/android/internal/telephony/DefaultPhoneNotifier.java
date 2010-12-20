@@ -194,7 +194,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
         try {
             mRegistry.notifyDataConnection(
-                    convertDataState(sender.getDataConnectionState(type, ipv)),
+                    convertDataState(sender.getDataConnectionState()),
                     apnType,
                     ipv.toString(),
                     convertDataState(sender.getDataConnectionState(apnType, ipv)),

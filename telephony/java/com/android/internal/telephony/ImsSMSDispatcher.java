@@ -293,4 +293,15 @@ final class ImsSMSDispatcher extends SMSDispatcher {
                 mCdmaDispatcher.mApplication :
                         mGsmDispatcher.mApplication;
     }
+
+   /* Returns the ICC filehandler  */
+    @Override
+    protected IccFileHandler getIccFileHandler() {
+        updateIccAvailability();
+        if (mApplication != null) {
+            return mApplication.getIccFileHandler();
+        }
+        return null;
+    }
+
 }

@@ -254,8 +254,10 @@ public class IccSmsInterfaceManager extends ISms.Stub {
             IccFileHandler fh = getIccFileHandler();
             if (fh == null) {
                 Log.e(LOG_TAG, "Cannot load Sms records. No icc card?");
-                mSms.clear();
-                return mSms;
+                if (mSms != null) {
+                    mSms.clear();
+                    return mSms;
+                }
             }
 
             Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);

@@ -111,9 +111,11 @@ public class DataProfileTracker extends Handler {
 
         switch (msg.what) {
             case EVENT_DATA_PROFILE_DB_CHANGED:
-                onDataprofileDbChanged();
+                reloadAllDataProfiles(Phone.REASON_APN_CHANGED);
                 break;
+
             default:
+                logw("unhandled msg.what="+msg.what);
         }
     }
 
@@ -121,18 +123,18 @@ public class DataProfileTracker extends Handler {
      * data profile database has changed, - reload everything - inform DCT about
      * this.
      */
-    private void onDataprofileDbChanged() {
+    private synchronized boolean reloadAllDataProfiles(String reason) {
 
-        logv("Data profile database changed.. Reloading.");
+        logv("Reloading profile db for operator = [" + mOperatorNumeric + "]. reason=" + reason);
 
         ArrayList<DataProfile> allDataProfiles = new ArrayList<DataProfile>();
 
         if (mOperatorNumeric != null) {
             String selection = "numeric = '" + mOperatorNumeric + "'";
 
-            /* fetch all data profiles from the database that matches the specified operator
-             * numeric.
-             */
+            /* fetch all data profiles from the database that matches the
+             * specified operator numeric */
+
             Cursor cursor = mContext.getContentResolver().query(Telephony.Carriers.CONTENT_URI,
                     null, selection, null, null);
 
@@ -200,8 +202,11 @@ public class DataProfileTracker extends Handler {
 
         logv("hasProfileDbChanged = " + hasProfileDbChanged);
 
-        mDataDataProfileDbChangedRegistrants.notifyRegistrants(new AsyncResult(null,
-                hasProfileDbChanged, null));
+        if (hasProfileDbChanged) {
+            mDataDataProfileDbChangedRegistrants.notifyRegistrants(new AsyncResult(null, reason, null));
+        }
+
+        return hasProfileDbChanged;
     }
 
     /*
@@ -219,12 +224,22 @@ public class DataProfileTracker extends Handler {
         return ret;
     }
 
-    public void setOperatorNumeric(String newOperatorNumeric) {
-        if (newOperatorNumeric != mOperatorNumeric) {
-            logv("Operator numeric changed : " + mOperatorNumeric + "  >>  " + newOperatorNumeric);
-            mOperatorNumeric = newOperatorNumeric;
-            obtainMessage(EVENT_DATA_PROFILE_DB_CHANGED).sendToTarget();
-        }
+    boolean isDataProfilesLoadedForOperator(String numeric) {
+        return (numeric == null && mOperatorNumeric == null)
+                || (numeric != null && numeric.equals(mOperatorNumeric));
+    }
+
+    public void updateOperatorNumeric(String newOperatorNumeric, String reason) {
+
+        if (isDataProfilesLoadedForOperator(newOperatorNumeric))
+            return;
+
+        logv("Operator numeric changed : [" + mOperatorNumeric + "]  >>  [" + newOperatorNumeric
+                + "]. Reloading profile db. reason = " + reason);
+
+        mOperatorNumeric = newOperatorNumeric;
+
+        reloadAllDataProfiles(reason);
     }
 
     public void resetAllProfilesAsWorking() {

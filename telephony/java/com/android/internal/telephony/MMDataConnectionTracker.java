@@ -143,6 +143,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             "persist.telephony.support_ipv6", true);
 
     boolean mIsEhrpdCapable = false;
+    //used for NV+CDMA
+    String mCdmaHomeOperatorNumeric = null;
 
     /*
      * warning: if this flag is set then all connections are disconnected when
@@ -268,6 +270,9 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                     mContext.getContentResolver(),
                     Settings.System.SOCKET_DATA_CALL_ENABLE, 1) > 0;
         }
+
+        //used in CDMA+NV case.
+        mCdmaHomeOperatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
     }
 
     public void dispose() {
@@ -407,29 +412,39 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     }
 
     private void onDataProfileListChanged(AsyncResult ar) {
-        boolean hasProfileDatabaseChanged = (Boolean) ((AsyncResult) ar).result;
-        if (hasProfileDatabaseChanged) {
-            mDpt.resetAllProfilesAsWorking();
-            mDpt.resetAllServiceStates();
-            disconnectAllConnections(REASON_DATA_PROFILE_LIST_CHANGED);
-        }
+        String reason = (String) ((AsyncResult) ar).result;
+
+        mDpt.resetAllProfilesAsWorking();
+        mDpt.resetAllServiceStates();
+        disconnectAllConnections(reason);
     }
 
     protected void onRecordsLoaded() {
+        updateOperatorNumericInDpt(REASON_ICC_RECORDS_LOADED);
+        updateDataConnections(REASON_ICC_RECORDS_LOADED);
+    }
+
+    /*
+     * returns true if data profile list was changed as a result of this
+     * operator numeric update
+     */
+    private boolean updateOperatorNumericInDpt(String reason) {
+
+        //TODO: enable technology/subscription based operator numeric update
+
         /*
-         * TODO: if both simRecords and ruimRecords are available,
-         * we might need to look at the radio technology from data service
-         * state tracker to determine, whether to use operator numeric from
-         * sim records or ruim records.
+         * GSM+EHRPD requires MCC/MNC be used from SIMRecords. So for now, just
+         * use simrecords if it is available.
          */
+
         if (mDsst.mSimRecords != null) {
-            mDpt.setOperatorNumeric(mDsst.mSimRecords.getSIMOperatorNumeric());
+            mDpt.updateOperatorNumeric(mDsst.mSimRecords.getSIMOperatorNumeric(), reason);
         } else if (mDsst.mRuimRecords != null) {
-            mDpt.setOperatorNumeric(mDsst.mRuimRecords.getRUIMOperatorNumeric());
+            mDpt.updateOperatorNumeric(mDsst.mRuimRecords.getRUIMOperatorNumeric(), reason);
         } else {
             loge("records are loaded, but both mSimrecords & mRuimRecords are null.");
         }
-        updateDataConnections(REASON_ICC_RECORDS_LOADED);
+        return false;
     }
 
     protected void onDataConnectionAttached() {
@@ -1105,7 +1120,6 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         RadioTechnology r = getRadioTechnology();
 
-        //TODO: EHRPD requires that both SIM records and RUIM records are loaded?
         if (r.isGsm()
                 || r == RadioTechnology.RADIO_TECH_EHRPD
                 || (r.isUnknown() && mNoAutoAttach)) {
@@ -1155,11 +1169,15 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         sb.append(", desiredPowerState  = ").append(getDesiredPowerState());
         sb.append(", mSIMRecords = ");
         if (mDsst.mSimRecords != null)
-            sb.append(mDsst.mSimRecords.getRecordsLoaded());
+            sb.append(mDsst.mSimRecords.getRecordsLoaded())
+                    .append("/"+mDsst.mSimRecords.getSIMOperatorNumeric());
         sb.append(", cdmaSubSource = ").append(mDsst.mCdmaSubscriptionSource);
+        if (mDsst.mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV)
+            sb.append("/"+mCdmaHomeOperatorNumeric);
         sb.append(", mRuimRecords = ");
         if (mDsst.mRuimRecords != null)
-            sb.append(mDsst.mRuimRecords.getRecordsLoaded());
+            sb.append(mDsst.mRuimRecords.getRecordsLoaded())
+                .append("/"+mDsst.mRuimRecords.getRUIMOperatorNumeric());
         sb.append("]");
         return sb.toString();
     }

@@ -23,7 +23,7 @@ import android.text.TextUtils;
 
 /*
  * more or less the same as APN type. TODO: fix this - As of now we keep the
- * id of the, type, as the same defined in dataPhone.
+ * id of the, type, as the same defined in Phone.
  */
 /*
  * priority - higher number means higher priority, TODO: this should be read
@@ -36,8 +36,7 @@ enum DataServiceType {
     SERVICE_TYPE_MMS(1, 20),
     SERVICE_TYPE_SUPL(2, 30),
     SERVICE_TYPE_DUN(3, 50),
-    SERVICE_TYPE_HIPRI(4, 400),
-    SERVICE_TYPE_VERIZON(5,100);
+    SERVICE_TYPE_HIPRI(4, 400);
 
     int index;
     int priority;
@@ -82,18 +81,16 @@ enum DataServiceType {
     }
 
     static public DataServiceType apnTypeStringToServiceType(String type) {
-        if (TextUtils.equals(type, DataPhone.APN_TYPE_DEFAULT)) {
+        if (TextUtils.equals(type, Phone.APN_TYPE_DEFAULT)) {
             return SERVICE_TYPE_DEFAULT;
-        } else if (TextUtils.equals(type, DataPhone.APN_TYPE_MMS)) {
+        } else if (TextUtils.equals(type, Phone.APN_TYPE_MMS)) {
             return SERVICE_TYPE_MMS;
-        } else if (TextUtils.equals(type, DataPhone.APN_TYPE_SUPL)) {
+        } else if (TextUtils.equals(type, Phone.APN_TYPE_SUPL)) {
             return SERVICE_TYPE_SUPL;
-        } else if (TextUtils.equals(type, DataPhone.APN_TYPE_DUN)) {
+        } else if (TextUtils.equals(type, Phone.APN_TYPE_DUN)) {
             return SERVICE_TYPE_DUN;
-        } else if (TextUtils.equals(type, DataPhone.APN_TYPE_HIPRI)) {
+        } else if (TextUtils.equals(type, Phone.APN_TYPE_HIPRI)) {
             return SERVICE_TYPE_HIPRI;
-        } else if (TextUtils.equals(type, DataPhone.APN_TYPE_VERIZON)) {
-            return SERVICE_TYPE_VERIZON;
         } else {
             return null;
         }
@@ -102,17 +99,15 @@ enum DataServiceType {
     protected String toApnTypeString() {
         switch (this) {
             case SERVICE_TYPE_DEFAULT:
-                return DataPhone.APN_TYPE_DEFAULT;
+                return Phone.APN_TYPE_DEFAULT;
             case SERVICE_TYPE_MMS:
-                return DataPhone.APN_TYPE_MMS;
+                return Phone.APN_TYPE_MMS;
             case SERVICE_TYPE_SUPL:
-                return DataPhone.APN_TYPE_SUPL;
+                return Phone.APN_TYPE_SUPL;
             case SERVICE_TYPE_DUN:
-                return DataPhone.APN_TYPE_DUN;
+                return Phone.APN_TYPE_DUN;
             case SERVICE_TYPE_HIPRI:
-                return DataPhone.APN_TYPE_HIPRI;
-            case SERVICE_TYPE_VERIZON:
-                return DataPhone.APN_TYPE_VERIZON;
+                return Phone.APN_TYPE_HIPRI;
             default:
                 return null;
         }

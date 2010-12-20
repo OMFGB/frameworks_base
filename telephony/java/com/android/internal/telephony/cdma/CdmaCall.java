@@ -24,7 +24,6 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.Call.State;
 
 /**
@@ -76,11 +75,6 @@ public final class CdmaCall extends Call {
 
     public Phone
     getPhone() {
-        return owner.phone.asPhone();
-    }
-
-    public VoicePhone
-    getVoicePhone() {
         return owner.phone;
     }
 

@@ -18,7 +18,7 @@ package com.android.internal.telephony.sip;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.VoicePhone;
+import com.android.internal.telephony.Phone;
 
 import android.net.sip.SipAudioCall;
 import android.os.SystemClock;
@@ -148,7 +148,7 @@ abstract class SipConnectionBase extends Connection {
         // TODO
     }
 
-    protected abstract VoicePhone getPhone();
+    protected abstract Phone getPhone();
 
     @Override
     public String getRemainingPostDialString() {

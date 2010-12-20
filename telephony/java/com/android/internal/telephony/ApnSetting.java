@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.DataPhone;
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.Phone.IPVersion;
 
 /**
  * This class represents a apn setting for create PDP link
@@ -121,9 +121,9 @@ public class ApnSetting extends DataProfile {
     boolean canHandleType(String type) {
         for (String t : types) {
             // DEFAULT handles all, and HIPRI is handled by DEFAULT
-            if (t.equals(type) || t.equals(DataPhone.APN_TYPE_ALL) ||
-                    (t.equals(DataPhone.APN_TYPE_DEFAULT) &&
-                    type.equals(DataPhone.APN_TYPE_HIPRI))) {
+            if (t.equals(type) || t.equals(Phone.APN_TYPE_ALL) ||
+                    (t.equals(Phone.APN_TYPE_DEFAULT) &&
+                    type.equals(Phone.APN_TYPE_HIPRI))) {
                 return true;
             }
         }

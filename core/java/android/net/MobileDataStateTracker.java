@@ -33,8 +33,8 @@ import android.os.ServiceManager;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.DataPhone.DataState;
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.DataState;
+import com.android.internal.telephony.Phone.IPVersion;
 
 import android.net.NetworkInfo.DetailedState;
 import android.telephony.TelephonyManager;

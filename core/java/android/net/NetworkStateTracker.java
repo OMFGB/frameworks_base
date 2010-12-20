@@ -23,7 +23,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 
 import android.net.NetworkInfo.DetailedState;
 import android.os.Handler;

@@ -44,10 +44,8 @@ import com.android.internal.telephony.test.SimulatedRadioControl;
 public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
 
-    private VoicePhone mActiveVoicePhone;
-    private DataPhone mActiveDataPhone;
-    private CDMAPhone mCDMAPhone;
-    private GSMPhone mGSMPhone;
+    private Phone mActivePhone;
+    private DataConnectionTracker mDct;
 
     private CommandsInterface mCi;
     private IccSmsInterfaceManager mIccSmsInterfaceManager;
@@ -64,50 +62,42 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RADIO_STATE_CHANGED = 2;
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_SET_RADIO_POWER = 4;
-    private static final int EVENT_SERVICE_STATE_CHANGED = 5;
 
     private static final String LOG_TAG = "PHONE";
 
-    public PhoneProxy(VoicePhone voicePhone, DataPhone dataPhone) {
+    //***** Class Methods
+    public PhoneProxy(Phone phone) {
 
-        mActiveVoicePhone = voicePhone;
-        mActiveDataPhone = dataPhone;
+        mActivePhone = phone;
 
-        if (mActiveVoicePhone.getPhoneType() == PHONE_TYPE_CDMA) {
-            mCDMAPhone = (CDMAPhone) mActiveVoicePhone;
-        } else if (mActiveVoicePhone.getPhoneType() == PHONE_TYPE_GSM) {
-            mGSMPhone = (GSMPhone) mActiveVoicePhone;
-        }
         mResetModemOnRadioTechnologyChange = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RESET_ON_RADIO_TECH_CHANGE, false);
-        // TODO: fusion - gets commands interface from voice rt now, might change later
-        mCi = ((PhoneBase) mActiveVoicePhone).mCM;
-        mIccSmsInterfaceManager = new IccSmsInterfaceManager(this.mActiveVoicePhone, mCi);
-        mIccPhoneBookInterfaceManagerProxy = new IccPhoneBookInterfaceManagerProxy(voicePhone
+        mIccPhoneBookInterfaceManagerProxy = new IccPhoneBookInterfaceManagerProxy(phone
                 .getIccPhoneBookInterfaceManager());
-        mPhoneSubInfoProxy = new PhoneSubInfoProxy(voicePhone.getPhoneSubInfo());
+        mPhoneSubInfoProxy = new PhoneSubInfoProxy(phone.getPhoneSubInfo());
 
+        mCi = ((PhoneBase) mActivePhone).mCM;
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED, null);
 
-        mIccProxy = new IccCardProxy(voicePhone.getContext(), mCi);
+        mIccSmsInterfaceManager = new IccSmsInterfaceManager(this.mActivePhone, mCi);
+
+        mDct = ((PhoneBase) mActivePhone).mDataConnection;
+
+        mIccProxy = new IccCardProxy(mActivePhone.getContext(), mCi);
         mIccProxy.setVoiceRadioTech(
-                voicePhone.getPhoneType() == VoicePhone.PHONE_TYPE_CDMA ?
+                mActivePhone.getPhoneType() == Phone.PHONE_TYPE_CDMA ?
                         RadioTechnologyFamily.RADIO_TECH_3GPP2
                         : RadioTechnologyFamily.RADIO_TECH_3GPP);
 
         // system setting property AIRPLANE_MODE_ON is set in Settings.
-        int airplaneMode = Settings.System.getInt(voicePhone.getContext().getContentResolver(),
+        int airplaneMode = Settings.System.getInt(mActivePhone.getContext().getContentResolver(),
                 Settings.System.AIRPLANE_MODE_ON, 0);
         mDesiredPowerState = !(airplaneMode > 0);
-        ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
+        ((DataConnectionTracker) mDct).setDataConnectionAsDesired(
                 mDesiredPowerState, null);
 
-        UiccManager.getInstance(voicePhone.getContext(), mCi);
-
-        /* register for service state change notifications */
-        mActiveDataPhone.registerForDataServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
-        mActiveVoicePhone.registerForVoiceServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+        UiccManager.getInstance(mActivePhone.getContext(), mCi);
     }
 
     @Override
@@ -155,12 +145,6 @@ public class PhoneProxy extends Handler implements Phone {
                 }
                 break;
 
-            case EVENT_SERVICE_STATE_CHANGED:
-                //get combined service state and notify clients.
-                AsyncResult ssar = new AsyncResult(null, this.getServiceState(), null);
-                mServiceStateRegistrants.notifyRegistrants(ssar);
-                break;
-
             default:
                 Log.e(LOG_TAG,
                         "Error! This handler was not registered for this message type. Message: "
@@ -171,12 +155,12 @@ public class PhoneProxy extends Handler implements Phone {
 
     private void updatePhoneObject(RadioTechnologyFamily newVoiceRadioTech) {
 
-        if (mActiveVoicePhone != null
-                && ((newVoiceRadioTech.isCdma() && mActiveVoicePhone.getPhoneType() == PHONE_TYPE_CDMA))
-                || ((newVoiceRadioTech.isGsm() && mActiveVoicePhone.getPhoneType() == PHONE_TYPE_GSM))) {
+        if (mActivePhone != null
+                && ((newVoiceRadioTech.isCdma() && mActivePhone.getPhoneType() == PHONE_TYPE_CDMA))
+                || ((newVoiceRadioTech.isGsm() && mActivePhone.getPhoneType() == PHONE_TYPE_GSM))) {
             // Nothing changed. Keep phone as it is.
             Log.v(LOG_TAG, "Ignoring voice radio technology changed message. newVoiceRadioTech = "
-                    + newVoiceRadioTech + "Active Phone = " + mActiveVoicePhone.getPhoneName());
+                    + newVoiceRadioTech + "Active Phone = " + mActivePhone.getPhoneName());
             return;
         }
 
@@ -185,7 +169,7 @@ public class PhoneProxy extends Handler implements Phone {
             // delete the phone without anything to replace it with!
             Log.i(LOG_TAG,
                     "Ignoring voice radio technology changed message. newVoiceRadioTech = Unknown."
-                            + "Active Phone = " + mActiveVoicePhone.getPhoneName());
+                            + "Active Phone = " + mActivePhone.getPhoneName());
             return;
         }
 
@@ -198,13 +182,12 @@ public class PhoneProxy extends Handler implements Phone {
             }
         }
 
-        mActiveVoicePhone.unregisterForVoiceServiceStateChanged(this);
 
-        CallManager.getInstance().unregisterPhone(mActiveVoicePhone);
+        CallManager.getInstance().unregisterPhone(mActivePhone);
 
         deleteAndCreatePhone(newVoiceRadioTech);
 
-        CallManager.getInstance().registerPhone(mActiveVoicePhone);
+        CallManager.getInstance().registerPhone(mActivePhone);
 
         if (mResetModemOnRadioTechnologyChange) { // restore power state
             logd("Resetting Radio");
@@ -212,19 +195,16 @@ public class PhoneProxy extends Handler implements Phone {
         }
 
         // Set the new interfaces in the proxy's
-        mIccPhoneBookInterfaceManagerProxy.setmIccPhoneBookInterfaceManager(mActiveVoicePhone
+        mIccPhoneBookInterfaceManagerProxy.setmIccPhoneBookInterfaceManager(mActivePhone
                 .getIccPhoneBookInterfaceManager());
-        mPhoneSubInfoProxy.setmPhoneSubInfo(this.mActiveVoicePhone.getPhoneSubInfo());
+        mPhoneSubInfoProxy.setmPhoneSubInfo(this.mActivePhone.getPhoneSubInfo());
         mIccProxy.setVoiceRadioTech(newVoiceRadioTech);
-        mIccSmsInterfaceManager.updatePhoneObject(this.mActiveVoicePhone);
-
-        mCi = ((PhoneBase)mActiveVoicePhone).mCM;
-        mActiveVoicePhone.registerForVoiceServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+        mIccSmsInterfaceManager.updatePhoneObject(this.mActivePhone);
 
         // Send an Intent to the PhoneApp that we had a radio technology change
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra(Phone.PHONE_NAME_KEY, mActiveVoicePhone.getPhoneName());
+        intent.putExtra(Phone.PHONE_NAME_KEY, mActivePhone.getPhoneName());
         ActivityManagerNative.broadcastStickyIntent(intent, null);
 
     }
@@ -233,25 +213,23 @@ public class PhoneProxy extends Handler implements Phone {
 
         String mOutgoingPhoneName = "Unknown";
 
-        if (mActiveVoicePhone != null) {
-            mOutgoingPhoneName = ((PhoneBase) mActiveVoicePhone).getPhoneName();
+        if (mActivePhone != null) {
+            mOutgoingPhoneName = ((PhoneBase) mActivePhone).getPhoneName();
         }
 
         Log.i(LOG_TAG, "Switching Voice Phone : " + mOutgoingPhoneName + " >>> "
                 + (newVoiceRadioTech.isGsm() ? "GSM" : "CDMA"));
 
-        /* TODO: Decide whether we want to keep both phones up all the time,
-         * or kill and start the one we need
-        if (mActiveVoicePhone != null) {
+        if (mActivePhone != null) {
             Log.v(LOG_TAG, "Disposing old phone..");
-            if (mActiveVoicePhone instanceof GSMPhone) {
-                ((GSMPhone) mActiveVoicePhone).dispose();
-            } else if (mActiveVoicePhone instanceof CDMAPhone) {
-                ((CDMAPhone) mActiveVoicePhone).dispose();
+            if (mActivePhone instanceof GSMPhone) {
+                ((GSMPhone) mActivePhone).dispose();
+            } else if (mActivePhone instanceof CDMAPhone) {
+                ((CDMAPhone) mActivePhone).dispose();
             }
-        }*/
+        }
 
-        VoicePhone oldPhone = mActiveVoicePhone;
+        Phone oldPhone = mActivePhone;
 
         // Give the garbage collector a hint to start the garbage collection
         // asap NOTE this has been disabled since radio technology change could
@@ -261,23 +239,14 @@ public class PhoneProxy extends Handler implements Phone {
         // System.gc();
 
         if (newVoiceRadioTech.isCdma()) {
-            if (mCDMAPhone != null) {
-                mActiveVoicePhone = mCDMAPhone;
-            } else {
-                mActiveVoicePhone = PhoneFactory.getCdmaPhone();
-                mCDMAPhone = (CDMAPhone) mActiveVoicePhone;
-            }
+            mActivePhone = PhoneFactory.getCdmaPhone(mDct);
             if (null != oldPhone) {
-                //((GSMPhone) oldPhone).removeReferences();
+                ((GSMPhone) oldPhone).removeReferences();
             }
         } else if (newVoiceRadioTech.isGsm()) {
-            if (mGSMPhone != null) {
-                mActiveVoicePhone = mGSMPhone;
-            } else {
-                mActiveVoicePhone = PhoneFactory.getGsmPhone();
-            }
+            mActivePhone = PhoneFactory.getGsmPhone(mDct);
             if (null != oldPhone) {
-                //((CDMAPhone) oldPhone).removeReferences();
+                ((CDMAPhone) oldPhone).removeReferences();
             }
         }
 
@@ -301,11 +270,295 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     public ServiceState getServiceState() {
-        /* Make combined service state */
-        ServiceState ss = DefaultPhoneNotifier.combineVoiceDataServiceStates(
-                mActiveVoicePhone.getVoiceServiceState(),
-                mActiveDataPhone.getDataServiceState());
-        return ss;
+        return mActivePhone.getServiceState();
+    }
+
+    public CellLocation getCellLocation() {
+        return mActivePhone.getCellLocation();
+    }
+
+    public DataState getDataConnectionState() {
+        return mActivePhone.getDataConnectionState();
+    }
+
+    public DataState getDataConnectionState(String type, IPVersion ipv) {
+        return mActivePhone.getDataConnectionState(type, ipv);
+    }
+
+    public DataActivityState getDataActivityState() {
+        return mActivePhone.getDataActivityState();
+    }
+
+    public Context getContext() {
+        return mActivePhone.getContext();
+    }
+
+    public void disableDnsCheck(boolean b) {
+        mActivePhone.disableDnsCheck(b);
+    }
+
+    public boolean isDnsCheckDisabled() {
+        return mActivePhone.isDnsCheckDisabled();
+    }
+
+    public State getState() {
+        return mActivePhone.getState();
+    }
+
+    public String getPhoneName() {
+        return mActivePhone.getPhoneName();
+    }
+
+    public int getPhoneType() {
+        return mActivePhone.getPhoneType();
+    }
+
+    public String[] getActiveApnTypes() {
+        return mActivePhone.getActiveApnTypes();
+    }
+
+    public String getActiveApn() {
+        return mActivePhone.getActiveApn();
+    }
+
+    public String getActiveApn(String type, IPVersion ipv) {
+        return mActivePhone.getActiveApn(type, ipv);
+    }
+
+    public SignalStrength getSignalStrength() {
+        return mActivePhone.getSignalStrength();
+    }
+
+    public void registerForUnknownConnection(Handler h, int what, Object obj) {
+        mActivePhone.registerForUnknownConnection(h, what, obj);
+    }
+
+    public void unregisterForUnknownConnection(Handler h) {
+        mActivePhone.unregisterForUnknownConnection(h);
+    }
+
+    public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
+        mActivePhone.registerForPreciseCallStateChanged(h, what, obj);
+    }
+
+    public void unregisterForPreciseCallStateChanged(Handler h) {
+        mActivePhone.unregisterForPreciseCallStateChanged(h);
+    }
+
+    public void registerForNewRingingConnection(Handler h, int what, Object obj) {
+        mActivePhone.registerForNewRingingConnection(h, what, obj);
+    }
+
+    public void unregisterForNewRingingConnection(Handler h) {
+        mActivePhone.unregisterForNewRingingConnection(h);
+    }
+
+    public void registerForIncomingRing(Handler h, int what, Object obj) {
+        mActivePhone.registerForIncomingRing(h, what, obj);
+    }
+
+    public void unregisterForIncomingRing(Handler h) {
+        mActivePhone.unregisterForIncomingRing(h);
+    }
+
+    public void registerForDisconnect(Handler h, int what, Object obj) {
+        mActivePhone.registerForDisconnect(h, what, obj);
+    }
+
+    public void unregisterForDisconnect(Handler h) {
+        mActivePhone.unregisterForDisconnect(h);
+    }
+
+    public void registerForMmiInitiate(Handler h, int what, Object obj) {
+        mActivePhone.registerForMmiInitiate(h, what, obj);
+    }
+
+    public void unregisterForMmiInitiate(Handler h) {
+        mActivePhone.unregisterForMmiInitiate(h);
+    }
+
+    public void registerForMmiComplete(Handler h, int what, Object obj) {
+        mActivePhone.registerForMmiComplete(h, what, obj);
+    }
+
+    public void unregisterForMmiComplete(Handler h) {
+        mActivePhone.unregisterForMmiComplete(h);
+    }
+
+    public List<? extends MmiCode> getPendingMmiCodes() {
+        return mActivePhone.getPendingMmiCodes();
+    }
+
+    public void sendUssdResponse(String ussdMessge) {
+        mActivePhone.sendUssdResponse(ussdMessge);
+    }
+
+    public void registerForServiceStateChanged(Handler h, int what, Object obj) {
+        mActivePhone.registerForServiceStateChanged(h, what, obj);
+    }
+
+    public void unregisterForServiceStateChanged(Handler h) {
+        mActivePhone.unregisterForServiceStateChanged(h);
+    }
+
+    public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
+        mActivePhone.registerForSuppServiceNotification(h, what, obj);
+    }
+
+    public void unregisterForSuppServiceNotification(Handler h) {
+        mActivePhone.unregisterForSuppServiceNotification(h);
+    }
+
+    public void registerForSuppServiceFailed(Handler h, int what, Object obj) {
+        mActivePhone.registerForSuppServiceFailed(h, what, obj);
+    }
+
+    public void unregisterForSuppServiceFailed(Handler h) {
+        mActivePhone.unregisterForSuppServiceFailed(h);
+    }
+
+    public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj){
+        mActivePhone.registerForInCallVoicePrivacyOn(h,what,obj);
+    }
+
+    public void unregisterForInCallVoicePrivacyOn(Handler h){
+        mActivePhone.unregisterForInCallVoicePrivacyOn(h);
+    }
+
+    public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj){
+        mActivePhone.registerForInCallVoicePrivacyOff(h,what,obj);
+    }
+
+    public void unregisterForInCallVoicePrivacyOff(Handler h){
+        mActivePhone.unregisterForInCallVoicePrivacyOff(h);
+    }
+
+    public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
+        mActivePhone.registerForCdmaOtaStatusChange(h,what,obj);
+    }
+
+    public void unregisterForCdmaOtaStatusChange(Handler h) {
+         mActivePhone.unregisterForCdmaOtaStatusChange(h);
+    }
+
+    public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
+        mActivePhone.registerForSubscriptionInfoReady(h, what, obj);
+    }
+
+    public void unregisterForSubscriptionInfoReady(Handler h) {
+        mActivePhone.unregisterForSubscriptionInfoReady(h);
+    }
+
+    public void registerForEcmTimerReset(Handler h, int what, Object obj) {
+        mActivePhone.registerForEcmTimerReset(h,what,obj);
+    }
+
+    public void unregisterForEcmTimerReset(Handler h) {
+        mActivePhone.unregisterForEcmTimerReset(h);
+    }
+
+    public void registerForRingbackTone(Handler h, int what, Object obj) {
+        mActivePhone.registerForRingbackTone(h,what,obj);
+    }
+
+    public void unregisterForRingbackTone(Handler h) {
+        mActivePhone.unregisterForRingbackTone(h);
+    }
+
+    public void registerForResendIncallMute(Handler h, int what, Object obj) {
+        mActivePhone.registerForResendIncallMute(h,what,obj);
+    }
+
+    public void unregisterForResendIncallMute(Handler h) {
+        mActivePhone.unregisterForResendIncallMute(h);
+    }
+
+    public boolean getIccRecordsLoaded() {
+        return mActivePhone.getIccRecordsLoaded();
+    }
+
+    public IccCard getIccCard() {
+        return mIccProxy;
+    }
+
+    public void acceptCall() throws CallStateException {
+        mActivePhone.acceptCall();
+    }
+
+    public void rejectCall() throws CallStateException {
+        mActivePhone.rejectCall();
+    }
+
+    public void switchHoldingAndActive() throws CallStateException {
+        mActivePhone.switchHoldingAndActive();
+    }
+
+    public boolean canConference() {
+        return mActivePhone.canConference();
+    }
+
+    public void conference() throws CallStateException {
+        mActivePhone.conference();
+    }
+
+    public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
+        mActivePhone.enableEnhancedVoicePrivacy(enable, onComplete);
+    }
+
+    public void getEnhancedVoicePrivacy(Message onComplete) {
+        mActivePhone.getEnhancedVoicePrivacy(onComplete);
+    }
+
+    public boolean canTransfer() {
+        return mActivePhone.canTransfer();
+    }
+
+    public void explicitCallTransfer() throws CallStateException {
+        mActivePhone.explicitCallTransfer();
+    }
+
+    public void clearDisconnected() {
+        mActivePhone.clearDisconnected();
+    }
+
+    public Call getForegroundCall() {
+        return mActivePhone.getForegroundCall();
+    }
+
+    public Call getBackgroundCall() {
+        return mActivePhone.getBackgroundCall();
+    }
+
+    public Call getRingingCall() {
+        return mActivePhone.getRingingCall();
+    }
+
+    public Connection dial(String dialString) throws CallStateException {
+        return mActivePhone.dial(dialString);
+    }
+
+    public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
+        return mActivePhone.dial(dialString, uusInfo);
+    }
+
+    public boolean handlePinMmi(String dialString) {
+        return mActivePhone.handlePinMmi(dialString);
+    }
+
+    public boolean handleInCallMmiCommands(String command) throws CallStateException {
+        return mActivePhone.handleInCallMmiCommands(command);
+    }
+
+    public void sendDtmf(char c) {
+        mActivePhone.sendDtmf(c);
+    }
+
+    public void startDtmf(char c) {
+        mActivePhone.startDtmf(c);
+    }
+
+    public void stopDtmf() {
+        mActivePhone.stopDtmf();
     }
 
     public void setRadioPower(boolean power) {
@@ -321,768 +574,446 @@ public class PhoneProxy extends Handler implements Phone {
         if (mDesiredPowerState
                 && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             mCi.setRadioPower(true, null);
-            ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
-                    mDesiredPowerState, null);
+            mDct.setDataConnectionAsDesired(mDesiredPowerState, null);
         } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
             Message powerOffMsg = obtainMessage(EVENT_SET_RADIO_POWER, mDesiredPowerState);
             // we want it off, but might need data to be disconnected.
-            ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
-                    mDesiredPowerState, powerOffMsg);
+            mDct.setDataConnectionAsDesired(mDesiredPowerState, powerOffMsg);
         }
-    }
-
-    public ServiceState getVoiceServiceState() {
-        return mActiveVoicePhone.getVoiceServiceState();
-    }
-
-    public CellLocation getCellLocation() {
-        return mActiveVoicePhone.getCellLocation();
-    }
-
-    public Context getContext() {
-        return mActiveVoicePhone.getContext();
-    }
-
-    public State getState() {
-        return (VoicePhone.State)mActiveVoicePhone.getState();
-    }
-
-    public String getPhoneName() {
-        return mActiveVoicePhone.getPhoneName();
-    }
-
-    public int getPhoneType() {
-        return mActiveVoicePhone.getPhoneType();
-    }
-
-    public SignalStrength getSignalStrength() {
-        return mActiveVoicePhone.getSignalStrength();
-    }
-
-    public void registerForUnknownConnection(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForUnknownConnection(h, what, obj);
-    }
-
-    public void unregisterForUnknownConnection(Handler h) {
-        mActiveVoicePhone.unregisterForUnknownConnection(h);
-    }
-
-    public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForPreciseCallStateChanged(h, what, obj);
-    }
-
-    public void unregisterForPreciseCallStateChanged(Handler h) {
-        mActiveVoicePhone.unregisterForPreciseCallStateChanged(h);
-    }
-
-    public void registerForNewRingingConnection(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForNewRingingConnection(h, what, obj);
-    }
-
-    public void unregisterForNewRingingConnection(Handler h) {
-        mActiveVoicePhone.unregisterForNewRingingConnection(h);
-    }
-
-    public void registerForIncomingRing(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForIncomingRing(h, what, obj);
-    }
-
-    public void unregisterForIncomingRing(Handler h) {
-        mActiveVoicePhone.unregisterForIncomingRing(h);
-    }
-
-    public void registerForDisconnect(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForDisconnect(h, what, obj);
-    }
-
-    public void unregisterForDisconnect(Handler h) {
-        mActiveVoicePhone.unregisterForDisconnect(h);
-    }
-
-    public void registerForMmiInitiate(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForMmiInitiate(h, what, obj);
-    }
-
-    public void unregisterForMmiInitiate(Handler h) {
-        mActiveVoicePhone.unregisterForMmiInitiate(h);
-    }
-
-    public void registerForMmiComplete(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForMmiComplete(h, what, obj);
-    }
-
-    public void unregisterForMmiComplete(Handler h) {
-        mActiveVoicePhone.unregisterForMmiComplete(h);
-    }
-
-    public List<? extends MmiCode> getPendingMmiCodes() {
-        return mActiveVoicePhone.getPendingMmiCodes();
-    }
-
-    public void sendUssdResponse(String ussdMessge) {
-        mActiveVoicePhone.sendUssdResponse(ussdMessge);
-    }
-
-    public void registerForVoiceServiceStateChanged(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForVoiceServiceStateChanged(h, what, obj);
-    }
-
-    public void unregisterForVoiceServiceStateChanged(Handler h) {
-        mActiveVoicePhone.unregisterForVoiceServiceStateChanged(h);
-    }
-
-    public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForSuppServiceNotification(h, what, obj);
-    }
-
-    public void unregisterForSuppServiceNotification(Handler h) {
-        mActiveVoicePhone.unregisterForSuppServiceNotification(h);
-    }
-
-    public void registerForSuppServiceFailed(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForSuppServiceFailed(h, what, obj);
-    }
-
-    public void unregisterForSuppServiceFailed(Handler h) {
-        mActiveVoicePhone.unregisterForSuppServiceFailed(h);
-    }
-
-    public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj){
-        mActiveVoicePhone.registerForInCallVoicePrivacyOn(h,what,obj);
-    }
-
-    public void unregisterForInCallVoicePrivacyOn(Handler h){
-        mActiveVoicePhone.unregisterForInCallVoicePrivacyOn(h);
-    }
-
-    public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj){
-        mActiveVoicePhone.registerForInCallVoicePrivacyOff(h,what,obj);
-    }
-
-    public void unregisterForInCallVoicePrivacyOff(Handler h){
-        mActiveVoicePhone.unregisterForInCallVoicePrivacyOff(h);
-    }
-
-    public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForCdmaOtaStatusChange(h,what,obj);
-    }
-
-    public void unregisterForCdmaOtaStatusChange(Handler h) {
-         mActiveVoicePhone.unregisterForCdmaOtaStatusChange(h);
-    }
-
-    public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForSubscriptionInfoReady(h, what, obj);
-    }
-
-    public void unregisterForSubscriptionInfoReady(Handler h) {
-        mActiveVoicePhone.unregisterForSubscriptionInfoReady(h);
-    }
-
-    public void registerForEcmTimerReset(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForEcmTimerReset(h,what,obj);
-    }
-
-    public void unregisterForEcmTimerReset(Handler h) {
-        mActiveVoicePhone.unregisterForEcmTimerReset(h);
-    }
-
-    public void registerForRingbackTone(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForRingbackTone(h,what,obj);
-    }
-
-    public void unregisterForRingbackTone(Handler h) {
-        mActiveVoicePhone.unregisterForRingbackTone(h);
-    }
-
-    public void registerForResendIncallMute(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForResendIncallMute(h, what, obj);
-    }
-
-    public void unregisterForResendIncallMute(Handler h) {
-        mActiveVoicePhone.unregisterForResendIncallMute(h);
-    }
-
-    public boolean getIccRecordsLoaded() {
-        return mActiveVoicePhone.getIccRecordsLoaded();
-    }
-
-    public IccCard getIccCard() {
-        return mIccProxy;
-    }
-
-    public void acceptCall() throws CallStateException {
-        mActiveVoicePhone.acceptCall();
-    }
-
-    public void rejectCall() throws CallStateException {
-        mActiveVoicePhone.rejectCall();
-    }
-
-    public void switchHoldingAndActive() throws CallStateException {
-        mActiveVoicePhone.switchHoldingAndActive();
-    }
-
-    public boolean canConference() {
-        return mActiveVoicePhone.canConference();
-    }
-
-    public void conference() throws CallStateException {
-        mActiveVoicePhone.conference();
-    }
-
-    public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
-        mActiveVoicePhone.enableEnhancedVoicePrivacy(enable, onComplete);
-    }
-
-    public void getEnhancedVoicePrivacy(Message onComplete) {
-        mActiveVoicePhone.getEnhancedVoicePrivacy(onComplete);
-    }
-
-    public boolean canTransfer() {
-        return mActiveVoicePhone.canTransfer();
-    }
-
-    public void explicitCallTransfer() throws CallStateException {
-        mActiveVoicePhone.explicitCallTransfer();
-    }
-
-    public void clearDisconnected() {
-        mActiveVoicePhone.clearDisconnected();
-    }
-
-    public Call getForegroundCall() {
-        return mActiveVoicePhone.getForegroundCall();
-    }
-
-    public Call getBackgroundCall() {
-        return mActiveVoicePhone.getBackgroundCall();
-    }
-
-    public Call getRingingCall() {
-        return mActiveVoicePhone.getRingingCall();
-    }
-
-    public Connection dial(String dialString) throws CallStateException {
-        return mActiveVoicePhone.dial(dialString);
-    }
-
-    public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
-        return mActiveVoicePhone.dial(dialString, uusInfo);
-    }
-
-    public boolean handlePinMmi(String dialString) {
-        return mActiveVoicePhone.handlePinMmi(dialString);
-    }
-
-    public boolean handleInCallMmiCommands(String command) throws CallStateException {
-        return mActiveVoicePhone.handleInCallMmiCommands(command);
-    }
-
-    public void sendDtmf(char c) {
-        mActiveVoicePhone.sendDtmf(c);
-    }
-
-    public void startDtmf(char c) {
-        mActiveVoicePhone.startDtmf(c);
-    }
-
-    public void stopDtmf() {
-        mActiveVoicePhone.stopDtmf();
-    }
+     }
 
     public boolean getMessageWaitingIndicator() {
-        return mActiveVoicePhone.getMessageWaitingIndicator();
+        return mActivePhone.getMessageWaitingIndicator();
     }
 
     public boolean getCallForwardingIndicator() {
-        return mActiveVoicePhone.getCallForwardingIndicator();
+        return mActivePhone.getCallForwardingIndicator();
     }
 
     public String getLine1Number() {
-        return mActiveVoicePhone.getLine1Number();
+        return mActivePhone.getLine1Number();
     }
 
     public String getCdmaMin() {
-        return mActiveVoicePhone.getCdmaMin();
+        return mActivePhone.getCdmaMin();
     }
 
     public boolean isMinInfoReady() {
-        return mActiveVoicePhone.isMinInfoReady();
+        return mActivePhone.isMinInfoReady();
     }
 
     public String getCdmaPrlVersion() {
-        return mActiveVoicePhone.getCdmaPrlVersion();
+        return mActivePhone.getCdmaPrlVersion();
     }
 
     public String getLine1AlphaTag() {
-        return mActiveVoicePhone.getLine1AlphaTag();
+        return mActivePhone.getLine1AlphaTag();
     }
 
     public void setLine1Number(String alphaTag, String number, Message onComplete) {
-        mActiveVoicePhone.setLine1Number(alphaTag, number, onComplete);
+        mActivePhone.setLine1Number(alphaTag, number, onComplete);
     }
 
     public String getVoiceMailNumber() {
-        return mActiveVoicePhone.getVoiceMailNumber();
+        return mActivePhone.getVoiceMailNumber();
     }
 
      /** @hide */
     public int getVoiceMessageCount(){
-        return mActiveVoicePhone.getVoiceMessageCount();
+        return mActivePhone.getVoiceMessageCount();
     }
 
     public String getVoiceMailAlphaTag() {
-        return mActiveVoicePhone.getVoiceMailAlphaTag();
+        return mActivePhone.getVoiceMailAlphaTag();
     }
 
     public void setVoiceMailNumber(String alphaTag,String voiceMailNumber,
             Message onComplete) {
-        mActiveVoicePhone.setVoiceMailNumber(alphaTag, voiceMailNumber, onComplete);
+        mActivePhone.setVoiceMailNumber(alphaTag, voiceMailNumber, onComplete);
     }
 
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
-        mActiveVoicePhone.getCallForwardingOption(commandInterfaceCFReason,
+        mActivePhone.getCallForwardingOption(commandInterfaceCFReason,
                 onComplete);
     }
 
     public void setCallForwardingOption(int commandInterfaceCFReason,
             int commandInterfaceCFAction, String dialingNumber,
             int timerSeconds, Message onComplete) {
-        mActiveVoicePhone.setCallForwardingOption(commandInterfaceCFReason,
+        mActivePhone.setCallForwardingOption(commandInterfaceCFReason,
             commandInterfaceCFAction, dialingNumber, timerSeconds, onComplete);
     }
 
     public void getOutgoingCallerIdDisplay(Message onComplete) {
-        mActiveVoicePhone.getOutgoingCallerIdDisplay(onComplete);
+        mActivePhone.getOutgoingCallerIdDisplay(onComplete);
     }
 
     public void setOutgoingCallerIdDisplay(int commandInterfaceCLIRMode,
             Message onComplete) {
-        mActiveVoicePhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode,
+        mActivePhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode,
                 onComplete);
     }
 
     public void getCallWaiting(Message onComplete) {
-        mActiveVoicePhone.getCallWaiting(onComplete);
+        mActivePhone.getCallWaiting(onComplete);
     }
 
     public void setCallWaiting(boolean enable, Message onComplete) {
-        mActiveVoicePhone.setCallWaiting(enable, onComplete);
+        mActivePhone.setCallWaiting(enable, onComplete);
     }
 
     public void getAvailableNetworks(Message response) {
-        mActiveVoicePhone.getAvailableNetworks(response);
+        mActivePhone.getAvailableNetworks(response);
     }
 
     public void setNetworkSelectionModeAutomatic(Message response) {
-        mActiveVoicePhone.setNetworkSelectionModeAutomatic(response);
+        mActivePhone.setNetworkSelectionModeAutomatic(response);
     }
 
     public void selectNetworkManually(NetworkInfo network, Message response) {
-        mActiveVoicePhone.selectNetworkManually(network, response);
+        mActivePhone.selectNetworkManually(network, response);
     }
 
     public void setPreferredNetworkType(int networkType, Message response) {
-        mActiveVoicePhone.setPreferredNetworkType(networkType, response);
+        mActivePhone.setPreferredNetworkType(networkType, response);
     }
 
     public void getPreferredNetworkType(Message response) {
-        mActiveVoicePhone.getPreferredNetworkType(response);
+        mActivePhone.getPreferredNetworkType(response);
     }
 
     public void getNeighboringCids(Message response) {
-        mActiveVoicePhone.getNeighboringCids(response);
+        mActivePhone.getNeighboringCids(response);
     }
 
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
-        mActiveVoicePhone.setOnPostDialCharacter(h, what, obj);
+        mActivePhone.setOnPostDialCharacter(h, what, obj);
     }
 
     public void setMute(boolean muted) {
-        mActiveVoicePhone.setMute(muted);
+        mActivePhone.setMute(muted);
     }
 
     public boolean getMute() {
-        return mActiveVoicePhone.getMute();
+        return mActivePhone.getMute();
     }
 
     public void setEchoSuppressionEnabled(boolean enabled) {
-        mActiveVoicePhone.setEchoSuppressionEnabled(enabled);
+        mActivePhone.setEchoSuppressionEnabled(enabled);
     }
 
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
-        mActiveVoicePhone.invokeOemRilRequestRaw(data, response);
+        mActivePhone.invokeOemRilRequestRaw(data, response);
     }
 
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
-        mActiveVoicePhone.invokeOemRilRequestStrings(strings, response);
+        mActivePhone.invokeOemRilRequestStrings(strings, response);
     }
 
     public void setOnUnsolOemHookExtApp(Handler h, int what, Object obj) {
-        mActiveVoicePhone.setOnUnsolOemHookExtApp(h, what, obj);
+        mActivePhone.setOnUnsolOemHookExtApp(h, what, obj);
     }
 
     public void unSetOnUnsolOemHookExtApp(Handler h) {
-        mActiveVoicePhone.unSetOnUnsolOemHookExtApp(h);
+        mActivePhone.unSetOnUnsolOemHookExtApp(h);
     }
-
+  
     public void registerForCallReestablishInd(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForCallReestablishInd(h, what, obj);
+        mActivePhone.registerForCallReestablishInd(h, what, obj);
     }
 
     public void unregisterForCallReestablishInd(Handler h) {
-        mActiveVoicePhone.unregisterForCallReestablishInd(h);
-    }
-
-    public void updateServiceLocation() {
-        mActiveVoicePhone.updateServiceLocation();
-    }
-
-    public void enableLocationUpdates() {
-        mActiveVoicePhone.enableLocationUpdates();
-    }
-
-    public void disableLocationUpdates() {
-        mActiveVoicePhone.disableLocationUpdates();
-    }
-
-    public void setUnitTestMode(boolean f) {
-        mActiveVoicePhone.setUnitTestMode(f);
-    }
-
-    public boolean getUnitTestMode() {
-        return mActiveVoicePhone.getUnitTestMode();
-    }
-
-    public void setBandMode(int bandMode, Message response) {
-        mActiveVoicePhone.setBandMode(bandMode, response);
-    }
-
-    public void queryAvailableBandMode(Message response) {
-        mActiveVoicePhone.queryAvailableBandMode(response);
-    }
-
-    public void queryCdmaRoamingPreference(Message response) {
-        mActiveVoicePhone.queryCdmaRoamingPreference(response);
-    }
-
-    public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
-        mActiveVoicePhone.setCdmaRoamingPreference(cdmaRoamingType, response);
-    }
-
-    public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
-        mActiveVoicePhone.setCdmaSubscription(cdmaSubscriptionType, response);
-    }
-
-    public SimulatedRadioControl getSimulatedRadioControl() {
-        return mActiveVoicePhone.getSimulatedRadioControl();
-    }
-
-    public String getDeviceId() {
-        return mActiveVoicePhone.getDeviceId();
-    }
-
-    public String getDeviceSvn() {
-        return mActiveVoicePhone.getDeviceSvn();
-    }
-
-    public String getSubscriberId() {
-        return mActiveVoicePhone.getSubscriberId();
-    }
-
-    public String getIccSerialNumber() {
-        return mActiveVoicePhone.getIccSerialNumber();
-    }
-
-    public String getEsn() {
-        return mActiveVoicePhone.getEsn();
-    }
-
-    public String getMeid() {
-        return mActiveVoicePhone.getMeid();
-    }
-
-    public PhoneSubInfo getPhoneSubInfo(){
-        return mActiveVoicePhone.getPhoneSubInfo();
-    }
-
-    public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager(){
-        return mActiveVoicePhone.getIccPhoneBookInterfaceManager();
-    }
-
-    public void setTTYMode(int ttyMode, Message onComplete) {
-        mActiveVoicePhone.setTTYMode(ttyMode, onComplete);
-    }
-
-    public void queryTTYMode(Message onComplete) {
-        mActiveVoicePhone.queryTTYMode(onComplete);
-    }
-
-    public void activateCellBroadcastSms(int activate, Message response) {
-        mActiveVoicePhone.activateCellBroadcastSms(activate, response);
-    }
-
-    public void getCellBroadcastSmsConfig(Message response) {
-        mActiveVoicePhone.getCellBroadcastSmsConfig(response);
-    }
-
-    public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
-        mActiveVoicePhone.setCellBroadcastSmsConfig(configValuesArray, response);
-    }
-
-    public void getSmscAddress(Message result) {
-        mActiveVoicePhone.getSmscAddress(result);
-    }
-
-    public void setSmscAddress(String address, Message result) {
-        mActiveVoicePhone.setSmscAddress(address, result);
-    }
-
-    public int getCdmaEriIconIndex() {
-         return mActiveVoicePhone.getCdmaEriIconIndex();
-    }
-
-     public String getCdmaEriText() {
-         return mActiveVoicePhone.getCdmaEriText();
-     }
-
-    public int getCdmaEriIconMode() {
-         return mActiveVoicePhone.getCdmaEriIconMode();
-    }
-
-    public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete){
-        mActiveVoicePhone.sendBurstDtmf(dtmfString, on, off, onComplete);
-    }
-
-    public void exitEmergencyCallbackMode(){
-        mActiveVoicePhone.exitEmergencyCallbackMode();
-    }
-
-    public boolean isOtaSpNumber(String dialStr){
-        return mActiveVoicePhone.isOtaSpNumber(dialStr);
-    }
-
-    public void registerForCallWaiting(Handler h, int what, Object obj){
-        mActiveVoicePhone.registerForCallWaiting(h,what,obj);
-    }
-
-    public void unregisterForCallWaiting(Handler h){
-        mActiveVoicePhone.unregisterForCallWaiting(h);
-    }
-
-    public void registerForSignalInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForSignalInfo(h,what,obj);
-    }
-
-    public void unregisterForSignalInfo(Handler h) {
-        mActiveVoicePhone.unregisterForSignalInfo(h);
-    }
-
-    public void registerForDisplayInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForDisplayInfo(h,what,obj);
-    }
-
-    public void unregisterForDisplayInfo(Handler h) {
-        mActiveVoicePhone.unregisterForDisplayInfo(h);
-    }
-
-    public void registerForNumberInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForNumberInfo(h, what, obj);
-    }
-
-    public void unregisterForNumberInfo(Handler h) {
-        mActiveVoicePhone.unregisterForNumberInfo(h);
-    }
-
-    public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForRedirectedNumberInfo(h, what, obj);
-    }
-
-    public void unregisterForRedirectedNumberInfo(Handler h) {
-        mActiveVoicePhone.unregisterForRedirectedNumberInfo(h);
-    }
-
-    public void registerForLineControlInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForLineControlInfo( h, what, obj);
-    }
-
-    public void unregisterForLineControlInfo(Handler h) {
-        mActiveVoicePhone.unregisterForLineControlInfo(h);
-    }
-
-    public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerFoT53ClirlInfo(h, what, obj);
-    }
-
-    public void unregisterForT53ClirInfo(Handler h) {
-        mActiveVoicePhone.unregisterForT53ClirInfo(h);
-    }
-
-    public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForT53AudioControlInfo( h, what, obj);
-    }
-
-    public void unregisterForT53AudioControlInfo(Handler h) {
-        mActiveVoicePhone.unregisterForT53AudioControlInfo(h);
-    }
-
-    public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
-        mActiveVoicePhone.setOnEcbModeExitResponse(h,what,obj);
-    }
-
-    public void unsetOnEcbModeExitResponse(Handler h){
-        mActiveVoicePhone.unsetOnEcbModeExitResponse(h);
-    }
-
-    public boolean isCspPlmnEnabled() {
-        return mActiveVoicePhone.isCspPlmnEnabled();
-    }
-
-    public boolean isModemPowerSave() {
-        return mActiveVoicePhone.isModemPowerSave();
-    }
-
-    public void invokeDepersonalization(String pin, int type, Message response) {
-        mActiveVoicePhone.invokeDepersonalization(pin, type, response);
-    }
-
-    public int disableApnType(String apnType) {
-        return mActiveDataPhone.disableApnType(apnType);
-    }
-
-    public boolean disableDataConnectivity() {
-        return mActiveDataPhone.disableDataConnectivity();
-    }
-
-    public void disableDnsCheck(boolean b) {
-        mActiveDataPhone.disableDnsCheck(b);
-    }
-
-    public int enableApnType(String apnType) {
-        return mActiveDataPhone.enableApnType(apnType);
-    }
-
-    public boolean enableDataConnectivity() {
-        return mActiveDataPhone.enableDataConnectivity();
-    }
-
-    public String getActiveApn() {
-        return mActiveDataPhone.getActiveApn();
-    }
-
-    public String getActiveApn(String type, IPVersion ipv) {
-        return mActiveDataPhone.getActiveApn(type, ipv);
-    }
-
-    public String[] getActiveApnTypes() {
-        return mActiveDataPhone.getActiveApnTypes();
-    }
-
-    public List<DataConnection> getCurrentDataConnectionList() {
-        return mActiveDataPhone.getCurrentDataConnectionList();
-    }
-
-    public DataActivityState getDataActivityState() {
-        return mActiveDataPhone.getDataActivityState();
+        mActivePhone.unregisterForCallReestablishInd(h);
     }
 
     public void getDataCallList(Message response) {
-        mActiveDataPhone.getDataCallList(response);
+        mActivePhone.getDataCallList(response);
     }
 
-    public DataState getDataConnectionState() {
-        return mActiveDataPhone.getDataConnectionState();
+    public List<DataConnection> getCurrentDataConnectionList() {
+        return mActivePhone.getCurrentDataConnectionList();
     }
 
-    public DataState getDataConnectionState(String type, IPVersion ipv) {
-        return mActiveDataPhone.getDataConnectionState(type, ipv);
+    public void updateServiceLocation() {
+        mActivePhone.updateServiceLocation();
+    }
+
+    public void enableLocationUpdates() {
+        mActivePhone.enableLocationUpdates();
+    }
+
+    public void disableLocationUpdates() {
+        mActivePhone.disableLocationUpdates();
+    }
+
+    public void setUnitTestMode(boolean f) {
+        mActivePhone.setUnitTestMode(f);
+    }
+
+    public boolean getUnitTestMode() {
+        return mActivePhone.getUnitTestMode();
+    }
+
+    public void setBandMode(int bandMode, Message response) {
+        mActivePhone.setBandMode(bandMode, response);
+    }
+
+    public void queryAvailableBandMode(Message response) {
+        mActivePhone.queryAvailableBandMode(response);
     }
 
     public boolean getDataRoamingEnabled() {
-        return mActiveDataPhone.getDataRoamingEnabled();
-    }
-
-    public ServiceState getDataServiceState() {
-        return mActiveDataPhone.getDataServiceState();
-    }
-
-    public String[] getDnsServers(String apnType) {
-        return mActiveDataPhone.getDnsServers(apnType);
-    }
-
-    public String[] getDnsServers(String apnType, IPVersion ipv) {
-        return mActiveDataPhone.getDnsServers(apnType, ipv);
-    }
-
-    public String getGateway(String apnType) {
-        return mActiveDataPhone.getGateway(apnType);
-    }
-
-    public String getGateway(String apnType, IPVersion ipv) {
-        return mActiveDataPhone.getGateway(apnType, ipv);
-    }
-
-    public String getInterfaceName(String apnType) {
-        return mActiveDataPhone.getInterfaceName(apnType);
-    }
-
-    public String getInterfaceName(String apnType, IPVersion ipv) {
-        return mActiveDataPhone.getInterfaceName(apnType, ipv);
-    }
-
-    public String getIpAddress(String apnType) {
-        return mActiveDataPhone.getIpAddress(apnType);
-    }
-
-    public String getIpAddress(String apnType, IPVersion ipv) {
-        return mActiveDataPhone.getIpAddress(apnType, ipv);
-    }
-
-    public boolean isDataConnectivityEnabled() {
-        return mActiveDataPhone.isDataConnectivityEnabled();
-    }
-
-    public boolean isDataConnectivityPossible() {
-        return mActiveDataPhone.isDataConnectivityPossible();
-    }
-
-    public boolean isDnsCheckDisabled() {
-        return mActiveDataPhone.isDnsCheckDisabled();
-    }
-
-    public void notifyDataActivity() {
-        mActiveDataPhone.notifyDataActivity();
+        return mActivePhone.getDataRoamingEnabled();
     }
 
     public void setDataRoamingEnabled(boolean enable) {
-        mActiveDataPhone.setDataRoamingEnabled(enable);
+        mActivePhone.setDataRoamingEnabled(enable);
     }
 
-    protected final RegistrantList mServiceStateRegistrants = new RegistrantList();
-
-    public void registerForServiceStateChanged(Handler h, int what, Object obj) {
-        mServiceStateRegistrants.add(h, what, obj);
+    public void queryCdmaRoamingPreference(Message response) {
+        mActivePhone.queryCdmaRoamingPreference(response);
     }
 
-    public void unregisterForServiceStateChanged(Handler h) {
-        mServiceStateRegistrants.remove(h);
+    public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
+        mActivePhone.setCdmaRoamingPreference(cdmaRoamingType, response);
     }
 
-    public void registerForDataServiceStateChanged(Handler h, int what, Object obj) {
-        mActiveDataPhone.registerForDataServiceStateChanged(h, what, obj);
+    public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
+        mActivePhone.setCdmaSubscription(cdmaSubscriptionType, response);
     }
 
-    public void unregisterForDataServiceStateChanged(Handler h) {
-        mActiveDataPhone.unregisterForDataServiceStateChanged(h);
+    public SimulatedRadioControl getSimulatedRadioControl() {
+        return mActivePhone.getSimulatedRadioControl();
     }
 
-    public VoicePhone getVoicePhone() {
-        return mActiveVoicePhone;
+    public boolean enableDataConnectivity() {
+        return mActivePhone.enableDataConnectivity();
     }
 
-    public Phone asPhone() {
-        return this;
+    public boolean disableDataConnectivity() {
+        return mActivePhone.disableDataConnectivity();
     }
+
+    public int enableApnType(String type) {
+        return mActivePhone.enableApnType(type);
+    }
+
+    public int disableApnType(String type) {
+        return mActivePhone.disableApnType(type);
+    }
+
+    public boolean isDataConnectivityEnabled() {
+        return mActivePhone.isDataConnectivityEnabled();
+    }
+
+    public boolean isDataConnectivityPossible() {
+        return mActivePhone.isDataConnectivityPossible();
+    }
+
+    public String getInterfaceName(String apnType) {
+        return mActivePhone.getInterfaceName(apnType);
+    }
+
+    public String getIpAddress(String apnType) {
+        return mActivePhone.getIpAddress(apnType);
+    }
+
+    public String getGateway(String apnType) {
+        return mActivePhone.getGateway(apnType);
+    }
+
+    public String[] getDnsServers(String apnType) {
+        return mActivePhone.getDnsServers(apnType);
+    }
+
+    public String[] getDnsServers(String apnType, IPVersion ipv) {
+        return mActivePhone.getDnsServers(apnType, ipv);
+    }
+
+    public String getGateway(String apnType, IPVersion ipv) {
+        return mActivePhone.getGateway(apnType, ipv);
+    }
+
+    public String getInterfaceName(String apnType, IPVersion ipv) {
+        return mActivePhone.getInterfaceName(apnType, ipv);
+    }
+
+    public String getIpAddress(String apnType, IPVersion ipv) {
+        return mActivePhone.getIpAddress(apnType, ipv);
+    }
+
+    public String getDeviceId() {
+        return mActivePhone.getDeviceId();
+    }
+
+    public String getDeviceSvn() {
+        return mActivePhone.getDeviceSvn();
+    }
+
+    public String getSubscriberId() {
+        return mActivePhone.getSubscriberId();
+    }
+
+    public String getIccSerialNumber() {
+        return mActivePhone.getIccSerialNumber();
+    }
+
+    public String getEsn() {
+        return mActivePhone.getEsn();
+    }
+
+    public String getMeid() {
+        return mActivePhone.getMeid();
+    }
+
+    public PhoneSubInfo getPhoneSubInfo(){
+        return mActivePhone.getPhoneSubInfo();
+    }
+    
+    public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager(){
+        return mActivePhone.getIccPhoneBookInterfaceManager();
+    }
+
+    public void setTTYMode(int ttyMode, Message onComplete) {
+        mActivePhone.setTTYMode(ttyMode, onComplete);
+    }
+
+    public void queryTTYMode(Message onComplete) {
+        mActivePhone.queryTTYMode(onComplete);
+    }
+
+    public void activateCellBroadcastSms(int activate, Message response) {
+        mActivePhone.activateCellBroadcastSms(activate, response);
+    }
+
+    public void getCellBroadcastSmsConfig(Message response) {
+        mActivePhone.getCellBroadcastSmsConfig(response);
+    }
+
+    public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
+        mActivePhone.setCellBroadcastSmsConfig(configValuesArray, response);
+    }
+
+    public void notifyDataActivity() {
+         mActivePhone.notifyDataActivity();
+    }
+
+    public void getSmscAddress(Message result) {
+        mActivePhone.getSmscAddress(result);
+    }
+
+    public void setSmscAddress(String address, Message result) {
+        mActivePhone.setSmscAddress(address, result);
+    }
+
+    public int getCdmaEriIconIndex() {
+         return mActivePhone.getCdmaEriIconIndex();
+    }
+
+     public String getCdmaEriText() {
+         return mActivePhone.getCdmaEriText();
+     }
+
+    public int getCdmaEriIconMode() {
+         return mActivePhone.getCdmaEriIconMode();
+    }
+
+    public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete){
+        mActivePhone.sendBurstDtmf(dtmfString, on, off, onComplete);
+    }
+
+    public void exitEmergencyCallbackMode(){
+        mActivePhone.exitEmergencyCallbackMode();
+    }
+
+    public boolean isOtaSpNumber(String dialStr){
+        return mActivePhone.isOtaSpNumber(dialStr);
+    }
+
+    public void registerForCallWaiting(Handler h, int what, Object obj){
+        mActivePhone.registerForCallWaiting(h,what,obj);
+    }
+
+    public void unregisterForCallWaiting(Handler h){
+        mActivePhone.unregisterForCallWaiting(h);
+    }
+
+    public void registerForSignalInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForSignalInfo(h,what,obj);
+    }
+
+    public void unregisterForSignalInfo(Handler h) {
+        mActivePhone.unregisterForSignalInfo(h);
+    }
+
+    public void registerForDisplayInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForDisplayInfo(h,what,obj);
+    }
+
+    public void unregisterForDisplayInfo(Handler h) {
+        mActivePhone.unregisterForDisplayInfo(h);
+    }
+
+    public void registerForNumberInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForNumberInfo(h, what, obj);
+    }
+
+    public void unregisterForNumberInfo(Handler h) {
+        mActivePhone.unregisterForNumberInfo(h);
+    }
+
+    public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForRedirectedNumberInfo(h, what, obj);
+    }
+
+    public void unregisterForRedirectedNumberInfo(Handler h) {
+        mActivePhone.unregisterForRedirectedNumberInfo(h);
+    }
+
+    public void registerForLineControlInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForLineControlInfo( h, what, obj);
+    }
+
+    public void unregisterForLineControlInfo(Handler h) {
+        mActivePhone.unregisterForLineControlInfo(h);
+    }
+
+    public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerFoT53ClirlInfo(h, what, obj);
+    }
+
+    public void unregisterForT53ClirInfo(Handler h) {
+        mActivePhone.unregisterForT53ClirInfo(h);
+    }
+
+    public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
+        mActivePhone.registerForT53AudioControlInfo( h, what, obj);
+    }
+
+    public void unregisterForT53AudioControlInfo(Handler h) {
+        mActivePhone.unregisterForT53AudioControlInfo(h);
+    }
+
+    public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
+        mActivePhone.setOnEcbModeExitResponse(h,what,obj);
+    }
+
+    public void unsetOnEcbModeExitResponse(Handler h){
+        mActivePhone.unsetOnEcbModeExitResponse(h);
+    }
+
+    public boolean isModemPowerSave() {
+        return mActivePhone.isModemPowerSave();
+    }
+
+    public void invokeDepersonalization(String pin, int type, Message response) {
+        mActivePhone.invokeDepersonalization(pin, type, response);
+    }
+
+    public boolean isCspPlmnEnabled() {
+        return mActivePhone.isCspPlmnEnabled();
+    }
+
 }
+

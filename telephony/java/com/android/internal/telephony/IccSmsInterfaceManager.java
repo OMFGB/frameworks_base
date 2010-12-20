@@ -49,7 +49,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
     private static final int EVENT_LOAD_DONE = 1;
     private static final int EVENT_UPDATE_DONE = 2;
 
-    protected VoicePhone mPhone;
+    protected Phone mPhone;
     protected Context mContext;
     protected SMSDispatcher mDispatcher;
     protected CommandsInterface mCm;
@@ -119,7 +119,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         }
     }
 
-    protected IccSmsInterfaceManager(VoicePhone phone, CommandsInterface cm){
+    protected IccSmsInterfaceManager(Phone phone, CommandsInterface cm){
         mPhone = phone;
         mContext = phone.getContext();
         mCm = cm;
@@ -137,7 +137,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         if(DBG) Log.d(LOG_TAG, "IccSmsInterfaceManager finalized");
     }
 
-    protected void updatePhoneObject(VoicePhone phone) {
+    protected void updatePhoneObject(Phone phone) {
         mPhone = phone;
         mDispatcher.updatePhoneObject(phone);
     }
@@ -175,7 +175,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                 // Special case FREE: call deleteSmsOnSim/Ruim instead of
                 // manipulating the record
                 // Will eventually fail if icc card is not present.
-                if (VoicePhone.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+                if (Phone.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
                     mCm.deleteSmsOnSim(index, response);
                 } else {
                     mCm.deleteSmsOnRuim(index, response);
@@ -221,7 +221,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
             Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
 
             //RIL_REQUEST_WRITE_SMS_TO_SIM vs RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM
-            if (VoicePhone.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            if (Phone.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
                 mCm.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
                         IccUtils.bytesToHexString(pdu), response);
             } else {

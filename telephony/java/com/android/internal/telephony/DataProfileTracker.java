@@ -34,7 +34,7 @@ import android.provider.Telephony;
 import android.util.Log;
 
 import com.android.internal.telephony.DataConnectionTracker.State;
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 
 /*
@@ -271,7 +271,7 @@ public class DataProfileTracker extends Handler {
         // If unset, set to DEFAULT.
         if (types == null || types.equals("")) {
             result = new String[1];
-            result[0] = DataPhone.APN_TYPE_ALL;
+            result[0] = Phone.APN_TYPE_ALL;
         } else {
             result = types.split(",");
         }

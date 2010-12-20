@@ -40,7 +40,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.gsm.CallFailCause;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.GsmCall;
@@ -85,7 +84,7 @@ public final class GsmCallTracker extends CallTracker {
 
     boolean desiredMute = false;    // false = mute off
 
-    VoicePhone.State state = VoicePhone.State.IDLE;
+    Phone.State state = Phone.State.IDLE;
 
 
 
@@ -351,7 +350,7 @@ public final class GsmCallTracker extends CallTracker {
     boolean
     canDial() {
         boolean ret;
-        int serviceState = phone.getVoiceServiceState().getState();
+        int serviceState = phone.getServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
@@ -438,23 +437,23 @@ public final class GsmCallTracker extends CallTracker {
 
     private void
     updatePhoneState() {
-        VoicePhone.State oldState = state;
+        Phone.State oldState = state;
 
         if (ringingCall.isRinging()) {
-            state = VoicePhone.State.RINGING;
+            state = Phone.State.RINGING;
         } else if (pendingMO != null ||
                 !(foregroundCall.isIdle() && backgroundCall.isIdle())) {
-            state = VoicePhone.State.OFFHOOK;
+            state = Phone.State.OFFHOOK;
         } else {
-            state = VoicePhone.State.IDLE;
+            state = Phone.State.IDLE;
         }
 
-        if (state == VoicePhone.State.IDLE && oldState != state) {
+        if (state == Phone.State.IDLE && oldState != state) {
             voiceCallEndedRegistrants.notifyRegistrants(
                 new AsyncResult(null, null, null));
             Intent intent = new Intent(TelephonyIntents.ACTION_VOICE_CALL_ENDED);
             phone.getContext().sendBroadcast(intent, android.Manifest.permission.READ_PHONE_STATE);
-        } else if (oldState == VoicePhone.State.IDLE && oldState != state) {
+        } else if (oldState == Phone.State.IDLE && oldState != state) {
             voiceCallStartedRegistrants.notifyRegistrants (
                     new AsyncResult(null, null, null));
             Intent intent = new Intent(TelephonyIntents.ACTION_VOICE_CALL_STARTED);
@@ -524,7 +523,7 @@ public final class GsmCallTracker extends CallTracker {
                     if (hangupPendingMO) {
                         hangupPendingMO = false;
                         try {
-                            if (VoicePhone.DEBUG_PHONE) log(
+                            if (Phone.DEBUG_PHONE) log(
                                     "poll: hangupPendingMO, hangup conn " + i);
                             hangup(connections[i]);
                         } catch (CallStateException ex) {
@@ -636,7 +635,7 @@ public final class GsmCallTracker extends CallTracker {
                     cause = Connection.DisconnectCause.INCOMING_MISSED;
                 }
 
-                if (VoicePhone.DEBUG_PHONE) {
+                if (Phone.DEBUG_PHONE) {
                     log("missed/rejected call, conn.cause=" + conn.cause);
                     log("setting cause to " + cause);
                 }
@@ -735,7 +734,7 @@ public final class GsmCallTracker extends CallTracker {
             // We're hanging up an outgoing call that doesn't have it's
             // GSM index assigned yet
 
-            if (VoicePhone.DEBUG_PHONE) log("hangup: set hangupPendingMO to true");
+            if (Phone.DEBUG_PHONE) log("hangup: set hangupPendingMO to true");
             hangupPendingMO = true;
         } else {
             try {
@@ -791,11 +790,11 @@ public final class GsmCallTracker extends CallTracker {
         }
 
         if (call == ringingCall) {
-            if (VoicePhone.DEBUG_PHONE) log("(ringing) hangup waiting or background");
+            if (Phone.DEBUG_PHONE) log("(ringing) hangup waiting or background");
             cm.hangupWaitingOrBackground(obtainCompleteMessage());
         } else if (call == foregroundCall) {
             if (call.isDialingOrAlerting()) {
-                if (VoicePhone.DEBUG_PHONE) {
+                if (Phone.DEBUG_PHONE) {
                     log("(foregnd) hangup dialing or alerting...");
                 }
                 hangup((GsmConnection)(call.getConnections().get(0)));
@@ -804,7 +803,7 @@ public final class GsmCallTracker extends CallTracker {
             }
         } else if (call == backgroundCall) {
             if (ringingCall.isRinging()) {
-                if (VoicePhone.DEBUG_PHONE) {
+                if (Phone.DEBUG_PHONE) {
                     log("hangup all conns in background call");
                 }
                 hangupAllConnections(call);
@@ -853,13 +852,13 @@ public final class GsmCallTracker extends CallTracker {
 
     /* package */
     void hangupWaitingOrBackground() {
-        if (VoicePhone.DEBUG_PHONE) log("hangupWaitingOrBackground");
+        if (Phone.DEBUG_PHONE) log("hangupWaitingOrBackground");
         cm.hangupWaitingOrBackground(obtainCompleteMessage());
     }
 
     /* package */
     void hangupForegroundResumeBackground() {
-        if (VoicePhone.DEBUG_PHONE) log("hangupForegroundResumeBackground");
+        if (Phone.DEBUG_PHONE) log("hangupForegroundResumeBackground");
         cm.hangupForegroundResumeBackground(obtainCompleteMessage());
     }
 
@@ -903,18 +902,18 @@ public final class GsmCallTracker extends CallTracker {
         return null;
     }
 
-    private VoicePhone.SuppService getFailedService(int what) {
+    private Phone.SuppService getFailedService(int what) {
         switch (what) {
             case EVENT_SWITCH_RESULT:
-                return VoicePhone.SuppService.SWITCH;
+                return Phone.SuppService.SWITCH;
             case EVENT_CONFERENCE_RESULT:
-                return VoicePhone.SuppService.CONFERENCE;
+                return Phone.SuppService.CONFERENCE;
             case EVENT_SEPARATE_RESULT:
-                return VoicePhone.SuppService.SEPARATE;
+                return Phone.SuppService.SEPARATE;
             case EVENT_ECT_RESULT:
-                return VoicePhone.SuppService.TRANSFER;
+                return Phone.SuppService.TRANSFER;
         }
-        return VoicePhone.SuppService.UNKNOWN;
+        return Phone.SuppService.UNKNOWN;
     }
 
     //****** Overridden from Handler

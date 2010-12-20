@@ -26,7 +26,7 @@ import android.util.Log;
 
 public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     static final String LOG_TAG = "PHONE";
-    private VoicePhone mPhone;
+    private Phone mPhone;
     private Context mContext;
     private static final String READ_PHONE_STATE =
         android.Manifest.permission.READ_PHONE_STATE;
@@ -34,7 +34,7 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
         // TODO Add core/res/AndriodManifest.xml#READ_PRIVILEGED_PHONE_STATE
         android.Manifest.permission.CALL_PRIVILEGED;
 
-    public PhoneSubInfo(VoicePhone phone) {
+    public PhoneSubInfo(Phone phone) {
         mPhone = phone;
         mContext = phone.getContext();
     }

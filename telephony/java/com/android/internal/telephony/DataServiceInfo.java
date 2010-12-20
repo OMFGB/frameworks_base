@@ -23,7 +23,7 @@ import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.internal.telephony.DataConnectionTracker.State;
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 
 /*

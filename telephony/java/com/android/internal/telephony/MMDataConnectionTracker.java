@@ -47,6 +47,8 @@ import android.util.Log;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.DataProfile.DataProfileType;
+import com.android.internal.telephony.Phone.IPVersion;
+import com.android.internal.telephony.Phone.DataActivityState;
 
 /*
  * Definitions:
@@ -256,7 +258,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         // and 2) whether the RIL will setup the baseband to auto-PS
         // attach.
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        boolean dataDisabledOnBoot = sp.getBoolean(DataPhone.DATA_DISABLED_ON_BOOT_KEY, false);
+        boolean dataDisabledOnBoot = sp.getBoolean(Phone.DATA_DISABLED_ON_BOOT_KEY, false);
         mDpt.setServiceTypeEnabled(DataServiceType.SERVICE_TYPE_DEFAULT, !dataDisabledOnBoot);
         mNoAutoAttach = dataDisabledOnBoot;
 
@@ -1340,10 +1342,6 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             }
         }
         return ret;
-    }
-
-    public void notifyDataActivity() {
-        mNotifier.notifyDataActivity(this);
     }
 
     @SuppressWarnings("unchecked")

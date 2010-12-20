@@ -53,7 +53,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
-import com.android.internal.telephony.VoicePhone;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccManager.AppFamily;
 
@@ -77,7 +77,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     UiccCardApplication m3gpp2Application = null;
     RuimRecords mRuimRecords = null;
 
-    int mCdmaSubscriptionSource = VoicePhone.CDMA_SUBSCRIPTION_NV;
+    int mCdmaSubscriptionSource = Phone.CDMA_SUBSCRIPTION_NV;
 
      /** if time between NTIZ updates is less than mNitzUpdateSpacing the update may be ignored. */
     private static final int NITZ_UPDATE_SPACING_DEFAULT = 1000 * 60 * 10;
@@ -336,7 +336,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                      mCdmaSubscriptionSource = newSubscriptionSource;
                      saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
 
-                     if (newSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
+                     if (newSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
                          //NV is ready when subscription source is NV
                          sendMessage(obtainMessage(EVENT_NV_READY));
                      }
@@ -579,7 +579,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean showPlmn = false;
         int rule = 0;
 
-        if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_RUIM_SIM
+        if (mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_RUIM_SIM
                 && m3gpp2Application != null
                 && m3gpp2Application.getState() == AppState.APPSTATE_READY) {
             // TODO RUIM SPN is not implemnted, EF_SPN has to be read and Display Condition
@@ -762,7 +762,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 String opNames[] = (String[])ar.result;
 
                 if (opNames != null && opNames.length >= 3) {
-                    if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
+                    if (mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
                         // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
                         // ERI text, so here it is ignored what is coming from the modem.
                         newSS.setOperatorName(null, opNames[1], opNames[2]);
@@ -794,7 +794,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             }
 
             // Setting SS Roaming (general)
-            if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_RUIM_SIM) {
+            if (mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_RUIM_SIM) {
                 newSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, newSS));
             } else {
                 newSS.setRoaming(mCdmaRoaming);
@@ -1025,7 +1025,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasChanged) {
-            if (mCdmaSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
+            if (mCdmaSubscriptionSource == Phone.CDMA_SUBSCRIPTION_NV) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the new ERI text
                 if (ss.getState() == ServiceState.STATE_IN_SERVICE) {

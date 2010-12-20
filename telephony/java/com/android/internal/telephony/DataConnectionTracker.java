@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -31,14 +32,16 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.DataActivityState;
+import com.android.internal.telephony.Phone.DataState;
+import com.android.internal.telephony.Phone.IPVersion;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 
 /**
  * {@hide}
  */
-public abstract class DataConnectionTracker extends Handler implements DataPhone {
-    protected static final boolean DBG = false;
+public abstract class DataConnectionTracker extends Handler {
+    protected static final boolean DBG = true;
 
     protected final String LOG_TAG = "DATA";
 
@@ -80,6 +83,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     CommandsInterface mCm;
     PhoneNotifier mNotifier;
     DataProfileTracker mDpt;
+    Phone mPhone;
 
     //set to false to disable *all* mobile data connections!
     boolean mMasterDataEnabled = true;
@@ -153,6 +157,9 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
         this.mDpt = new DataProfileTracker(context);
     }
 
+    public void setPhone(Phone p) {
+        this.mPhone = p;
+    }
     public void dispose() {
         mDpt.dispose();
         mDpt = null;
@@ -228,13 +235,17 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     abstract protected void onMasterDataDisabled();
     abstract protected boolean isConcurrentVoiceAndData();
     abstract protected void setDataConnectionAsDesired(boolean desiredPowerState, Message onCompleteMsg);
+    abstract public List<DataConnection> getCurrentDataConnectionList();
+    abstract public DataActivityState getDataActivityState();
+    abstract public ServiceState getDataServiceState();
+    abstract public boolean isDataConnectivityPossible();
 
     synchronized public int disableApnType(String type) {
 
         DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(type);
         if (serviceType == null) {
             //unknown apn type!
-            return APN_REQUEST_FAILED;
+            return Phone.APN_REQUEST_FAILED;
         }
 
         /* mark service type as disabled */
@@ -249,18 +260,18 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
             notifyDataConnection(serviceType, IPVersion.IPV4, REASON_SERVICE_TYPE_DISABLED);
             notifyDataConnection(serviceType, IPVersion.IPV6, REASON_SERVICE_TYPE_DISABLED);
 
-            return APN_REQUEST_FAILED;
+            return Phone.APN_REQUEST_FAILED;
         }
 
         sendMessage(obtainMessage(EVENT_SERVICE_TYPE_DISABLED, serviceType));
 
-        return APN_REQUEST_STARTED;
+        return Phone.APN_REQUEST_STARTED;
     }
 
     /*
      * (non-Javadoc)
      * @see
-     * com.android.internal.telephony.DataPhone#enableApnType(java.lang.String)
+     * com.android.internal.telephony.Phone#enableApnType(java.lang.String)
      * Application has no way to request IPV4 or IPV6 to be enabled, so we
      * enable both depending on whether supported data profiles are available.
      */
@@ -269,7 +280,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
         DataServiceType serviceType = DataServiceType.apnTypeStringToServiceType(type);
         if (serviceType == null) {
             //unknown apn type!
-            return APN_REQUEST_FAILED;
+            return Phone.APN_REQUEST_FAILED;
         }
 
         /* mark service type as enabled */
@@ -288,17 +299,17 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
              */
             sendMessage(obtainMessage(EVENT_SERVICE_TYPE_ENABLED, serviceType));
 
-            return APN_ALREADY_ACTIVE;
+            return Phone.APN_ALREADY_ACTIVE;
         }
 
         sendMessage(obtainMessage(EVENT_SERVICE_TYPE_ENABLED, serviceType));
 
-        return APN_REQUEST_STARTED;
+        return Phone.APN_REQUEST_STARTED;
     }
 
     /*
      * (non-Javadoc)
-     * @see com.android.internal.telephony.DataPhone#disableDataConnectivity()
+     * @see com.android.internal.telephony.Phone#disableDataConnectivity()
      * Disable ALL data!
      */
     public boolean disableDataConnectivity() {
@@ -393,7 +404,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     }
 
     public String getActiveApn() {
-        return getActiveApn(DataPhone.APN_TYPE_DEFAULT, IPVersion.IPV4);
+        return getActiveApn(Phone.APN_TYPE_DEFAULT, IPVersion.IPV4);
     }
 
     public String getActiveApn(String apnType, IPVersion ipv) {
@@ -515,7 +526,11 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     }
 
     void notifyDataConnection(DataServiceType ds, IPVersion ipv, String reason) {
-        mNotifier.notifyDataConnection(this, ds.toApnTypeString(), ipv, reason);
+        mNotifier.notifyDataConnection(mPhone, ds.toApnTypeString(), ipv, reason);
+    }
+
+    public void notifyDataActivity() {
+        mNotifier.notifyDataActivity(mPhone);
     }
 
     protected void notifyAllEnabledDataServiceTypes(String reason) {
@@ -529,7 +544,7 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
 
     // notify data connection as failed - applicable for default type only?
     void notifyDataConnectionFail(String reason) {
-        mNotifier.notifyDataConnectionFailed(this, reason);
+        mNotifier.notifyDataConnectionFailed(mPhone, reason);
     }
 
     public void getDataCallList(Message response) {

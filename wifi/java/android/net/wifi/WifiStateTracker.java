@@ -54,7 +54,7 @@ import android.content.Intent;
 import android.content.Context;
 import android.database.ContentObserver;
 import com.android.internal.app.IBatteryStats;
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

@@ -16,30 +16,29 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 
 /**
  * {@hide}
  */
 public interface PhoneNotifier {
 
-    public void notifyPhoneState(VoicePhone sender);
+    public void notifyPhoneState(Phone sender);
 
-    public void notifyVoiceServiceState(VoicePhone sender);
+    public void notifyServiceState(Phone sender);
 
-    public void notifyCellLocation(VoicePhone sender);
+    public void notifyCellLocation(Phone sender);
 
-    public void notifySignalStrength(VoicePhone sender);
+    public void notifySignalStrength(Phone sender);
 
-    public void notifyMessageWaitingChanged(VoicePhone sender);
+    public void notifyMessageWaitingChanged(Phone sender);
 
-    public void notifyCallForwardingChanged(VoicePhone sender);
+    public void notifyCallForwardingChanged(Phone sender);
 
-    public void notifyDataConnection(DataPhone sender, String type, IPVersion ipv, String reason);
+    public void notifyDataConnection(Phone sender, String type, IPVersion ipv, String reason);
 
-    public void notifyDataConnectionFailed(DataPhone sender, String reason);
+    public void notifyDataConnectionFailed(Phone sender, String reason);
 
-    public void notifyDataActivity(DataPhone sender);
+    public void notifyDataActivity(Phone sender);
 
-    public void notifyDataServiceState(DataPhone sender);
 }

@@ -51,6 +51,7 @@ import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.cdma.CdmaCall;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
+import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.IccException;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -59,7 +60,6 @@ import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.UiccManager;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
@@ -148,17 +148,19 @@ public class CDMAPhone extends PhoneBase {
 
 
     // Constructors
-    public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        this(context,ci,notifier, false);
+    public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, DataConnectionTracker dct) {
+        this(context,ci,notifier, false, dct);
     }
 
     public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
-            boolean unitTestMode) {
+            boolean unitTestMode, DataConnectionTracker dct) {
         super(notifier, context, ci, unitTestMode);
 
-        mCM.setPhoneType(VoicePhone.PHONE_TYPE_CDMA);
+        mCM.setPhoneType(Phone.PHONE_TYPE_CDMA);
         mCT = new CdmaCallTracker(this);
         mSST = new CdmaServiceStateTracker (this);
+        mDataConnection = dct;
+        mDataConnection.setPhone(this);
 
         //TODO: fusion move RuimPhoneBookInterfaceManager functionality to IccPhoneBookIntManager
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
@@ -183,7 +185,7 @@ public class CDMAPhone extends PhoneBase {
 
         //Change the system setting
         SystemProperties.set(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                new Integer(VoicePhone.PHONE_TYPE_CDMA).toString());
+                new Integer(Phone.PHONE_TYPE_CDMA).toString());
 
         // This is needed to handle phone process crashes
         String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
@@ -273,7 +275,14 @@ public class CDMAPhone extends PhoneBase {
         return mSST.ss;
     }
 
-    public VoicePhone.State getState() {
+    public ServiceState getServiceState() {
+        /* combine voice/data service states and return! */
+        return PhoneBase.combineVoiceDataServiceStates(
+                getVoiceServiceState(),
+                mDataConnection.getDataServiceState());
+    }
+
+    public Phone.State getState() {
         if (mCT != null) {
             return mCT.state;
         }
@@ -285,7 +294,7 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public int getPhoneType() {
-        return VoicePhone.PHONE_TYPE_CDMA;
+        return Phone.PHONE_TYPE_CDMA;
     }
 
     public boolean canTransfer() {
@@ -587,7 +596,7 @@ public class CDMAPhone extends PhoneBase {
             Log.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
-            if (mCT.state ==  VoicePhone.State.OFFHOOK) {
+            if (mCT.state ==  Phone.State.OFFHOOK) {
                 mCM.sendDtmf(c, null);
             }
         }
@@ -616,7 +625,7 @@ public class CDMAPhone extends PhoneBase {
                 break;
             }
         }
-        if ((mCT.state ==  VoicePhone.State.OFFHOOK)&&(check)) {
+        if ((mCT.state ==  Phone.State.OFFHOOK)&&(check)) {
             mCM.sendBurstDtmf(dtmfString, on, off, onComplete);
         }
      }
@@ -743,7 +752,7 @@ public class CDMAPhone extends PhoneBase {
     }
 
    /**
-     * Notify any interested party of a Phone state change  {@link VoicePhone.State}
+     * Notify any interested party of a Phone state change  {@link Phone.State}
      */
     /*package*/ void notifyPhoneStateChanged() {
         mNotifier.notifyPhoneState(this);

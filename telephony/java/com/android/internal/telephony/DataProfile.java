@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import android.util.Log;
 
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 
 public abstract class DataProfile {
 

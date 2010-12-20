@@ -37,7 +37,7 @@ final class ImsSMSDispatcher extends SMSDispatcher {
     private SMSDispatcher mCdmaDispatcher;
     private SMSDispatcher mGsmDispatcher;
 
-    public ImsSMSDispatcher(VoicePhone phone, CommandsInterface cm) {
+    public ImsSMSDispatcher(Phone phone, CommandsInterface cm) {
         super(phone, cm);
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, cm);
         mGsmDispatcher = new GsmSMSDispatcher(phone, cm);
@@ -205,7 +205,7 @@ final class ImsSMSDispatcher extends SMSDispatcher {
 
         // newEncoding will be based on voice technology
         RadioTechnologyFamily newEncoding =
-            (VoicePhone.PHONE_TYPE_CDMA == mPhone.getPhoneType()) ?
+            (Phone.PHONE_TYPE_CDMA == mPhone.getPhoneType()) ?
                     RadioTechnologyFamily.RADIO_TECH_3GPP2 :
                         RadioTechnologyFamily.RADIO_TECH_3GPP;
 
@@ -289,7 +289,7 @@ final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     protected void updateIccAvailability() {
-        mApplication = (VoicePhone.PHONE_TYPE_CDMA == mPhone.getPhoneType()) ?
+        mApplication = (Phone.PHONE_TYPE_CDMA == mPhone.getPhoneType()) ?
                 mCdmaDispatcher.mApplication :
                         mGsmDispatcher.mApplication;
     }

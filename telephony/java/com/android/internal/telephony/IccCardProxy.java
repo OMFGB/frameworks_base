@@ -34,7 +34,7 @@ import com.android.internal.telephony.UiccConstants.AppState;
 import com.android.internal.telephony.UiccConstants.CardState;
 import com.android.internal.telephony.UiccConstants.PersoSubState;
 import com.android.internal.telephony.UiccManager.AppFamily;
-import static com.android.internal.telephony.VoicePhone.CDMA_SUBSCRIPTION_NV;
+import static com.android.internal.telephony.Phone.CDMA_SUBSCRIPTION_NV;
 
 /*
  * The Phone App UI and the external world assumes that there is only one icc card,

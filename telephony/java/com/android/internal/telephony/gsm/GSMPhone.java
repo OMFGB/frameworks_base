@@ -55,13 +55,14 @@ import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccManager;
-import com.android.internal.telephony.VoicePhone;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
@@ -127,12 +128,12 @@ public class GSMPhone extends PhoneBase {
     // Constructors
 
     public
-    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        this(context,ci,notifier, false);
+    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, DataConnectionTracker dct) {
+        this(context,ci,notifier, false, dct);
     }
 
     public
-    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode) {
+    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode, DataConnectionTracker dct) {
         super(notifier, context, ci, unitTestMode);
 
         if (ci instanceof SimulatedRadioControl) {
@@ -142,9 +143,11 @@ public class GSMPhone extends PhoneBase {
         mUiccManager = UiccManager.getInstance(context, mCM);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
-        mCM.setPhoneType(VoicePhone.PHONE_TYPE_GSM);
+        mCM.setPhoneType(Phone.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
+        mDataConnection = dct;
+        mDataConnection.setPhone(this);
 
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
@@ -194,7 +197,7 @@ public class GSMPhone extends PhoneBase {
 
         //Change the system property
         SystemProperties.set(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                new Integer(VoicePhone.PHONE_TYPE_GSM).toString());
+                new Integer(Phone.PHONE_TYPE_GSM).toString());
     }
 
     public void dispose() {
@@ -249,11 +252,18 @@ public class GSMPhone extends PhoneBase {
         return mSST.ss;
     }
 
+    public ServiceState getServiceState() {
+        /* combine voice/data service states and return! */
+        return PhoneBase.combineVoiceDataServiceStates(
+                getVoiceServiceState(),
+                mDataConnection.getDataServiceState());
+    }
+
     public CellLocation getCellLocation() {
         return mSST.cellLoc;
     }
 
-    public VoicePhone.State getState() {
+    public Phone.State getState() {
         return mCT.state;
     }
 
@@ -262,7 +272,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     public int getPhoneType() {
-        return VoicePhone.PHONE_TYPE_GSM;
+        return Phone.PHONE_TYPE_GSM;
     }
 
     public SignalStrength getSignalStrength() {
@@ -430,7 +440,7 @@ public class GSMPhone extends PhoneBase {
             } catch (CallStateException e) {
                 if (LOCAL_DEBUG) Log.d(LOG_TAG,
                     "reject failed", e);
-                notifySuppServiceFailed(VoicePhone.SuppService.REJECT);
+                notifySuppServiceFailed(Phone.SuppService.REJECT);
             }
         } else if (getBackgroundCall().getState() != GsmCall.State.IDLE) {
             if (LOCAL_DEBUG) Log.d(LOG_TAG,
@@ -477,7 +487,7 @@ public class GSMPhone extends PhoneBase {
         } catch (CallStateException e) {
             if (LOCAL_DEBUG) Log.d(LOG_TAG,
                 "hangup failed", e);
-            notifySuppServiceFailed(VoicePhone.SuppService.HANGUP);
+            notifySuppServiceFailed(Phone.SuppService.HANGUP);
         }
 
         return true;
@@ -507,12 +517,12 @@ public class GSMPhone extends PhoneBase {
                 } else {
                     if (LOCAL_DEBUG) Log.d(LOG_TAG, "separate: invalid call index "+
                             callIndex);
-                    notifySuppServiceFailed(VoicePhone.SuppService.SEPARATE);
+                    notifySuppServiceFailed(Phone.SuppService.SEPARATE);
                 }
             } catch (CallStateException e) {
                 if (LOCAL_DEBUG) Log.d(LOG_TAG,
                     "separate failed", e);
-                notifySuppServiceFailed(VoicePhone.SuppService.SEPARATE);
+                notifySuppServiceFailed(Phone.SuppService.SEPARATE);
             }
         } else {
             try {
@@ -528,7 +538,7 @@ public class GSMPhone extends PhoneBase {
             } catch (CallStateException e) {
                 if (LOCAL_DEBUG) Log.d(LOG_TAG,
                     "switch failed", e);
-                notifySuppServiceFailed(VoicePhone.SuppService.SWITCH);
+                notifySuppServiceFailed(Phone.SuppService.SWITCH);
             }
         }
 
@@ -547,7 +557,7 @@ public class GSMPhone extends PhoneBase {
         } catch (CallStateException e) {
             if (LOCAL_DEBUG) Log.d(LOG_TAG,
                 "conference failed", e);
-            notifySuppServiceFailed(VoicePhone.SuppService.CONFERENCE);
+            notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
         }
         return true;
     }
@@ -567,7 +577,7 @@ public class GSMPhone extends PhoneBase {
         } catch (CallStateException e) {
             if (LOCAL_DEBUG) Log.d(LOG_TAG,
                 "transfer failed", e);
-            notifySuppServiceFailed(VoicePhone.SuppService.TRANSFER);
+            notifySuppServiceFailed(Phone.SuppService.TRANSFER);
         }
         return true;
     }
@@ -580,7 +590,7 @@ public class GSMPhone extends PhoneBase {
 
         Log.i(LOG_TAG, "MmiCode 5: CCBS not supported!");
         // Treat it as an "unknown" service.
-        notifySuppServiceFailed(VoicePhone.SuppService.UNKNOWN);
+        notifySuppServiceFailed(Phone.SuppService.UNKNOWN);
         return true;
     }
 
@@ -698,7 +708,7 @@ public class GSMPhone extends PhoneBase {
             Log.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
-            if (mCT.state ==  VoicePhone.State.OFFHOOK) {
+            if (mCT.state ==  Phone.State.OFFHOOK) {
                 mCM.sendDtmf(c, null);
             }
         }

@@ -41,7 +41,7 @@ import static android.telephony.SmsMessage.MessageClass;
 final class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GSM";
 
-    GsmSMSDispatcher(VoicePhone phone, CommandsInterface cm) {
+    GsmSMSDispatcher(Phone phone, CommandsInterface cm) {
         super(phone, cm);
         Log.d(TAG, "Register for EVENT_NEW_SMS");
         mCm.setOnNewSMS(this, EVENT_NEW_SMS, null);
@@ -163,7 +163,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     protected int getEncoding() {
-        return VoicePhone.PHONE_TYPE_GSM;
+        return Phone.PHONE_TYPE_GSM;
     }
 
     /** {@inheritDoc} */
@@ -277,7 +277,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             ArrayList<PendingIntent> deliveryIntents) {
 
         // check if in service
-        int ss = mPhone.getVoiceServiceState().getState();
+        int ss = mPhone.getServiceState().getState();
         // if IMS not registered on data and voice is not available...
         if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
             for (int i = 0, count = parts.size(); i < count; i++) {

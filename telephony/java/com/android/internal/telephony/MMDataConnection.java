@@ -22,7 +22,7 @@ import android.os.SystemProperties;
 import android.util.Log;
 import android.util.Patterns;
 
-import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.Phone.IPVersion;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 
 /**

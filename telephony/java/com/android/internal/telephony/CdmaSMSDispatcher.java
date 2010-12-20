@@ -56,7 +56,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
 
-    CdmaSMSDispatcher(VoicePhone phone, CommandsInterface cm) {
+    CdmaSMSDispatcher(Phone phone, CommandsInterface cm) {
         super(phone, cm);
         Log.d(TAG, "Register for EVENT_NEW_SMS");
         mCm.setOnNewCdmaSMS(this, EVENT_NEW_SMS, null);
@@ -220,7 +220,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     protected int getEncoding() {
-        return VoicePhone.PHONE_TYPE_CDMA;
+        return Phone.PHONE_TYPE_CDMA;
     }
 
     /**

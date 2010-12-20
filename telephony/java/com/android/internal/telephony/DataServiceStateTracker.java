@@ -92,7 +92,7 @@ public class DataServiceStateTracker extends Handler {
     static final int PS_NOTIFICATION = 888; // Id to update and cancel PS
                                             // restricted
 
-    private DataPhone mDct;
+    private DataConnectionTracker mDct;
     private CommandsInterface cm;
     private Context mContext;
     private UiccManager mUiccManager;
@@ -127,7 +127,7 @@ public class DataServiceStateTracker extends Handler {
     private boolean mGsmRoaming = false;
     private PhoneNotifier mNotifier;
 
-    public DataServiceStateTracker(DataPhone dct, Context context, PhoneNotifier notifier,
+    public DataServiceStateTracker(DataConnectionTracker dct, Context context, PhoneNotifier notifier,
             CommandsInterface ci) {
         this.mDct = dct;
         this.cm = ci;
@@ -492,6 +492,10 @@ public class DataServiceStateTracker extends Handler {
             mDataConnectionDetachedRegistrants.notifyRegistrants();
         }
 
+        if (hasDataConnectionChanged) {
+            mNotifier.notifyServiceState(mDct.mPhone);
+        }
+
         if (hasRadioTechChanged) {
             mRadioTechChangedRegistrants.notifyRegistrants();
         }
@@ -507,9 +511,12 @@ public class DataServiceStateTracker extends Handler {
 
 
     private void notifyDataServiceStateChanged(ServiceState ss) {
-        mNotifier.notifyDataServiceState(mDct);
+        mNotifier.notifyServiceState(mDct.mPhone);
         AsyncResult ar = new AsyncResult(null, ss, null);
+        //notify those who registered with DSST
         mDataServiceStateRegistrants.notifyRegistrants(ar);
+        //notify those who registered for service state changed with phone.
+        ((PhoneBase)mDct.mPhone).notifyServiceStateChangedP(ss);
     }
 
     /** Cancel a pending (if any) pollState() operation */

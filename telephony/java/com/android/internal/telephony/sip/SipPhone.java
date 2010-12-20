@@ -36,7 +36,6 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.UUSInfo;
 
@@ -325,10 +324,10 @@ public class SipPhone extends SipPhoneBase {
         return ringingCall;
     }
 
-    public ServiceState getVoiceServiceState() {
+    public ServiceState getServiceState() {
         // FIXME: we may need to provide this when data connectivity is lost
         // or when server is down
-        return super.getVoiceServiceState();
+        return super.getServiceState();
     }
 
     private String getUriString(SipProfile p) {
@@ -371,10 +370,6 @@ public class SipPhone extends SipPhoneBase {
 
         @Override
         public Phone getPhone() {
-            return SipPhone.this.asPhone();
-        }
-
-        public VoicePhone getVoicePhone() {
             return SipPhone.this;
         }
         @Override
@@ -433,6 +428,7 @@ public class SipPhone extends SipPhoneBase {
         hangupAllCalls() throws CallStateException {
             throw new CallStateException("hangupAllCalls: Unimplemented Action");
         }
+
         void initIncomingCall(SipAudioCall sipAudioCall, boolean makeCallWait) {
             SipProfile callee = sipAudioCall.getPeerProfile();
             SipConnection c = new SipConnection(this, callee);
@@ -807,7 +803,7 @@ public class SipPhone extends SipPhoneBase {
         }
 
         @Override
-        protected VoicePhone getPhone() {
+        protected Phone getPhone() {
             return mOwner.getPhone();
         }
 

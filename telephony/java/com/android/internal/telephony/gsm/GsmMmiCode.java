@@ -116,6 +116,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     private boolean isUssdRequest;
 
+    private boolean isCallFwdRegister = false;
+
     State state = State.PENDING;
     CharSequence message;
 
@@ -608,7 +610,12 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     int cfAction;
 
                     if (isActivate()) {
-                        cfAction = CommandsInterface.CF_ACTION_ENABLE;
+                        if (dialingNumber != null) {
+                            isCallFwdRegister = true;
+                            cfAction = CommandsInterface.CF_ACTION_REGISTRATION;
+                        } else {
+                            cfAction = CommandsInterface.CF_ACTION_ENABLE;
+                        }
                     } else if (isDeactivate()) {
                         cfAction = CommandsInterface.CF_ACTION_DISABLE;
                     } else if (isRegister()) {
@@ -954,8 +961,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             }
         } else if (isActivate()) {
             state = State.COMPLETE;
-            sb.append(context.getText(
-                    com.android.internal.R.string.serviceEnabled));
+            if (isCallFwdRegister) {
+                sb.append(context.getText(com.android.internal.R.string.serviceRegistered));
+                isCallFwdRegister = false;
+            } else {
+                sb.append(context.getText(
+                        com.android.internal.R.string.serviceEnabled));
+            }
             // Record CLIR setting
             if (sc.equals(SC_CLIR)) {
                 phone.saveClirSetting(CommandsInterface.CLIR_INVOCATION);

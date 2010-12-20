@@ -101,14 +101,15 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
     protected static final int EVENT_RUIM_RECORDS_LOADED            = 22;
     protected static final int EVENT_NV_READY                       = 23;
     protected static final int EVENT_SET_ENHANCED_VP                = 24;
-    protected static final int EVENT_EMERGENCY_CALLBACK_MODE  = 25;
+    protected static final int EVENT_EMERGENCY_CALLBACK_MODE        = 25;
     protected static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT   = 26;
-    protected static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE    = 27;
+    protected static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE   = 27;
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED= 28;
     //other
     protected static final int EVENT_ICC_CHANGED                    = 29;
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 30;
     protected static final int EVENT_ICC_RECORD_EVENTS              = 31;
+    protected static final int EVENT_GET_MDN_DONE                   = 32;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";

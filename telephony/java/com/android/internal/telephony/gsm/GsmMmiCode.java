@@ -89,6 +89,15 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     static final String SC_PUK          = "05";
     static final String SC_PUK2         = "052";
 
+    //Global device(CDMA phone operating on GSM/UMTS) MMI Codes,
+    //as specified in the specifications for CDMA Global devices.
+    //TODO : Need to remove these declaration and to get from database or from system properties.
+    static final String SC_GLOBALDEV_VM        = "86";
+    static final String SC_GLOBALDEV_CS        = "611";
+    static final String SC_GLOBALDEV_CLIR_INVK = "67";
+    static final String SC_GLOBALDEV_CLIR_SUPP = "82";
+    static final String GLOBALDEV_CS           = "+19085594899";
+
     //***** Event Constants
 
     static final int EVENT_SET_COMPLETE         = 1;
@@ -140,6 +149,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
          10 = dialing number
 */
 
+    static Pattern sPatternSuppServiceGlobalDev = Pattern.compile("((\\*)(\\d{2,}))");
+
     static final int MATCH_GROUP_POUND_STRING = 1;
 
     static final int MATCH_GROUP_ACTION = 2;
@@ -172,6 +183,30 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     newFromDialString(String dialString, GSMPhone phone, UiccCardApplication app) {
         Matcher m;
         GsmMmiCode ret = null;
+
+        if(SystemProperties.getBoolean("ro.config.multimode_cdma", false)) {
+            m = sPatternSuppServiceGlobalDev.matcher(dialString);
+            if (m.matches()) {
+                ret = new GsmMmiCode(phone, app);
+                ret.action = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
+                String DialCode =  makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
+                if (DialCode.equals(SC_GLOBALDEV_VM)) {
+                    ret.sc = SC_GLOBALDEV_VM;
+                    ret.dialingNumber = "+1" + phone.getMdn();
+                    return ret;
+                } else if (DialCode.equals(SC_GLOBALDEV_CS)) {
+                    ret.sc = SC_GLOBALDEV_CS;
+                    ret.dialingNumber = GLOBALDEV_CS;
+                    return ret;
+                } else if (DialCode.length() >= 3 && DialCode.startsWith(SC_GLOBALDEV_CLIR_INVK)) {
+                    // Dial "#31#PhoneNum" to invoke CLIR temporarily
+                    dialString = ACTION_DEACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialCode.substring(2);
+                } else if (DialCode.length() >= 3 && DialCode.startsWith(SC_GLOBALDEV_CLIR_SUPP)) {
+                    // Dial "*31#PhoneNum" to suppress CLIR temporarily
+                    dialString = ACTION_ACTIVATE + SC_CLIR + ACTION_DEACTIVATE + DialCode.substring(2);
+                }
+            }
+        }
 
         m = sPatternSuppService.matcher(dialString);
 
@@ -523,7 +558,14 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      }
 
     /**
-     * See TS 22.030 Annex B.
+     * @return true if the Mmi is Service Code for Cdma GlobalDevice
+     */
+    boolean isGlobalDevMmi() {
+        return sc != null && (sc.equals(SC_GLOBALDEV_VM) || sc.equals(SC_GLOBALDEV_CS));
+     }
+
+    /**
+     * *See TS 22.030 Annex B
      * In temporary mode, to suppress CLIR for a single call, enter:
      *      " * 31 # [called number] SEND "
      *  In temporary mode, to invoke CLIR for a single call enter:

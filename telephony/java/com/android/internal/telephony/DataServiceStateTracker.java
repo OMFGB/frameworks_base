@@ -542,12 +542,16 @@ public class DataServiceStateTracker extends Handler {
      *         support voice and data simultaneously.
      */
     boolean isConcurrentVoiceAndData() {
-        boolean ret = true;
 
-        if (mSs != null)
-            ret = mSs.getCssIndicator() == 1;
+        // UMTS and above supports CSS.
+        RadioTechnology r = RadioTechnology.getRadioTechFromInt(mSs.getRadioTechnology());
+        if (r.isGsm() && r != RadioTechnology.RADIO_TECH_EDGE
+                && r != RadioTechnology.RADIO_TECH_GPRS) {
+            return true;
+        }
 
-        return ret;
+        // For rest of the technologies return the state reported from the modem
+        return (mSs.getCssIndicator() == 1);
     }
 
 

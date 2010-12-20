@@ -247,6 +247,9 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                     if (mMobileInfo.get(IPVersion.IPV4).mState == DataState.CONNECTED
                             || mMobileInfo.get(IPVersion.IPV6).mState == DataState.CONNECTED) {
                         state = DataState.CONNECTED;
+                    } else if (mMobileInfo.get(IPVersion.IPV4).mState == DataState.SUSPENDED
+                            || mMobileInfo.get(IPVersion.IPV6).mState == DataState.SUSPENDED) {
+                        state = DataState.SUSPENDED;
                     }
 
                     String extraInfo = null;

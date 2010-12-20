@@ -516,11 +516,13 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mDpt.resetAllProfilesAsWorking();
         mDpt.resetAllServiceStates();
         updateDataConnections(REASON_VOICE_CALL_ENDED);
+        notifyAllEnabledDataServiceTypes(REASON_VOICE_CALL_ENDED);
     }
 
     @Override
     protected void onVoiceCallStarted() {
         updateDataConnections(REASON_VOICE_CALL_STARTED);
+        notifyAllEnabledDataServiceTypes(REASON_VOICE_CALL_STARTED);
     }
 
     @Override

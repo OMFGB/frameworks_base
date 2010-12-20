@@ -151,9 +151,8 @@ public class GSMPhone extends PhoneBase {
         mSMS = new GsmSMSDispatcher(this);
 
         if (!unitTestMode) {
-            //TODO: fusion - SimPhoneBookInterfaceManager expects msim records at start.
-            //mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
-            mSimSmsIntManager = new SimSmsInterfaceManager(this);
+            mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
+            mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
             mSubInfo = new PhoneSubInfo(this);
         }
 

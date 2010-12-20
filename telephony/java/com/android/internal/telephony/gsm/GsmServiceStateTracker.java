@@ -275,15 +275,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 processIccRecordEvents((Integer)ar.result);
                 break;
 
-            case EVENT_ICC_CHANGED:
-                updateIccAvailability();
-                break;
-
-            case EVENT_ICC_RECORD_EVENTS:
-                ar = (AsyncResult)msg.obj;
-                processIccRecordEvents((Integer)ar.result);
-                break;
-
             case EVENT_SIM_READY:
                 // The SIM is now ready i.e if it was locked
                 // it has been unlocked. At this stage, the radio is already
@@ -475,11 +466,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             int rule = curSpnRule;
             String pnn = null;
 
-            if (mSIMRecords != null) {
-                rule = mSIMRecords.getDisplayRule(ss.getOperatorNumeric());
-                pnn = mSIMRecords.getPnnLongName();
-            }
-
             String spn = null;
             String plmn = ss.getOperatorAlphaLong();
 
@@ -499,9 +485,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             if (rule != curSpnRule || !TextUtils.equals(spn, curSpn)
                     || !TextUtils.equals(plmn, curPlmn)) {
 
-                boolean showSpn = (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN
-                        || mEmergencyOnly;
-                boolean showPlmn = (rule & SIMRecords.SPN_RULE_SHOW_PLMN) == SIMRecords.SPN_RULE_SHOW_PLMN;
+                boolean showSpn = !mEmergencyOnly
+                    && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN
+                    && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN
+                    && (ss.getState() == ServiceState.STATE_IN_SERVICE);
+                boolean showPlmn =
+                    (rule & SIMRecords.SPN_RULE_SHOW_PLMN) == SIMRecords.SPN_RULE_SHOW_PLMN;
 
                 Intent intent = new Intent(Intents.SPN_STRINGS_UPDATED_ACTION);
                 intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -900,16 +889,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.notifyLocationChanged();
         }
 
-        if (hasLacChanged) {
-            if (mSIMRecords != null && mSIMRecords.isEonsEnabled()) {
-                //LAC changed, display Eons Name from EF_OPL/EF_PNN data.
-                Log.i(LOG_TAG,"EONS: LAC changed, update spn.");
-                Boolean needsSpnDisplayUpdate = mSIMRecords.checkAndFetchEonsName(ss.getOperatorNumeric(), cellLoc);
-                if (needsSpnDisplayUpdate) {
-                    updateSpnDisplay();
-                }
-            }
-        }
     }
 
     private void processIccRecordEvents(int eventCode) {
@@ -918,8 +897,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 updateSpnDisplay();
                 break;
             case SIMRecords.EVENT_EONS:
-                boolean needsSpnUpdate = mSIMRecords
-                        .fetchEonsName(ss.getOperatorNumeric(), cellLoc);
+                // TODO: Fix this
+                boolean needsSpnUpdate = true; // mSIMRecords
+                        //.fetchEonsName(ss.getOperatorNumeric(), cellLoc);
                 if (needsSpnUpdate) {
                     updateSpnDisplay();
                 }
@@ -1129,197 +1109,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             rs = newRs;
         }
         Log.d(LOG_TAG, "[DSAC DEB] " + "current rs at return "+ rs);
-    }
-
-    DialogInterface.OnClickListener onManagedRoamingDialogClick =
-        new DialogInterface.OnClickListener() {
-        public void onClick(DialogInterface dialog, int which) {
-            dialog.dismiss();
-            switch (which) {
-                case DialogInterface.BUTTON_POSITIVE:
-                    Intent networkSettingIntent = new Intent(Intent.ACTION_MAIN);
-                    networkSettingIntent.setClassName("com.android.phone",
-                            "com.android.phone.NetworkSetting");
-                    networkSettingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    phone.getContext().startActivity(networkSettingIntent);
-                    break;
-                case DialogInterface.BUTTON_NEGATIVE:
-                    break;
-            }
-            isManagedRoamingDialogDisplayed = false;
-        }
-    };
-
-    DialogInterface.OnKeyListener mManagedRoamingDialogOnKeyListener =
-        new DialogInterface.OnKeyListener() {
-        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-            // Handle the back key to reset the global variable. Always return false
-            // to let the framework handles the key events properly.
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-                isManagedRoamingDialogDisplayed = false;
-            }
-            return false;
-        }
-    };
-
-    private void createManagedRoamingDialog() {
-        Resources r = Resources.getSystem();
-
-        AlertDialog managedRoamingDialog = new AlertDialog.Builder(phone.getContext())
-        .setMessage(
-                r.getString(R.string.managed_roaming_dialog_content))
-                .setPositiveButton(r.getString(R.string.managed_roaming_dialog_ok_button),
-                        onManagedRoamingDialogClick).setNegativeButton(
-                        r.getString(R.string.managed_roaming_dialog_cancel_button),
-                        onManagedRoamingDialogClick).create();
-
-        managedRoamingDialog.setOnKeyListener(mManagedRoamingDialogOnKeyListener);
-
-        isManagedRoamingDialogDisplayed = true;
-        managedRoamingDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-        managedRoamingDialog.show();
-    }
-
-    Handler mTimeoutHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MSG_ID_TIMEOUT:
-                    if (networkDialog != null) {
-                        networkDialog.dismiss();
-                        networkDialog = null;
-                        postDismissDialog();
-                    }
-                    break;
-            }
-        }
-    };
-
-    private void handleLimitedService(String plmn,String spn,Boolean showSpn,Boolean showPlmn) {
-        Log.i(LOG_TAG, "handleLimitedService : Limited Service state");
-        Intent intent = new Intent(Intents.SPN_STRINGS_UPDATED_ACTION);
-        intent.putExtra(Intents.EXTRA_SHOW_SPN, showSpn);
-        intent.putExtra(Intents.EXTRA_SPN, spn);
-        intent.putExtra(Intents.EXTRA_SHOW_PLMN, showPlmn);
-        intent.putExtra(Intents.EXTRA_PLMN, plmn);
-        phone.getContext().sendStickyBroadcast(intent);
-    }
-
-    private void postDismissDialog()
-    {
-        Resources r = Resources.getSystem();
-        if (mToneGenerator != null)
-            mToneGenerator = null;
-        String plmn = r.getString(R.string.limited_service);
-        String spn = mSIMRecords != null ? mSIMRecords.getServiceProviderName() : null;
-        handleLimitedService(plmn, spn, false, true);
-    }
-
-    DialogInterface.OnKeyListener mDialogOnKeyListener =
-        new DialogInterface.OnKeyListener() {
-        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-            if (keyCode != KeyEvent.KEYCODE_MENU) {
-                if (dialog != null) {
-                    dialog.dismiss();
-                    postDismissDialog();
-                    return true;
-                }
-                return false;
-            }
-            return false;
-        }
-    };
-
-    private void showDialog(String msg)
-    {
-        networkDialog = new AlertDialog.Builder(phone.getContext()).setMessage(msg).setCancelable(
-                true).create();
-        networkDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG);
-        networkDialog.setOnKeyListener(mDialogOnKeyListener);
-        networkDialog.show();
-        mTimeoutHandler.sendMessageDelayed(mTimeoutHandler.obtainMessage(MSG_ID_TIMEOUT),
-                DIALOG_TIMEOUT);
-        try {
-            mToneGenerator = new ToneGenerator(AudioManager.STREAM_SYSTEM, FOCUS_BEEP_VOLUME);
-        } catch (RuntimeException e) {
-            Log.w(LOG_TAG, "Exception caught while creating local tone generator: " + e);
-            mToneGenerator = null;
-        }
-        if (mToneGenerator != null) {
-            mToneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP2);
-        }
-    }
-
-    private void handleNetworkRejection(int rejCode)
-    {
-        Resources r = Resources.getSystem();
-        String spn = mSIMRecords != null ? mSIMRecords.getServiceProviderName() : null;
-        String plmn = ss.getOperatorAlphaLong();
-        boolean showSpn = true;
-        boolean showPlmn = true;
-        String msg = null;
-        Log.i(LOG_TAG, "handleNetworkRejection : Rejection code :" + rejCode);
-        switch (rejCode) {
-            /*
-             * For cases 1 to 4 the rejection message should be displayed on the
-             * UI and the message "EMERGENCY CALLS ONLY" displayed in the alpha
-             * tag area
-             */
-            case 1: /* Authentication failure */
-                msg = r.getString(R.string.authentication_reject);
-                showDialog(msg);
-                break;
-            case 2: /* IMSI unknown in HLR CDR-NWS-2400 */
-                msg = r.getString(R.string.imsi_unknown_hlr);
-                showDialog(msg);
-                break;
-            case 3: /* Illegal MS CDR-NWS-2401 */
-                msg = r.getString(R.string.illegal_ms);
-                showDialog(msg);
-                break;
-            case 4: /* Illegal ME CDR-NWS-2404 */
-                msg = r.getString(R.string.illegal_me);
-                showDialog(msg);
-                break;
-
-                /*
-             * For cases 5 to 8 the message "EMERGENCY CALLS ONLY" displayed in
-             * the alpha area
-             */
-            case 5: /* PLMN not allowed CDR-NWS-2405 */
-            case 6: /* Location area not allowed CDR-NWS-2406 */
-            case 7: /* Roaming not allowed in this location area CDR-NWS-2407 */
-            case 8: /* No Suitable Cells in this Location Area CDR-NWS-2408 */
-                plmn = r.getString(R.string.limited_service);
-                handleLimitedService(plmn, spn, false, true);
-                break;
-
-                /* Here the alpha area should be blank */
-            case 9: /* Network failure */
-                plmn = null;
-                handleLimitedService(plmn, spn, false, false);
-                break;
-
-                /*
-             * Show the "Managed Roaming dialog if user preferred network
-             * selection mode is 'Manual'
-             */
-            case 10: /* Managed Roaming Specific Cause */
-                // Retrieve the operator id
-                String networkSelection = PreferenceManager.getDefaultSharedPreferences(phone.getContext())
-                        .getString(NETWORK_SELECTION_KEY, "");
-
-                // Operator id will be empty for automatic selection.
-                if (!TextUtils.isEmpty(networkSelection)) {
-                    if (!isManagedRoamingDialogDisplayed) {
-                        createManagedRoamingDialog();
-                    }
-                }
-                break;
-
-            default:
-                break;
-        }
     }
 
     /** code is registration state 0-5 from TS 27.007 7.2 */
@@ -1724,18 +1513,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             return;
         }
 
-        // Display Eons Name if Eons or Adapt property is enabled and
-        // Eons is not disabled in EF_SST/EF_UST
-        if ((!SystemProperties.getBoolean("persist.cust.tel.adapt", false) && !SystemProperties
-                .getBoolean("persist.cust.tel.eons", false))
-                || mSIMRecords.getSstPlmnOplValue() == 0) {
+        // TODO: Fix this
+        boolean needsSpnDisplayUpdate = true; //mSIMRecords.checkAndFetchEonsName(ss.getOperatorNumeric(), cellLoc);
+        if (needsSpnDisplayUpdate == true) {
             updateSpnDisplay();
-       } else {
-           boolean needsSpnDisplayUpdate = mSIMRecords.checkAndFetchEonsName(ss.getOperatorNumeric(), cellLoc);
-           if (needsSpnDisplayUpdate == true) {
-               updateSpnDisplay();
-           }
-       }
+        }
     }
 
     private void log(String s) {

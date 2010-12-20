@@ -1739,4 +1739,5 @@ public final class SIMRecords extends UiccApplicationRecords {
 
         Log.w(LOG_TAG, "[CSP] Value Added Service Group (0xC0), not found!");
     }
+
 }

@@ -58,6 +58,7 @@ public class DataServiceStateTracker extends Handler {
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mDataServiceStateRegistrants = new RegistrantList();
+    private RegistrantList mRadioTechChangedRegistrants = new RegistrantList();
 
     private static final int EVENT_RADIO_STATE_CHANGED = 1;
     private static final int EVENT_DATA_NETWORK_STATE_CHANGED = 2;
@@ -447,6 +448,7 @@ public class DataServiceStateTracker extends Handler {
         boolean hasChanged = !mNewSS.equals(mSs);
         boolean hasRoamingOn = !mSs.getRoaming() && mNewSS.getRoaming();
         boolean hasRoamingOff = mSs.getRoaming() && !mNewSS.getRoaming();
+        boolean hasRadioTechChanged = mNewSS.getRadioTechnology() != mSs.getRadioTechnology();
 
         ServiceState tss;
         tss = mSs;
@@ -470,8 +472,8 @@ public class DataServiceStateTracker extends Handler {
             mDataConnectionDetachedRegistrants.notifyRegistrants();
         }
 
-        if (hasDataConnectionChanged) {
-            mNotifier.notifyDataServiceState(mDct);
+        if (hasRadioTechChanged) {
+            mRadioTechChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRoamingOn) {
@@ -971,6 +973,15 @@ public class DataServiceStateTracker extends Handler {
 
     void unregisterForRecordsLoaded(Handler h) {
         mRecordsLoadedRegistrants.remove(h);
+    }
+
+    public void registerForRadioTechnologyChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mRadioTechChangedRegistrants.add(r);
+    }
+
+    public void unRegisterForRadioTechnologyChanged(Handler h) {
+        mRadioTechChangedRegistrants.remove(h);
     }
 
     /**

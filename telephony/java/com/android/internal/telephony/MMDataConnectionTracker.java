@@ -216,6 +216,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         mDsst.registerForDataConnectionAttached(this, EVENT_DATA_CONNECTION_ATTACHED, null);
         mDsst.registerForDataConnectionDetached(this, EVENT_DATA_CONNECTION_DETACHED, null);
+        mDsst.registerForRadioTechnologyChanged(this, EVENT_RADIO_TECHNOLOGY_CHANGED, null);
 
         mDsst.registerForDataRoamingOn(this, EVENT_ROAMING_ON, null);
         mDsst.registerForDataRoamingOff(this, EVENT_ROAMING_OFF, null);
@@ -282,6 +283,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         mDsst.unregisterForDataConnectionAttached(this);
         mDsst.unregisterForDataConnectionDetached(this);
+        mDsst.unRegisterForRadioTechnologyChanged(this);
 
         mDsst.unregisterForRecordsLoaded(this);
 
@@ -324,6 +326,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
             case EVENT_DATA_CONNECTION_DETACHED:
                 onDataConnectionDetached();
+                break;
+
+            case EVENT_RADIO_TECHNOLOGY_CHANGED:
+                onRadioTechnologyChanged();
                 break;
 
             case EVENT_DATA_CALL_LIST_CHANGED:
@@ -425,14 +431,34 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         // all data profiles fair chance again.
         mDpt.resetAllProfilesAsWorking();
         mDpt.resetAllServiceStates();
+
+        /*
+         * send a data connection notification update, with latest states, it is
+         * possible data went out of service and came back in service without
+         * data calls being disconnected
+         */
+        notifyAllEnabledDataServiceTypes(REASON_DATA_NETWORK_ATTACH);
+
         updateDataConnections(REASON_DATA_NETWORK_ATTACH);
     }
 
     protected void onDataConnectionDetached() {
         /*
-         * nothing needs to be done, data connections will disconnected one by
-         * one, and update data connections will be done then.
+         * Ideally, nothing needs to be done, data connections will disconnected
+         * one by one, and update data connections will be done then. But that
+         * might not happen, or might take time. So still need to trigger a data
+         * connection state update, because data was detached and packets are
+         * not going to flow anyway.
          */
+          notifyAllEnabledDataServiceTypes(REASON_DATA_NETWORK_DETACH);
+    }
+
+    protected void onRadioTechnologyChanged() {
+
+        /*
+         * notify radio technology changes.
+         */
+        notifyAllEnabledDataServiceTypes(REASON_RADIO_TECHNOLOGY_CHANGED);
     }
 
     @Override
@@ -999,7 +1025,13 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                     IPVersion ipv = dc.getIpVersion();
                     if (mDpt.getActiveDataConnection(ds, ipv) == null) {
                         mDpt.setServiceTypeAsActive(ds, dc, ipv);
-                        notifyDataConnection(ds, ipv, reason);
+                        /*
+                         * notify only if it is enabled - avoids unnecessary
+                         * notifications
+                         */
+                        if (mDpt.isServiceTypeEnabled(ds)) {
+                            notifyDataConnection(ds, ipv, reason);
+                        }
                     }
                 }
             }

@@ -128,12 +128,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     public void notifyVoiceServiceState(VoicePhone sender) {
-        mVoiceServiceState = sender.getVoiceServiceState();
+        mVoiceServiceState = new ServiceState(sender.getVoiceServiceState());
         notifyCombinedServiceState();
     }
 
     public void notifyDataServiceState(DataPhone sender) {
-        mDataServiceState = sender.getDataServiceState();
+        mDataServiceState = new ServiceState(sender.getDataServiceState());
         notifyCombinedServiceState();
     }
 

@@ -373,26 +373,14 @@ public class MobileDataStateTracker extends NetworkStateTracker {
         setTeardownRequested(false);
         switch (setEnableApn(mApnType, true)) {
             case Phone.APN_ALREADY_ACTIVE:
-                // TODO - remove this when we get per-apn notifications
                 mEnabled = true;
-                // need to set self to CONNECTING so the below message is handled.
-                mMobileDataState = Phone.DataState.CONNECTING;
-                setDetailedState(DetailedState.CONNECTING, Phone.REASON_APN_CHANGED, null);
-                //send out a connected message
-                Intent intent = new Intent(TelephonyIntents.
-                        ACTION_ANY_DATA_CONNECTION_STATE_CHANGED);
-                intent.putExtra(Phone.STATE_KEY, Phone.DataState.CONNECTED.toString());
-                intent.putExtra(Phone.STATE_CHANGE_REASON_KEY, Phone.REASON_APN_CHANGED);
-                intent.putExtra(Phone.DATA_APN_TYPES_KEY, mApnTypeToWatchFor);
-                intent.putExtra(Phone.DATA_APN_KEY, mApnName);
-                intent.putExtra(Phone.DATA_IFACE_NAME_KEY, mInterfaceName);
-                intent.putExtra(Phone.NETWORK_UNAVAILABLE_KEY, false);
-                intent.putExtra(Phone.DATA_GATEWAY_KEY, mDefaultGatewayAddr);
-                if (mStateReceiver != null) mStateReceiver.onReceive(mContext, intent);
+                //logv("dct reports apn already active. " + this);
+                //we will be sent intents again.
                 break;
             case Phone.APN_REQUEST_STARTED:
                 mEnabled = true;
-                // no need to do anything - we're already due some status update intents
+                // no need to do anything - we're already due some status update
+                // intents
                 break;
             case Phone.APN_REQUEST_FAILED:
                 if (mPhoneService == null && mApnType == Phone.APN_TYPE_DEFAULT) {

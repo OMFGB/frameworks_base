@@ -31,6 +31,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.telephony.DataPhone.IPVersion;
 import com.android.internal.telephony.DataProfile.DataProfileType;
 
 import com.android.internal.telephony.UiccManager.AppFamily;
@@ -105,16 +106,17 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     protected static final int EVENT_DATA_PROFILE_DB_CHANGED = 15;
     protected static final int EVENT_MASTER_DATA_ENABLED = 16;
     protected static final int EVENT_MASTER_DATA_DISABLED = 17;
+    protected static final int EVENT_RADIO_TECHNOLOGY_CHANGED = 18;
 
     /* CDMA only */
-    protected static final int EVENT_CDMA_OTA_PROVISION = 18;
+    protected static final int EVENT_CDMA_OTA_PROVISION = 19;
 
     /* GSM only */
-    protected static final int EVENT_PS_RESTRICT_ENABLED = 19;
-    protected static final int EVENT_PS_RESTRICT_DISABLED = 20;
+    protected static final int EVENT_PS_RESTRICT_ENABLED = 20;
+    protected static final int EVENT_PS_RESTRICT_DISABLED = 21;
 
-    protected static final int EVENT_RECORDS_LOADED = 21;
-    protected static final int EVENT_ICC_CHANGED = 22;
+    protected static final int EVENT_RECORDS_LOADED = 22;
+    protected static final int EVENT_ICC_CHANGED = 23;
 
    /*
      * Reasons for calling updateDataConnections()
@@ -260,6 +262,11 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
             // service type is already inactive.
             // TODO: is APN_REQUEST_FAILED appropriate? or should it be
             // APN_REQUEST_STARTED?
+
+            /* send out disconnected notifications - no harm doing this */
+            notifyDataConnection(serviceType, IPVersion.IPV4, REASON_SERVICE_TYPE_DISABLED);
+            notifyDataConnection(serviceType, IPVersion.IPV6, REASON_SERVICE_TYPE_DISABLED);
+
             return APN_REQUEST_FAILED;
         }
 
@@ -287,7 +294,18 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
         mDpt.setServiceTypeEnabled(serviceType, true);
 
         if (mDpt.isServiceTypeActive(serviceType) == true) {
-            // service type is already active.
+
+            // service type is already active, send out notifications!
+
+            notifyDataConnection(serviceType, IPVersion.IPV4, REASON_SERVICE_TYPE_ENABLED);
+            notifyDataConnection(serviceType, IPVersion.IPV6, REASON_SERVICE_TYPE_ENABLED);
+
+            /*
+             * do an update data connections, just in case it was active only on
+             * one IP version and not other.
+             */
+            sendMessage(obtainMessage(EVENT_SERVICE_TYPE_ENABLED, serviceType));
+
             return APN_ALREADY_ACTIVE;
         }
 
@@ -510,6 +528,15 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
 
     void notifyDataConnection(DataServiceType ds, IPVersion ipv, String reason) {
         mNotifier.notifyDataConnection(this, ds.toApnTypeString(), ipv, reason);
+    }
+
+    protected void notifyAllEnabledDataServiceTypes(String reason) {
+        for (DataServiceType ds : DataServiceType.values()) {
+            if (mDpt.isServiceTypeEnabled(ds)) {
+                notifyDataConnection(ds, IPVersion.IPV4, reason);
+                notifyDataConnection(ds, IPVersion.IPV6, reason);
+            }
+        }
     }
 
     // notify data connection as failed - applicable for default type only?

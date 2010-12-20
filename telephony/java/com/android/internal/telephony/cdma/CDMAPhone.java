@@ -275,7 +275,10 @@ public class CDMAPhone extends PhoneBase {
     }
 
     public Phone.State getState() {
-        return mCT.state;
+        if (mCT != null) {
+            return mCT.state;
+        }
+        return Phone.State.IDLE;
     }
 
     public String getPhoneName() {

@@ -132,6 +132,9 @@ public class IccCardStatus {
     }
 
     public IccCardApplication getApplication(int index) {
-        return mApplications.get(index);
+        if (index < mApplications.size()) {
+            return mApplications.get(index);
+        }
+        return null;
     }
 }

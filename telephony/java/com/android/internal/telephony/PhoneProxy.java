@@ -42,6 +42,8 @@ public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
 
     private Phone mActivePhone;
+    private CDMAPhone mCDMAPhone;
+    private GSMPhone mGSMPhone;
     private CommandsInterface mCi;
     private IccSmsInterfaceManagerProxy mIccSmsInterfaceManagerProxy;
     private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
@@ -59,6 +61,11 @@ public class PhoneProxy extends Handler implements Phone {
     //***** Class Methods
     public PhoneProxy(Phone phone) {
         mActivePhone = phone;
+        if (mActivePhone.getPhoneType() == PHONE_TYPE_CDMA) {
+            mCDMAPhone = (CDMAPhone) mActivePhone;
+        } else if (mActivePhone.getPhoneType() == PHONE_TYPE_GSM) {
+            mGSMPhone = (GSMPhone) mActivePhone;
+        }
         mResetModemOnRadioTechnologyChange = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RESET_ON_RADIO_TECH_CHANGE, false);
         mIccSmsInterfaceManagerProxy = new IccSmsInterfaceManagerProxy(
@@ -205,14 +212,23 @@ public class PhoneProxy extends Handler implements Phone {
         // System.gc();
 
         if (newVoiceRadioTech.isCdma()) {
-            mActivePhone = PhoneFactory.getCdmaPhone();
+            if (mCDMAPhone != null) {
+                mActivePhone = mCDMAPhone;
+            } else {
+                mActivePhone = PhoneFactory.getCdmaPhone();
+                mCDMAPhone = (CDMAPhone) mActivePhone;
+            }
             if (null != oldPhone) {
-                ((GSMPhone) oldPhone).removeReferences();
+                //((GSMPhone) oldPhone).removeReferences();
             }
         } else if (newVoiceRadioTech.isGsm()) {
-            mActivePhone = PhoneFactory.getGsmPhone();
+            if (mGSMPhone != null) {
+                mActivePhone = mGSMPhone;
+            } else {
+                mActivePhone = PhoneFactory.getGsmPhone();
+            }
             if (null != oldPhone) {
-                ((CDMAPhone) oldPhone).removeReferences();
+                //((CDMAPhone) oldPhone).removeReferences();
             }
         }
 

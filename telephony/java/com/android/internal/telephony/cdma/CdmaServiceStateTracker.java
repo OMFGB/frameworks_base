@@ -311,6 +311,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         switch (msg.what) {
         case EVENT_RADIO_ON:
             cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+            cm.getCDMASubscription( obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
+            cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
             break;
 
         case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
@@ -480,6 +482,12 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION NID=" + cdmaSubscription[2] );
                     mMin = cdmaSubscription[3];
+                    /*
+                     * TODO : remove this from here when RIL sends the PRL
+                     * in EVENT_GET_CDMA_PRL_VERSION
+                     */
+                    mPrlVersion = cdmaSubscription[4];
+                    Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION PRL version=" + mPrlVersion);
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION MDN=" + mMdn);
                     //Notify apps subscription info is ready
                     if (cdmaForSubscriptionInfoReadyRegistrants != null) {

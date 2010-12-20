@@ -326,20 +326,25 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
             log("Received EVENT_GET_CDMA_SUBSCRIPTION_SOURCE: ");
             ar = (AsyncResult) msg.obj;
-            int newSubscriptionSource = ((int[]) ar.result)[0];
 
-            if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource
+            if (ar.exception == null) {
+                int newSubscriptionSource = ((int[]) ar.result)[0];
+
+                if (newSubscriptionSource != mCdmaSubscriptionSource) {
+                    Log.v(LOG_TAG, "Subscription Source Changed : " + mCdmaSubscriptionSource
                         + " >> " + newSubscriptionSource);
-                mCdmaSubscriptionSource = newSubscriptionSource;
-                saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
+                     mCdmaSubscriptionSource = newSubscriptionSource;
+                     saveCdmaSubscriptionSource(mCdmaSubscriptionSource);
 
-                if (newSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
-                    //NV is ready when subscription source is NV
-                    sendMessage(obtainMessage(EVENT_NV_READY));
+                     if (newSubscriptionSource == VoicePhone.CDMA_SUBSCRIPTION_NV) {
+                         //NV is ready when subscription source is NV
+                         sendMessage(obtainMessage(EVENT_NV_READY));
+                     }
                 }
+                pollState();
+            } else {
+                Log.w(LOG_TAG, "Error in parsing CDMA_SUBSCRIPTION_SOURCE:" +ar.exception);
             }
-            pollState();
             break;
 
         case EVENT_RUIM_READY:

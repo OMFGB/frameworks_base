@@ -1527,11 +1527,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     private boolean getAutoTime() {
-        try {
-            return Settings.System.getInt(cr, Settings.System.AUTO_TIME) > 0;
-        } catch (SettingNotFoundException snfe) {
-            return true;
-        }
+        // Always returns true for CDMA mode
+        return true;
     }
 
     private void saveNitzTimeZone(String zoneId) {

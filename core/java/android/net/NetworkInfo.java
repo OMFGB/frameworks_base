@@ -108,6 +108,8 @@ public class NetworkInfo implements Parcelable {
     private String mExtraInfo;
     private boolean mIsFailover;
     private boolean mIsRoaming;
+    private boolean mIsIpV4Connected;
+    private boolean mIsIpV6Connected;
     /**
      * Indicates whether network connectivity is possible:
      */
@@ -129,7 +131,7 @@ public class NetworkInfo implements Parcelable {
         mSubtype = subtype;
         mTypeName = typeName;
         mSubtypeName = subtypeName;
-        setDetailedState(DetailedState.IDLE, null, null);
+        setDetailedState(DetailedState.IDLE, false, false, null, null);
         mState = State.UNKNOWN;
         mIsAvailable = false; // until we're told otherwise, assume unavailable
         mIsRoaming = false;
@@ -195,6 +197,34 @@ public class NetworkInfo implements Parcelable {
      */
     public boolean isConnected() {
         return mState == State.CONNECTED;
+    }
+
+    /**
+     * Indicates whether ipv4 network connectivity exists and it is possible to establish
+     * connections and pass ipv4 data.
+     * @return {@code true} if network connectivity through ipv4 exists, {@code false} otherwise.
+     *
+     * @hide
+     */
+    public boolean isIpv4Connected() {
+        if (isConnected()) {
+            return mIsIpV4Connected;
+        }
+        return false;
+    }
+
+    /**
+     * Indicates whether ipv6 network connectivity exists and it is possible to establish
+     * connections and pass ipv6 data.
+     * @return {@code true} if network connectivity through ipv6 exists, {@code false} otherwise.
+     *
+     * @hide
+     */
+    public boolean isIpv6Connected() {
+        if (isConnected()) {
+            return mIsIpV6Connected;
+        }
+        return false;
     }
 
     /**
@@ -282,11 +312,19 @@ public class NetworkInfo implements Parcelable {
      * @param extraInfo an optional {@code String} providing addditional network state
      * information passed up from the lower networking layers.
      */
-    void setDetailedState(DetailedState detailedState, String reason, String extraInfo) {
+    void setDetailedState(DetailedState detailedState, boolean isIpv4Connected,
+            boolean isIpv6Connected, String reason, String extraInfo) {
         this.mDetailedState = detailedState;
         this.mState = stateMap.get(detailedState);
         this.mReason = reason;
         this.mExtraInfo = extraInfo;
+        if (this.mState != State.CONNECTED) {
+            this.mIsIpV4Connected = false;
+            this.mIsIpV6Connected = false;
+        } else {
+            this.mIsIpV4Connected = isIpv4Connected;
+            this.mIsIpV6Connected = isIpv6Connected;
+        }
     }
 
     /**
@@ -317,7 +355,9 @@ public class NetworkInfo implements Parcelable {
                 append(", extra: ").append(mExtraInfo == null ? "(none)" : mExtraInfo).
                 append(", roaming: ").append(mIsRoaming).
                 append(", failover: ").append(mIsFailover).
-                append(", isAvailable: ").append(mIsAvailable);
+                append(", isAvailable: ").append(mIsAvailable).
+                append(", isIpv4Connected: ").append(mIsIpV4Connected).
+                append(", isIpv6Connected: ").append(mIsIpV6Connected);
         return builder.toString();
     }
 
@@ -345,6 +385,8 @@ public class NetworkInfo implements Parcelable {
         dest.writeInt(mIsRoaming ? 1 : 0);
         dest.writeString(mReason);
         dest.writeString(mExtraInfo);
+        dest.writeInt(mIsIpV4Connected? 1 : 0);
+        dest.writeInt(mIsIpV6Connected? 1 : 0);
     }
 
     /**
@@ -366,6 +408,8 @@ public class NetworkInfo implements Parcelable {
                 netInfo.mIsRoaming = in.readInt() != 0;
                 netInfo.mReason = in.readString();
                 netInfo.mExtraInfo = in.readString();
+                netInfo.mIsIpV4Connected = in.readInt() != 0;
+                netInfo.mIsIpV6Connected = in.readInt() != 0;
                 return netInfo;
             }
 

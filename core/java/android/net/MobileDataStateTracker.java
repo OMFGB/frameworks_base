@@ -25,10 +25,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Message;
 import android.os.RemoteException;
 import android.os.Handler;
 import android.os.ServiceManager;
+
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyIntents;
@@ -288,17 +288,19 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                                     mEnabled = false;
                                     setTeardownRequested(false);
                                 }
-                                setDetailedState(DetailedState.DISCONNECTED, reason, extraInfo);
+                                setDetailedState(DetailedState.DISCONNECTED, false, false, reason, extraInfo);
                                 break;
                             case CONNECTING:
-                                setDetailedState(DetailedState.CONNECTING, reason, extraInfo);
+                                setDetailedState(DetailedState.CONNECTING, false, false, reason, extraInfo);
                                 break;
                             case SUSPENDED:
-                                setDetailedState(DetailedState.SUSPENDED, reason, extraInfo);
+                                setDetailedState(DetailedState.SUSPENDED, false, false, reason, extraInfo);
                                 break;
                             case CONNECTED:
-                                mDefaultGatewayAddr = intent.getByteArrayExtra(Phone.DATA_GATEWAY_KEY);
-                                setDetailedState(DetailedState.CONNECTED, reason, extraInfo);
+                                setDetailedState(DetailedState.CONNECTED,
+                                        mIpv4MobileDataState == DataState.CONNECTED,
+                                        mIpv6MobileDataState == DataState.CONNECTED,
+                                        reason, extraInfo);
                                 break;
                         }
                     }
@@ -309,7 +311,9 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                     String apnName = intent.getStringExtra(Phone.DATA_APN_KEY);
                     logi("Received " + intent.getAction() + " broadcast" +
                             reason == null ? "" : "(" + reason + ")");
-                    setDetailedState(DetailedState.FAILED, reason, apnName);
+                    setDetailedState(DetailedState.FAILED,
+                            mIpv4MobileDataState == DataState.CONNECTED,
+                            mIpv6MobileDataState == DataState.CONNECTED, reason, apnName);
                 }
             }
         }
@@ -657,40 +661,6 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             NetworkUtils.removeHostRoutes(mIpv4InterfaceName);
             mIpv4PrivateDnsRouteSet = false;
         }
-    }
-
-    /**
-     * Record the detailed state of a network, and if it is a
-     * change from the previous state, send a notification to
-     * any listeners.
-     * @param state the new @{code DetailedState}
-     * @param reason a {@code String} indicating a reason for the state change,
-     * if one was supplied. May be {@code null}.
-     * @param extraInfo optional {@code String} providing extra information about the state change
-     */
-    @Override
-    public void setDetailedState(NetworkInfo.DetailedState state, String reason, String extraInfo) {
-
-        logv("setDetailed state :" + mNetworkInfo.getDetailedState() + " >>> " + state);
-
-        /*
-         * no need for old state != new state
-         *    - if we are IPV4 CONNECTED and now become IPV6 CONNECTED we need to notify ConnectivtyService.
-         *    - spurious notifications are avoided, as we do compare detailed states when processing the intent.
-         */
-        boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
-        String lastReason = mNetworkInfo.getReason();
-        /*
-         * If a reason was supplied when the CONNECTING state was entered, and
-         * no reason was supplied for entering the CONNECTED state, then retain
-         * the reason that was supplied when going to CONNECTING.
-         */
-        if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
-                && lastReason != null)
-            reason = lastReason;
-        mNetworkInfo.setDetailedState(state, reason, extraInfo);
-        Message msg = mTarget.obtainMessage(NetworkStateTracker.EVENT_STATE_CHANGED, mNetworkInfo);
-        msg.sendToTarget();
     }
 
     @Override

@@ -303,7 +303,16 @@ public abstract class NetworkStateTracker extends Handler {
      * @param state the new @{code DetailedState}
      */
     public void setDetailedState(NetworkInfo.DetailedState state) {
-        setDetailedState(state, null, null);
+        if (state == NetworkInfo.DetailedState.CONNECTED) {
+            /*
+             * TODO: this function is called by wifi. We assume that if wifi
+             * says CONNECTED, both v4 and v6 is connected. This may not be true
+             * always but no other way of knowing this now.
+             */
+            setDetailedState(state, true, true, null, null);
+        } else {
+            setDetailedState(state, false, false, null, null);
+        }
     }
 
     /**
@@ -315,27 +324,36 @@ public abstract class NetworkStateTracker extends Handler {
      * if one was supplied. May be {@code null}.
      * @param extraInfo optional {@code String} providing extra information about the state change
      */
-    public void setDetailedState(NetworkInfo.DetailedState state, String reason, String extraInfo) {
+    public void setDetailedState(NetworkInfo.DetailedState state, boolean isIpv4Connected,
+            boolean isIpv6Connected, String reason, String extraInfo) {
         if (DBG) Log.d(TAG, "setDetailed state, old ="+mNetworkInfo.getDetailedState()+" and new state="+state);
-        if (state != mNetworkInfo.getDetailedState()) {
-            boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
-            String lastReason = mNetworkInfo.getReason();
-            /*
-             * If a reason was supplied when the CONNECTING state was entered, and no
-             * reason was supplied for entering the CONNECTED state, then retain the
-             * reason that was supplied when going to CONNECTING.
-             */
-            if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
-                    && lastReason != null)
-                reason = lastReason;
-            mNetworkInfo.setDetailedState(state, reason, extraInfo);
-            Message msg = mTarget.obtainMessage(EVENT_STATE_CHANGED, mNetworkInfo);
-            msg.sendToTarget();
-        }
+        boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
+        String lastReason = mNetworkInfo.getReason();
+        /*
+         * If a reason was supplied when the CONNECTING state was entered, and no
+         * reason was supplied for entering the CONNECTED state, then retain the
+         * reason that was supplied when going to CONNECTING.
+         */
+        if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
+                && lastReason != null)
+            reason = lastReason;
+        mNetworkInfo.setDetailedState(state, isIpv4Connected, isIpv6Connected, reason, extraInfo);
+        Message msg = mTarget.obtainMessage(EVENT_STATE_CHANGED, mNetworkInfo);
+        msg.sendToTarget();
+
     }
 
     protected void setDetailedStateInternal(NetworkInfo.DetailedState state) {
-        mNetworkInfo.setDetailedState(state, null, null);
+        if (state == NetworkInfo.DetailedState.CONNECTED) {
+            /*
+             * TODO: this function is called by wifi. We assume that if wifi
+             * says CONNECTED, both v4 and v6 is connected. This may not be true
+             * always but no other way of knowing this now.
+             */
+            mNetworkInfo.setDetailedState(state, true, true, null, null);
+        } else {
+            mNetworkInfo.setDetailedState(state, false, false, null, null);
+        }
     }
 
     public void setTeardownRequested(boolean isRequested) {

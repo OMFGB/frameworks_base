@@ -223,6 +223,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         /* CDMA only */
         mCm.registerForCdmaOtaProvision(this, EVENT_CDMA_OTA_PROVISION, null);
+        mDsst.registerForCdmaSubscriptonSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
         /* GSM only */
         mDsst.registerForPsRestrictedEnabled(this, EVENT_PS_RESTRICT_ENABLED, null);
@@ -291,6 +292,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mDsst.unregisterForDataRoamingOff(this);
         mDsst.unregisterForPsRestrictedEnabled(this);
         mDsst.unregisterForPsRestrictedDisabled(this);
+        mDsst.unRegisterForCdmaSubscriptonSourceChanged(this);
 
         mDpt.unregisterForDataProfileDbChanged(this);
 
@@ -345,6 +347,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 onCdmaOtaProvision((AsyncResult) msg.obj);
                 break;
 
+            case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                updateDataConnections(REASON_CDMA_SUBSCRIPTION_SOURCE_CHANGED);
+                break;
+
             case EVENT_PS_RESTRICT_ENABLED:
                 logi("PS restrict enabled.");
                 /**
@@ -384,9 +390,9 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
     private void onCdmaOtaProvision(AsyncResult ar) {
         if (ar.exception != null) {
-            int[] otaPrivision = (int[]) ar.result;
-            if ((otaPrivision != null) && (otaPrivision.length > 1)) {
-                switch (otaPrivision[0]) {
+            int[] otaProvision = (int[]) ar.result;
+            if ((otaProvision != null) && (otaProvision.length > 1)) {
+                switch (otaProvision[0]) {
                     case Phone.CDMA_OTA_PROVISION_STATUS_COMMITTED:
                     case Phone.CDMA_OTA_PROVISION_STATUS_OTAPA_STOPPED:
                         mDpt.resetAllProfilesAsWorking();
@@ -1150,6 +1156,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         sb.append(", mSIMRecords = ");
         if (mDsst.mSimRecords != null)
             sb.append(mDsst.mSimRecords.getRecordsLoaded());
+        sb.append(", cdmaSubSource = ").append(mDsst.mCdmaSubscriptionSource);
         sb.append(", mRuimRecords = ");
         if (mDsst.mRuimRecords != null)
             sb.append(mDsst.mRuimRecords.getRecordsLoaded());
@@ -1174,16 +1181,6 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     private boolean trySetupDataCall(DataServiceType ds, IPVersion ipv, String reason) {
         logv("trySetupDataCall : ds=" + ds + ", ipv=" + ipv + ", reason=" + reason);
         DataProfile dp = mDpt.getNextWorkingDataProfile(ds, getDataProfileTypeToUse(), ipv);
-        /*
-         * It might not possible to distinguish an EVDO only network from
-         * one that supports EHRPD, until the data call is actually made! So
-         * if THIS is an EHRPD capable device, then we have to make
-         * sure that we send APN if available. But, if we do not have APNs
-         * configured then we should fall back to NAI!
-         */
-        if (dp == null && mIsEhrpdCapable && getRadioTechnology().isEvdo()) {
-            dp = mDpt.getNextWorkingDataProfile(ds, DataProfileType.PROFILE_TYPE_3GPP2_NAI, ipv);
-        }
         if (dp == null) {
             logw("no working data profile available to establish service type " + ds + "on " + ipv);
             mDpt.setState(State.FAILED, ds, ipv);
@@ -1228,11 +1225,19 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 || ( mIsEhrpdCapable && r.isEvdo())) {
             /*
              * It might not possible to distinguish an EVDO only network from
-             * one that supports EHRPD, until the data call is actually made! So
-             * if THIS is an EHRPD capable device, then we have to make
-             * sure that we send APN if its available!
+             * one that supports EHRPD. If THIS is an EHRPD capable device, then
+             * we have to make sure that we send APN if its available!
              */
-            type = DataProfileType.PROFILE_TYPE_3GPP_APN;
+            if (mDpt.isAnyDataProfileAvailable(DataProfileType.PROFILE_TYPE_3GPP_APN)) {
+                /* At least one APN is configured, do everything as per APNs available */
+                type = DataProfileType.PROFILE_TYPE_3GPP_APN;
+            } else {
+                /*
+                 * APNs are not configured - just use the default NAI
+                 * as of now just one data call on IPV4 that supports all service types.
+                 */
+                type = DataProfileType.PROFILE_TYPE_3GPP2_NAI;
+            }
         } else if (r.isGsm()) {
             type = DataProfileType.PROFILE_TYPE_3GPP_APN;
         } else {

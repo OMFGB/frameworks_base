@@ -83,14 +83,10 @@ public class CdmaSubscriptionInfo {
         } catch (Exception ex) {
             Log.e(LOG_TAG, "error parsing min: ", ex);
         }
+    }
 
-        /* TODO: prl version will go away soon */
-        try {
-            mPrlVersion = cdmaSubscriptionArray[4]; /* will change */
-            ;
-        } catch (Exception ex) {
-            Log.e(LOG_TAG, "error parsing prl version: ", ex);
-        }
+    public void setPrlVersion(String prlVersion) {
+        mPrlVersion = prlVersion;
     }
 
     public boolean isSidsAllZeros() {

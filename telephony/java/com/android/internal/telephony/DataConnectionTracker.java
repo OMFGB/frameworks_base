@@ -105,14 +105,14 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     protected static final int EVENT_MASTER_DATA_DISABLED = 17;
     protected static final int EVENT_RADIO_TECHNOLOGY_CHANGED = 18;
 
-    /* CDMA only */
-    protected static final int EVENT_CDMA_OTA_PROVISION = 19;
+    protected static final int EVENT_CDMA_OTA_PROVISION = 20;
+    protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 21;
 
     /* GSM only */
-    protected static final int EVENT_PS_RESTRICT_ENABLED = 20;
-    protected static final int EVENT_PS_RESTRICT_DISABLED = 21;
+    protected static final int EVENT_PS_RESTRICT_ENABLED = 25;
+    protected static final int EVENT_PS_RESTRICT_DISABLED = 26;
 
-    protected static final int EVENT_RECORDS_LOADED = 22;
+    protected static final int EVENT_RECORDS_LOADED = 30;
 
    /*
      * Reasons for calling updateDataConnections()
@@ -139,7 +139,8 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     protected static final String REASON_DATA_NETWORK_ATTACH = "dataNetworkAttached";
     protected static final String REASON_DATA_NETWORK_DETACH = "dataNetworkDetached";
     protected static final String REASON_DATA_PROFILE_LIST_CHANGED = "dataProfileDbChanged";
- 
+    protected static final String REASON_CDMA_SUBSCRIPTION_SOURCE_CHANGED = "cdmaSubscriptionSourceChanged";
+
     /**
      * Default constructor
      */

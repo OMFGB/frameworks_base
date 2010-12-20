@@ -204,6 +204,21 @@ public class DataProfileTracker extends Handler {
                 hasProfileDbChanged, null));
     }
 
+    /*
+     * returns true if at least one profile of the specified data profile type is configured
+     * for the current operator.
+     */
+    public boolean isAnyDataProfileAvailable(DataProfileType dpt) {
+        boolean ret = false;
+        for (DataProfile dp : mAllDataProfilesList) {
+            if (dp.getDataProfileType() == dpt) {
+                ret = true;
+                break;
+            }
+        }
+        return ret;
+    }
+
     public void setOperatorNumeric(String newOperatorNumeric) {
         if (newOperatorNumeric != mOperatorNumeric) {
             logv("Operator numeric changed : " + mOperatorNumeric + "  >>  " + newOperatorNumeric);

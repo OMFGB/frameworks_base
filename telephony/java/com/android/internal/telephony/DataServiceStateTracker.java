@@ -55,6 +55,7 @@ public class DataServiceStateTracker extends Handler {
     private RegistrantList mDataConnectionAttachedRegistrants = new RegistrantList();
     private RegistrantList mDataConnectionDetachedRegistrants = new RegistrantList();
     private RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
+    private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mDataServiceStateRegistrants = new RegistrantList();
@@ -69,9 +70,11 @@ public class DataServiceStateTracker extends Handler {
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_INFO = 14;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE = 15;
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 16;
+    private static final int EVENT_GET_CDMA_PRL_VERSION = 17;
+    private static final int EVENT_CDMA_PRL_VERSION_CHANGED = 18;
 
     /* gsm only */
-    private static final int EVENT_RESTRICTED_STATE_CHANGED = 17;
+    private static final int EVENT_RESTRICTED_STATE_CHANGED = 20;
 
     private static final int EVENT_SIM_READY = 25;  //SIM application is ready
     private static final int EVENT_RUIM_READY = 26; //RUIM application is ready
@@ -115,7 +118,7 @@ public class DataServiceStateTracker extends Handler {
     RuimRecords mRuimRecords = null;
 
     /* cdma only stuff */
-    public int mCdmaSubscriptionSource = -1; /* CDMA subscription unknown */
+    public int mCdmaSubscriptionSource = Phone.CDMA_SUBSCRIPTION_NV; /* assume NV */
     private CdmaSubscriptionInfo mCdmaSubscriptionInfo;
     private CdmaRoamingInfoHelper mCdmaRoamingInfo;
 
@@ -152,6 +155,7 @@ public class DataServiceStateTracker extends Handler {
 
         //cdma only
         cm.registerForCdmaSubscriptionSourceChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
     }
 
     @Override
@@ -164,6 +168,8 @@ public class DataServiceStateTracker extends Handler {
                 pollState("radio state changed");
                 if (cm.getRadioState().isOn()) {
                     cm.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                    cm.getCDMASubscription( obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_INFO));
+                    cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
                 }
                 break;
 
@@ -178,7 +184,7 @@ public class DataServiceStateTracker extends Handler {
                     int newSubscriptionSource = ((int[]) ar.result)[0];
 
                     if (newSubscriptionSource != mCdmaSubscriptionSource) {
-                        Log.v(LOG_TAG, "cdma subscription Ssurce changed : "
+                        Log.v(LOG_TAG, "cdma subscription Source changed : "
                                 + mCdmaSubscriptionSource + " >> " + newSubscriptionSource);
                         mCdmaSubscriptionSource = newSubscriptionSource;
 
@@ -186,6 +192,7 @@ public class DataServiceStateTracker extends Handler {
                             // NV is already ready, if subscription is NV.
                             sendMessage(obtainMessage(EVENT_NV_READY));
                         }
+                        mCdmaSubscriptionSourceChangedRegistrants.notifyRegistrants();
                         pollState("cdma subscription source changed");
                     }
                 }
@@ -198,11 +205,13 @@ public class DataServiceStateTracker extends Handler {
 
             case EVENT_RUIM_READY:
                 cm.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_INFO));
+                cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
                 pollState("ruim ready");
                 break;
 
             case EVENT_NV_READY:
                 cm.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_INFO));
+                cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
                 pollState("nv ready");
                 break;
 
@@ -232,6 +241,17 @@ public class DataServiceStateTracker extends Handler {
                     Log.e(LOG_TAG, "Error parsing CDMA subscription information!");
                 } else {
                     mCdmaSubscriptionInfo.populateSubscriptionInfoFromRegistrationState((String[]) ar.result);
+                }
+                break;
+
+            case EVENT_CDMA_PRL_VERSION_CHANGED:
+                cm.getCdmaPrlVersion(obtainMessage(EVENT_GET_CDMA_PRL_VERSION));
+                break;
+
+            case EVENT_GET_CDMA_PRL_VERSION:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    mCdmaSubscriptionInfo.setPrlVersion((String) ar.result);
                 }
                 break;
 
@@ -982,6 +1002,15 @@ public class DataServiceStateTracker extends Handler {
 
     public void unRegisterForRadioTechnologyChanged(Handler h) {
         mRadioTechChangedRegistrants.remove(h);
+    }
+
+    public void registerForCdmaSubscriptonSourceChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mCdmaSubscriptionSourceChangedRegistrants.add(r);
+    }
+
+    public void unRegisterForCdmaSubscriptonSourceChanged(Handler h) {
+        mCdmaSubscriptionSourceChangedRegistrants.remove(h);
     }
 
     /**

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1222,6 +1223,8 @@ public interface CommandsInterface {
     void setOnUnsolOemHookExtApp(Handler h, int what, Object obj);
 
     void unSetOnUnsolOemHookExtApp(Handler h);
+
+    void invokeDepersonalization(String pin, int type, Message response);
 
     /**
      * Send TERMINAL RESPONSE to the SIM, after processing a proactive command

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3709,5 +3709,39 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         send(rr);
+    }
+
+    /**
+     * Encodes data for ME Depersonalization and invokes
+     * invokeOemRilRequestRaw.
+     */
+    public void invokeDepersonalization(String pin, int type, Message response) {
+        int INT_SIZE = 4;
+        String mOemIdentifier = "QUALCOMM";
+        int mHeaderSize = mOemIdentifier.length() + 2 * INT_SIZE;
+        // Starting number for OEMHOOK request and response IDs
+        int OEMHOOK_BASE = 0x80000;
+        // De-activate ICC Personalization
+        int OEMHOOK_ME_DEPERSONALIZATION = OEMHOOK_BASE + 4;
+        int requestSize = INT_SIZE + pin.length();
+        byte[] request = new byte[mHeaderSize + requestSize + 1];
+        byte termChar = '\0';
+        ByteBuffer reqBuffer = ByteBuffer.wrap(request);
+        reqBuffer.order(ByteOrder.nativeOrder());
+
+        // Add OEM identifier String
+        reqBuffer.put(mOemIdentifier.getBytes());
+
+        // Add Request ID
+        reqBuffer.putInt(OEMHOOK_ME_DEPERSONALIZATION);
+
+        // Add Request payload length
+        reqBuffer.putInt(requestSize);
+
+        reqBuffer.putInt(type); // De-Personalization Subtype
+        reqBuffer.put(pin.getBytes()); // De-Personalization PIN
+        reqBuffer.put(termChar); // Null character indicating end of string
+
+        invokeOemRilRequestRaw(request, response);
     }
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -495,6 +496,46 @@ public class TelephonyManager {
      *@hide
      */
     public static final int SIM_STATE_CARD_IO_ERROR = 6;
+    /** SIM card state: Locked: requries a network subset PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_NETWORK_SUBSET_LOCKED = 7;
+    /** ICC card state: Locked: requries a SIM corporate PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_CORPORATE_LOCKED = 8;
+    /** ICC card state: Locked: requries a SIM service provider PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED = 9;
+    /** ICC card state: Locked: requries a SIM SIM PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_SIM_LOCKED = 10;
+    /** ICC card state: Locked: requries a RUIM network1 PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_NETWORK1_LOCKED = 11;
+    /** ICC card state: Locked: requries a RUIM network2 PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_NETWORK2_LOCKED = 12;
+    /** ICC card state: Locked: requries a RUIM hrpd PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_HRPD_LOCKED = 13;
+    /** ICC card state: Locked: requries a RUIM corporate PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_CORPORATE_LOCKED = 14;
+    /** ICC card state: Locked: requries a RUIM service provider PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED = 15;
+    /** ICC card state: Locked: requries a RUIM RUIM PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_RUIM_LOCKED = 16;
 
     /**
      * @return true if a ICC card is present
@@ -522,6 +563,16 @@ public class TelephonyManager {
      * @see #SIM_STATE_NETWORK_LOCKED
      * @see #SIM_STATE_READY
      * @see #SIM_STATE_CARD_IO_ERROR
+     * @see #ICC_STATE_SIM_NETWORK_SUBSET_LOCKED
+     * @see #ICC_STATE_SIM_CORPORATE_LOCKED
+     * @see #ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED
+     * @see #ICC_STATE_SIM_SIM_LOCKED
+     * @see #ICC_STATE_RUIM_NETWORK1_LOCKED
+     * @see #ICC_STATE_RUIM_NETWORK2_LOCKED
+     * @see #ICC_STATE_RUIM_HRPD_LOCKED
+     * @see #ICC_STATE_RUIM_CORPORATE_LOCKED
+     * @see #ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED
+     * @see #ICC_STATE_RUIM_RUIM_LOCKED
      */
     public int getSimState() {
         String prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
@@ -542,6 +593,36 @@ public class TelephonyManager {
         }
         else if ("CARD_IO_ERROR".equals(prop)) {
             return SIM_STATE_CARD_IO_ERROR;
+        }
+        else if ("SIM_NETWORK_SUBSET_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_NETWORK_SUBSET_LOCKED;
+        }
+        else if ("SIM_CORPORATE_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_CORPORATE_LOCKED;
+        }
+        else if ("SIM_SERVICE_PROVIDER_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED;
+        }
+        else if ("SIM_SIM_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_SIM_LOCKED;
+        }
+        else if ("RUIM_NETWORK1_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_NETWORK1_LOCKED;
+        }
+        else if ("RUIM_NETWORK2_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_NETWORK2_LOCKED;
+        }
+        else if ("RUIM_HRPD_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_HRPD_LOCKED;
+        }
+        else if ("RUIM_CORPORATE_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_CORPORATE_LOCKED;
+        }
+        else if ("RUIM_SERVICE_PROVIDER_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED;
+        }
+        else if ("RUIM_RUIM_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_RUIM_LOCKED;
         }
         else {
             return SIM_STATE_UNKNOWN;

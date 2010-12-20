@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1202,6 +1203,13 @@ public final class SimulatedCommands extends BaseCommands
             AsyncResult.forMessage(response).result = data;
             response.sendToTarget();
         }
+    }
+
+    public void invokeDepersonalization(String pin, int type, Message response) {
+        //Just some data to echo back
+        String temp = pin + type;
+        byte[] data = temp.getBytes();
+        invokeOemRilRequestRaw(data, response);
     }
 
     public void invokeOemRilRequestStrings(String[] strings, Message response) {

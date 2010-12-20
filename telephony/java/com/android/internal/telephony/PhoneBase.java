@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -740,6 +740,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
         mCM.invokeOemRilRequestRaw(data, response);
+    }
+
+    public void invokeDepersonalization(String pin, int type, Message response) {
+        mCM.invokeDepersonalization(pin, type, response);
     }
 
     public void invokeOemRilRequestStrings(String[] strings, Message response) {

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1188,6 +1188,23 @@ public interface Phone {
      * @see #invokeOemRilRequestRaw(byte[], android.os.Message)
      */
     void invokeOemRilRequestRaw(byte[] data, Message response);
+
+    /**
+     * Invokes invokeOemRilRequestRaw with data encoded for ICC
+     * De-Personalization.
+     *
+     * @param pin Pin for De-Personalization..
+     * @param type The De-Personalization type.
+     * @param response <strong>On success</strong>,
+     * (byte[])(((AsyncResult)response.obj).result)
+     * <strong>On failure</strong>,
+     * (((AsyncResult)response.obj).result) == null and
+     * (((AsyncResult)response.obj).exception) being an instance of
+     * com.android.internal.telephony.gsm.CommandException
+     *
+     * @see #invokeDepersonalization(String, int, android.os.Message)
+     */
+    void invokeDepersonalization(String pin, int type, Message response);
 
     /**
      * Invokes RIL_REQUEST_OEM_HOOK_Strings on RIL implementation.

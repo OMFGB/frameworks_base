@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +80,27 @@ public abstract class IccCard {
     /* PUK means ICC is locked on PUK1 */
     static public final String INTENT_VALUE_LOCKED_ON_PUK = "PUK";
     /* NETWORK means ICC is locked on NETWORK PERSONALIZATION */
-    static public final String INTENT_VALUE_LOCKED_NETWORK = "NETWORK";
+    static public final String INTENT_VALUE_LOCKED_NETWORK = "SIM NETWORK";
+    /* NETWORK SUBSET means ICC is locked on NETWORK SUBSET PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_NETWORK_SUBSET = "SIM NETWORK SUBSET";
+    /* CORPORATE means ICC is locked on CORPORATE PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_CORPORATE = "SIM CORPORATE";
+    /* SERVICE PROVIDER means ICC is locked on SERVICE PROVIDER PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_SERVICE_PROVIDER = "SIM SERVICE PROVIDER";
+    /* SIM means ICC is locked on SIM PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_SIM = "SIM SIM";
+    /* RUIM NETWORK1 means ICC is locked on RUIM NETWORK1 PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_NETWORK1 = "RUIM NETWORK1";
+    /* RUIM NETWORK2 means ICC is locked on RUIM NETWORK2 PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_NETWORK2 = "RUIM NETWORK2";
+    /* RUIM HRPD means ICC is locked on RUIM HRPD PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_HRPD = "RUIM HRPD";
+    /* RUIM CORPORATE means ICC is locked on RUIM CORPORATE PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_CORPORATE = "RUIM CORPORATE";
+    /* RUIM SERVICE PROVIDER means ICC is locked on RUIM SERVICE PROVIDER PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_SERVICE_PROVIDER = "RUIM SERVICE PROVIDER";
+    /* RUIM RUIM means ICC is locked on RUIM RUIM PERSONALIZATION */
+    static public final String INTENT_VALUE_LOCKED_RUIM_RUIM = "RUIM RUIM";
 
     protected static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
@@ -109,6 +130,16 @@ public abstract class IccCard {
         NETWORK_LOCKED,
         READY,
         CARD_IO_ERROR,
+        SIM_NETWORK_SUBSET_LOCKED,
+        SIM_CORPORATE_LOCKED,
+        SIM_SERVICE_PROVIDER_LOCKED,
+        SIM_SIM_LOCKED,
+        RUIM_NETWORK1_LOCKED,
+        RUIM_NETWORK2_LOCKED,
+        RUIM_HRPD_LOCKED,
+        RUIM_CORPORATE_LOCKED,
+        RUIM_SERVICE_PROVIDER_LOCKED,
+        RUIM_RUIM_LOCKED,
         NOT_READY;
 
         public boolean isPinLocked() {
@@ -414,6 +445,16 @@ public abstract class IccCard {
         boolean transitionedIntoAbsent;
         boolean transitionedIntoCardIOError;
         boolean transitionedIntoNetworkLocked;
+        boolean transitionedIntoSimNetworkSubsetLocked;
+        boolean transitionedIntoSimCorporateLocked;
+        boolean transitionedIntoSimServiceProviderLocked;
+        boolean transitionedIntoSimSimLocked;
+        boolean transitionedIntoRuimNetwork1Locked;
+        boolean transitionedIntoRuimNetwork2Locked;
+        boolean transitionedIntoRuimHrpdLocked;
+        boolean transitionedIntoRuimCorporateLocked;
+        boolean transitionedIntoRuimServiceProviderLocked;
+        boolean transitionedIntoRuimRuimLocked;
 
         State oldState, newState;
 
@@ -438,6 +479,26 @@ public abstract class IccCard {
                 && newState == State.CARD_IO_ERROR);
         transitionedIntoNetworkLocked = (oldState != State.NETWORK_LOCKED
                 && newState == State.NETWORK_LOCKED);
+        transitionedIntoSimNetworkSubsetLocked = (oldState != State.SIM_NETWORK_SUBSET_LOCKED
+                && newState == State.SIM_NETWORK_SUBSET_LOCKED);
+        transitionedIntoSimCorporateLocked = (oldState != State.SIM_CORPORATE_LOCKED
+                && newState == State.SIM_CORPORATE_LOCKED);
+        transitionedIntoSimServiceProviderLocked = (oldState != State.SIM_SERVICE_PROVIDER_LOCKED
+                && newState == State.SIM_SERVICE_PROVIDER_LOCKED);
+        transitionedIntoSimSimLocked = (oldState != State.SIM_SIM_LOCKED
+                && newState == State.SIM_SIM_LOCKED);
+        transitionedIntoRuimNetwork1Locked = (oldState != State.RUIM_NETWORK1_LOCKED
+                && newState == State.RUIM_NETWORK1_LOCKED);
+        transitionedIntoRuimNetwork2Locked = (oldState != State.RUIM_NETWORK2_LOCKED
+                && newState == State.RUIM_NETWORK2_LOCKED);
+        transitionedIntoRuimHrpdLocked = (oldState != State.RUIM_HRPD_LOCKED
+                && newState == State.RUIM_HRPD_LOCKED);
+        transitionedIntoRuimCorporateLocked = (oldState != State.RUIM_CORPORATE_LOCKED
+                && newState == State.RUIM_CORPORATE_LOCKED);
+        transitionedIntoRuimServiceProviderLocked = (oldState != State.RUIM_SERVICE_PROVIDER_LOCKED
+                && newState == State.RUIM_SERVICE_PROVIDER_LOCKED);
+        transitionedIntoRuimRuimLocked = (oldState != State.RUIM_RUIM_LOCKED
+                && newState == State.RUIM_RUIM_LOCKED);
 
         if (transitionedIntoPinLocked) {
             if(mDbg) log("Notify SIM pin or puk locked.");
@@ -457,6 +518,46 @@ public abstract class IccCard {
             mNetworkLockedRegistrants.notifyRegistrants();
             broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
                   INTENT_VALUE_LOCKED_NETWORK);
+        } else if (transitionedIntoSimNetworkSubsetLocked) {
+            log("Notify SIM network Subset locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_NETWORK_SUBSET);
+        } else if (transitionedIntoSimCorporateLocked) {
+            log("Notify SIM Corporate locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_CORPORATE);
+        } else if (transitionedIntoSimServiceProviderLocked) {
+            log("Notify SIM Service Provider locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_SERVICE_PROVIDER);
+        } else if (transitionedIntoSimSimLocked) {
+            log("Notify SIM SIM locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_SIM);
+        } else if (transitionedIntoRuimNetwork1Locked) {
+            log("Notify RUIM network1 locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_NETWORK1);
+        } else if (transitionedIntoRuimNetwork2Locked) {
+            log("Notify RUIM network2 locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_NETWORK2);
+        } else if (transitionedIntoRuimHrpdLocked) {
+            log("Notify RUIM hrpd locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_HRPD);
+        } else if (transitionedIntoRuimCorporateLocked) {
+            log("Notify RUIM Corporate locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_CORPORATE);
+        } else if (transitionedIntoRuimServiceProviderLocked) {
+            log("Notify RUIM Service Provider locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_SERVICE_PROVIDER);
+        } else if (transitionedIntoRuimRuimLocked) {
+            log("Notify RUIM RUIM locked.");
+            broadcastIccStateChangedIntent(INTENT_VALUE_ICC_LOCKED,
+                  INTENT_VALUE_LOCKED_RUIM_RUIM);
         }
     }
 
@@ -696,7 +797,47 @@ public abstract class IccCard {
                 return IccCard.State.PUK_REQUIRED;
             }
             if (app.app_state.isSubscriptionPersoEnabled()) {
-                return IccCard.State.NETWORK_LOCKED;
+                //Following De-Personalizations are supported
+                //as specified in 3GPP TS 22.022, and 3GPP2 C.S0068-0.
+                //01.PERSOSUBSTATE_SIM_NETWORK
+                //02.PERSOSUBSTATE_SIM_NETWORK_SUBSET
+                //03.PERSOSUBSTATE_SIM_CORPORATE
+                //04.PERSOSUBSTATE_SIM_SERVICE_PROVIDER
+                //05.PERSOSUBSTATE_SIM_SIM
+                //06.PERSOSUBSTATE_RUIM_NETWORK1
+                //07.PERSOSUBSTATE_RUIM_NETWORK2
+                //08.PERSOSUBSTATE_RUIM_HRPD
+                //09.PERSOSUBSTATE_RUIM_CORPORATE
+                //10.PERSOSUBSTATE_RUIM_SERVICE_PROVIDER
+                //11.PERSOSUBSTATE_RUIM_RUIM
+                log("ICC is Perso Locked, substate " + app.perso_substate);
+                if (app.perso_substate.isPersoSubStateSimNetwork()) {
+                    return IccCard.State.NETWORK_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateSimNetworkSubset()) {
+                    return IccCard.State.SIM_NETWORK_SUBSET_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateSimCorporate()) {
+                    return IccCard.State.SIM_CORPORATE_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateSimServiceProvider()) {
+                    return IccCard.State.SIM_SERVICE_PROVIDER_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateSimSim()) {
+                    return IccCard.State.SIM_SIM_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimNetwork1()) {
+                    return IccCard.State.RUIM_NETWORK1_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimNetwork2()) {
+                    return IccCard.State.RUIM_NETWORK2_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimHrpd()) {
+                    return IccCard.State.RUIM_HRPD_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimCorporate()) {
+                    return IccCard.State.RUIM_CORPORATE_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimServiceProvider()) {
+                    return IccCard.State.RUIM_SERVICE_PROVIDER_LOCKED;
+                } else if (app.perso_substate.isPersoSubStateRuimRuim()) {
+                    return IccCard.State.RUIM_RUIM_LOCKED;
+                } else {
+                    Log.e(mLogTag,"[IccCard] UnSupported De-Personalization, substate "
+                          + app.perso_substate + " assuming ICC_NOT_READY");
+                    return IccCard.State.NOT_READY;
+                }
             }
             if (app.app_state.isAppReady()) {
                 mHandler.sendMessage(mHandler.obtainMessage(EVENT_ICC_READY));

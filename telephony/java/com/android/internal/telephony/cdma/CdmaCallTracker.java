@@ -1125,6 +1125,25 @@ public final class CdmaCallTracker extends CallTracker {
         }
     }
 
+    void enableDataCall() {
+        boolean inEcm =
+            SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false);
+
+        if (VoicePhone.DEBUG_PHONE) {
+            log("checkAndEnableDataCallAfterEmergencyCallDropped,inEcm=" + inEcm);
+        }
+
+        if (!mIsInEmergencyCall && !inEcm) {
+            ITelephony phoneMgr = ITelephony.Stub.asInterface(ServiceManager
+                    .getService(Context.TELEPHONY_SERVICE));
+            try {
+                phoneMgr.enableDataConnectivity();
+            } catch (RemoteException e) {
+                Log.e(LOG_TAG, "Unable to enable data connectivity.");
+            }
+        }
+    }
+
     /**
      * Check and enable data call after an emergency call is dropped if it's
      * not in ECM
@@ -1132,22 +1151,7 @@ public final class CdmaCallTracker extends CallTracker {
     private void checkAndEnableDataCallAfterEmergencyCallDropped() {
         if (mIsInEmergencyCall) {
             mIsInEmergencyCall = false;
-            String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-            if (VoicePhone.DEBUG_PHONE) {
-                log("checkAndEnableDataCallAfterEmergencyCallDropped,inEcm=" + inEcm);
-            }
-            if (inEcm.compareTo("false") == 0) {
-                // Re-initiate data connection
-                // TODO - can this be changed to phone.enableDataConnectivity();
-                //use phonemanager interaface to enable data call
-                ITelephony phoneMgr = ITelephony.Stub.asInterface(ServiceManager
-                        .getService(Context.TELEPHONY_SERVICE));
-                try {
-                    phoneMgr.enableDataConnectivity();
-                } catch (RemoteException e) {
-                    Log.e(LOG_TAG, "Unable to enable data connectivity after emergency call.");
-                }
-            }
+            enableDataCall();
         }
     }
 

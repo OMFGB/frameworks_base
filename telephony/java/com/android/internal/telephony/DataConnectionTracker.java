@@ -308,6 +308,12 @@ public abstract class DataConnectionTracker extends Handler implements DataPhone
     }
 
     public boolean enableDataConnectivity() {
+        boolean inEcm =
+            SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false);
+
+        if (inEcm)
+            return false;
+
         mMasterDataEnabled = true;
         sendMessage(obtainMessage(EVENT_MASTER_DATA_ENABLED));
         return true;

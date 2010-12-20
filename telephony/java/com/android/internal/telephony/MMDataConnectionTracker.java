@@ -482,6 +482,14 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
          * notify radio technology changes.
          */
         notifyAllEnabledDataServiceTypes(REASON_RADIO_TECHNOLOGY_CHANGED);
+        /*
+         * Reset all service states when radio technology hand over happens. Data
+         * profiles not working on previous radio technologies might start
+         * working now.
+         */
+         mDpt.resetAllProfilesAsWorking();
+         mDpt.resetAllServiceStates();
+         updateDataConnections(REASON_RADIO_TECHNOLOGY_CHANGED);
     }
 
     @Override

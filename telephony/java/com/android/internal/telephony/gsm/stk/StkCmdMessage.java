@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@ public class StkCmdMessage implements Parcelable {
     private BrowserSettings mBrowserSettings = null;
     private ToneSettings mToneSettings = null;
     private CallSettings mCallSettings = null;
+    private boolean loadOptionalIconFailed = false;
 
     /*
      * Container for Launch Browser command settings.
@@ -52,6 +54,7 @@ public class StkCmdMessage implements Parcelable {
 
     StkCmdMessage(CommandParams cmdParams) {
         mCmdDet = cmdParams.cmdDet;
+        loadOptionalIconFailed =  cmdParams.loadOptionalIconFailed;
         switch(getCmdType()) {
         case SET_UP_MENU:
         case SELECT_ITEM:
@@ -93,6 +96,7 @@ public class StkCmdMessage implements Parcelable {
         mTextMsg = in.readParcelable(null);
         mMenu = in.readParcelable(null);
         mInput = in.readParcelable(null);
+        loadOptionalIconFailed = (Boolean)in.readValue(null);
         switch (getCmdType()) {
         case LAUNCH_BROWSER:
             mBrowserSettings = new BrowserSettings();
@@ -115,6 +119,7 @@ public class StkCmdMessage implements Parcelable {
         dest.writeParcelable(mTextMsg, 0);
         dest.writeParcelable(mMenu, 0);
         dest.writeParcelable(mInput, 0);
+        dest.writeValue(loadOptionalIconFailed);
         switch(getCmdType()) {
         case LAUNCH_BROWSER:
             dest.writeString(mBrowserSettings.url);
@@ -171,5 +176,11 @@ public class StkCmdMessage implements Parcelable {
 
     public CallSettings getCallSettings() {
         return mCallSettings;
+    }
+
+    /* API to be used by application to check if loading optional icon
+     * has failed  */
+    public boolean getLoadOptionalIconFailed() {
+        return loadOptionalIconFailed;
     }
 }

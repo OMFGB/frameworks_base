@@ -150,11 +150,15 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                logd("interrupted while trying to update by search");
+            if (adnCache != null) {
+                adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to update by search");
+                }
+            } else {
+                logd("Failure while trying to update by search due to uninitialised adncache");
             }
         }
         return success;
@@ -196,11 +200,15 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             success = false;
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                logd("interrupted while trying to update by index");
+            if (adnCache != null) {
+                adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to update by index");
+                }
+            } else {
+                logd("Failure while trying to update by index due to uninitialised adncache");
             }
         }
         return success;
@@ -241,12 +249,16 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         synchronized(mLock) {
             checkThread();
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE);
-            adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                logd("interrupted while trying to load from the SIM");
-            }
+            if (adnCache != null) {
+                adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to load from the SIM");
+                }
+           } else {
+               logd("Failure while trying to load from SIM due to uninitialised adncache");
+           }
         }
             return records;
     }

@@ -161,6 +161,11 @@ class RilMessageDecoder extends HierarchicalStateMachine {
             } catch (ResultException e) {
                 // send to Service for proper RIL communication.
                 mCurrentRilMessage.mResCode = e.result();
+                // Incase of incorrect PROACTIVE COMMAND DATA, CommandParams
+                // will not be decoded. So initialize it to null, otherwise
+                // this will lead to Class Cast Exception when type casted to
+                // RilMessage in CatService.
+                mCurrentRilMessage.mData = null;
                 sendCmdForExecution(mCurrentRilMessage);
                 decodingStarted = false;
             }

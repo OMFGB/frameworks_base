@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
- * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -236,17 +235,6 @@ public class StkService extends Handler implements AppInterface {
         }
     }
 
-    /** If the UICC provides an icon identifier with a proactive command,
-     ** then the terminal shall inform the UICC if the icon could not be
-     ** displayed by sending the general result "Command performed successfully,
-     ** but requested icon could not be displayed".
-     ** Refer to ETSI 102 223, section 6.5.4  */
-    private void sendProactiveCmdResponse(CommandParams cmdParams) {
-        ResultCode resultCode;
-        resultCode = cmdParams.loadOptionalIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED : ResultCode.OK;
-        sendTerminalResponse(cmdParams.cmdDet,resultCode, false, 0,null);
-    }
-
     /**
      * Handles RIL_UNSOL_STK_PROACTIVE_COMMAND unsolicited command from RIL.
      * Sends valid proactive command data to the application using intents.
@@ -263,14 +251,16 @@ public class StkService extends Handler implements AppInterface {
             } else {
                 mMenuCmd = cmdMsg;
             }
-            sendProactiveCmdResponse(cmdParams);
+            sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0,
+                    null);
             break;
         case DISPLAY_TEXT:
             // when application is not required to respond, send an immediate
             // response.
-	    if (!cmdMsg.geTextMessage().responseNeeded) {
-                sendProactiveCmdResponse(cmdParams);
-	    }
+            if (!cmdMsg.geTextMessage().responseNeeded) {
+                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false,
+                        0, null);
+            }
             break;
         case REFRESH:
             // ME side only handles refresh commands which meant to remove IDLE
@@ -279,7 +269,8 @@ public class StkService extends Handler implements AppInterface {
                     .value();
             break;
         case SET_UP_IDLE_MODE_TEXT:
-            sendProactiveCmdResponse(cmdParams);
+            sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false,
+                    0, null);
             break;
         case LAUNCH_BROWSER:
         case SELECT_ITEM:

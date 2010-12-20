@@ -101,6 +101,8 @@ public class PhoneProxy extends Handler implements Phone {
         int airplaneMode = Settings.System.getInt(voicePhone.getContext().getContentResolver(),
                 Settings.System.AIRPLANE_MODE_ON, 0);
         mDesiredPowerState = !(airplaneMode > 0);
+        ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
+                mDesiredPowerState, null);
 
         UiccManager.getInstance(voicePhone.getContext(), mCi);
 
@@ -315,15 +317,13 @@ public class PhoneProxy extends Handler implements Phone {
         if (mDesiredPowerState
                 && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             mCi.setRadioPower(true, null);
+            ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
+                    mDesiredPowerState, null);
         } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
             Message powerOffMsg = obtainMessage(EVENT_SET_RADIO_POWER, mDesiredPowerState);
             // we want it off, but might need data to be disconnected.
-            if (mActiveDataPhone == null) {
-                sendMessage(powerOffMsg);
-            } else {
-                ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
-                        mDesiredPowerState, powerOffMsg);
-            }
+            ((DataConnectionTracker) mActiveDataPhone).setDataConnectionAsDesired(
+                    mDesiredPowerState, powerOffMsg);
         }
     }
 

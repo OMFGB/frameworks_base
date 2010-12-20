@@ -254,7 +254,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             ArrayList<PendingIntent> deliveryIntents) {
 
         // check if in service
-        int ss = mPhone.getServiceState().getState();
+        int ss = mPhone.getVoiceServiceState().getState();
         if (ss != ServiceState.STATE_IN_SERVICE) {
             for (int i = 0, count = parts.size(); i < count; i++) {
                 PendingIntent sentIntent = null;

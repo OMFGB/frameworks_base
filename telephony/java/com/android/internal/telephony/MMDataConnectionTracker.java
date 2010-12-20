@@ -29,6 +29,7 @@ import android.content.SharedPreferences;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -1056,10 +1057,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         //TODO: Check voice call state, emergency call back info
         boolean isDataEnabled = isDataConnectivityEnabled();
 
-        boolean roaming = mDsst.getServiceState().getRoaming();
+        boolean roaming = mDsst.getDataServiceState().getRoaming();
         isDataEnabled = isDataEnabled && (!roaming || getDataOnRoamingEnabled());
 
-        int dataRegState = this.mDsst.getServiceState().getState();
+        int dataRegState = this.mDsst.getDataServiceState().getState();
 
         isDataEnabled = isDataEnabled
                         && (dataRegState == ServiceState.STATE_IN_SERVICE || mNoAutoAttach);
@@ -1101,16 +1102,16 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     }
 
     private RadioTechnology getRadioTechnology() {
-        return RadioTechnology.getRadioTechFromInt(mDsst.getServiceState()
+        return RadioTechnology.getRadioTechFromInt(mDsst.getDataServiceState()
                 .getRadioTechnology());
     }
 
     public String dumpDataReadinessinfo() {
         StringBuilder sb = new StringBuilder();
         sb.append("[DataRadioTech = ").append(getRadioTechnology());
-        sb.append(", data network state = ").append(mDsst.getServiceState().getState());
+        sb.append(", data network state = ").append(mDsst.getDataServiceState().getState());
         sb.append(", mMasterDataEnabled = ").append(mMasterDataEnabled);
-        sb.append(", is Roaming = ").append(mDsst.getServiceState().getRoaming());
+        sb.append(", is Roaming = ").append(mDsst.getDataServiceState().getRoaming());
         sb.append(", dataOnRoamingEnable = ").append(getDataOnRoamingEnabled());
         sb.append(", isPsRestricted = ").append(mIsPsRestricted);
         sb.append(", desiredPowerState  = ").append(getDesiredPowerState());
@@ -1258,7 +1259,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     }
 
     public ServiceState getDataServiceState() {
-        return mDsst.getServiceState();
+        return mDsst.getDataServiceState();
     }
 
     @Override
@@ -1292,6 +1293,14 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     public List<DataConnection> getCurrentDataConnectionList() {
         ArrayList<DataConnection> dcs = (ArrayList<DataConnection>) mDataConnectionList.clone();
         return dcs;
+    }
+
+    public void registerForDataServiceStateChanged(Handler h, int what, Object obj) {
+        mDsst.registerForServiceStateChanged(h, what, obj);
+    }
+
+    public void unregisterForDataServiceStateChanged(Handler h) {
+        mDsst.unregisterForServiceStateChanged(h);
     }
 
     void loge(String string) {

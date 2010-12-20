@@ -261,7 +261,7 @@ public final class CallManager {
         int resultState = ServiceState.STATE_OUT_OF_SERVICE;
 
         for (VoicePhone phone : mPhones) {
-            int serviceState = phone.getServiceState().getState();
+            int serviceState = phone.getVoiceServiceState().getState();
             if (serviceState == ServiceState.STATE_IN_SERVICE) {
                 // IN_SERVICE has the highest priority
                 resultState = serviceState;
@@ -438,7 +438,7 @@ public final class CallManager {
         phone.registerForMmiInitiate(mHandler, EVENT_MMI_INITIATE, null);
         phone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, null);
         phone.registerForSuppServiceFailed(mHandler, EVENT_SUPP_SERVICE_FAILED, null);
-        phone.registerForServiceStateChanged(mHandler, EVENT_SERVICE_STATE_CHANGED, null);
+        phone.registerForVoiceServiceStateChanged(mHandler, EVENT_SERVICE_STATE_CHANGED, null);
 
         // for events supported only by GSM and CDMA phone
         if (phone.getPhoneType() == VoicePhone.PHONE_TYPE_GSM ||
@@ -471,7 +471,7 @@ public final class CallManager {
         phone.unregisterForMmiInitiate(mHandler);
         phone.unregisterForMmiComplete(mHandler);
         phone.unregisterForSuppServiceFailed(mHandler);
-        phone.unregisterForServiceStateChanged(mHandler);
+        phone.unregisterForVoiceServiceStateChanged(mHandler);
 
         // for events supported only by GSM and CDMA phone
         if (phone.getPhoneType() == VoicePhone.PHONE_TYPE_GSM ||

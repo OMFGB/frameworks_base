@@ -26,6 +26,7 @@ import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CellLocation;
@@ -33,6 +34,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.util.Log;
 
+import com.android.internal.telephony.CommandsInterface.RadioTechnology;
 import com.android.internal.telephony.CommandsInterface.RadioTechnologyFamily;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
@@ -62,6 +64,7 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RADIO_STATE_CHANGED = 2;
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_SET_RADIO_POWER = 4;
+    private static final int EVENT_SERVICE_STATE_CHANGED = 5;
 
     private static final String LOG_TAG = "PHONE";
 
@@ -100,6 +103,10 @@ public class PhoneProxy extends Handler implements Phone {
         mDesiredPowerState = !(airplaneMode > 0);
 
         UiccManager.getInstance(voicePhone.getContext(), mCi);
+
+        /* register for service state change notifications */
+        mActiveDataPhone.registerForDataServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+        mActiveVoicePhone.registerForVoiceServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
     }
 
     @Override
@@ -147,6 +154,12 @@ public class PhoneProxy extends Handler implements Phone {
                 }
                 break;
 
+            case EVENT_SERVICE_STATE_CHANGED:
+                //get combined service state and notify clients.
+                AsyncResult ssar = new AsyncResult(null, this.getServiceState(), null);
+                mServiceStateRegistrants.notifyRegistrants(ssar);
+                break;
+
             default:
                 Log.e(LOG_TAG,
                         "Error! This handler was not registered for this message type. Message: "
@@ -184,6 +197,8 @@ public class PhoneProxy extends Handler implements Phone {
             }
         }
 
+        mActiveVoicePhone.unregisterForVoiceServiceStateChanged(this);
+
         deleteAndCreatePhone(newVoiceRadioTech);
 
         if (mResetModemOnRadioTechnologyChange) { // restore power state
@@ -200,6 +215,7 @@ public class PhoneProxy extends Handler implements Phone {
         mIccProxy.setVoiceRadioTech(newVoiceRadioTech);
 
         mCi = ((PhoneBase)mActiveVoicePhone).mCM;
+        mActiveVoicePhone.registerForVoiceServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
 
         // Send an Intent to the PhoneApp that we had a radio technology change
         Intent intent = new Intent(TelephonyIntents.ACTION_RADIO_TECHNOLOGY_CHANGED);
@@ -207,22 +223,6 @@ public class PhoneProxy extends Handler implements Phone {
         intent.putExtra(Phone.PHONE_NAME_KEY, mActiveVoicePhone.getPhoneName());
         ActivityManagerNative.broadcastStickyIntent(intent, null);
 
-    }
-
-    private void logv(String msg) {
-        Log.v(LOG_TAG, "[PhoneProxy] " + msg);
-    }
-
-    private void logd(String msg) {
-        Log.d(LOG_TAG, "[PhoneProxy] " + msg);
-    }
-
-    private void logw(String msg) {
-        Log.w(LOG_TAG, "[PhoneProxy] " + msg);
-    }
-
-    private void loge(String msg) {
-        Log.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
     private void deleteAndCreatePhone(RadioTechnologyFamily newVoiceRadioTech) {
@@ -278,6 +278,30 @@ public class PhoneProxy extends Handler implements Phone {
         oldPhone = null;
     }
 
+    private void logv(String msg) {
+        Log.v(LOG_TAG, "[PhoneProxy] " + msg);
+    }
+
+    private void logd(String msg) {
+        Log.d(LOG_TAG, "[PhoneProxy] " + msg);
+    }
+
+    private void logw(String msg) {
+        Log.w(LOG_TAG, "[PhoneProxy] " + msg);
+    }
+
+    private void loge(String msg) {
+        Log.e(LOG_TAG, "[PhoneProxy] " + msg);
+    }
+
+    public ServiceState getServiceState() {
+        /* Make combined service state */
+        ServiceState ss = DefaultPhoneNotifier.combineVoiceDataServiceStates(
+                mActiveVoicePhone.getVoiceServiceState(),
+                mActiveDataPhone.getDataServiceState());
+        return ss;
+    }
+
     public void setRadioPower(boolean power) {
         mDesiredPowerState = power;
         setPowerStateToDesired();
@@ -303,8 +327,8 @@ public class PhoneProxy extends Handler implements Phone {
         }
     }
 
-    public ServiceState getServiceState() {
-        return mActiveVoicePhone.getServiceState();
+    public ServiceState getVoiceServiceState() {
+        return mActiveVoicePhone.getVoiceServiceState();
     }
 
     public CellLocation getCellLocation() {
@@ -395,12 +419,12 @@ public class PhoneProxy extends Handler implements Phone {
         mActiveVoicePhone.sendUssdResponse(ussdMessge);
     }
 
-    public void registerForServiceStateChanged(Handler h, int what, Object obj) {
-        mActiveVoicePhone.registerForServiceStateChanged(h, what, obj);
+    public void registerForVoiceServiceStateChanged(Handler h, int what, Object obj) {
+        mActiveVoicePhone.registerForVoiceServiceStateChanged(h, what, obj);
     }
 
-    public void unregisterForServiceStateChanged(Handler h) {
-        mActiveVoicePhone.unregisterForServiceStateChanged(h);
+    public void unregisterForVoiceServiceStateChanged(Handler h) {
+        mActiveVoicePhone.unregisterForVoiceServiceStateChanged(h);
     }
 
     public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
@@ -1034,5 +1058,23 @@ public class PhoneProxy extends Handler implements Phone {
 
     public void setDataRoamingEnabled(boolean enable) {
         mActiveDataPhone.setDataRoamingEnabled(enable);
+    }
+
+    protected final RegistrantList mServiceStateRegistrants = new RegistrantList();
+
+    public void registerForServiceStateChanged(Handler h, int what, Object obj) {
+        mServiceStateRegistrants.add(h, what, obj);
+    }
+
+    public void unregisterForServiceStateChanged(Handler h) {
+        mServiceStateRegistrants.remove(h);
+    }
+
+    public void registerForDataServiceStateChanged(Handler h, int what, Object obj) {
+        mActiveDataPhone.registerForDataServiceStateChanged(h, what, obj);
+    }
+
+    public void unregisterForDataServiceStateChanged(Handler h) {
+        mActiveDataPhone.unregisterForDataServiceStateChanged(h);
     }
 }

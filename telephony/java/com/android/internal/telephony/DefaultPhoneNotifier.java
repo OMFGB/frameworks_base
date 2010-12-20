@@ -62,22 +62,28 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
-    private void notifyCombinedServiceState() {
-        ServiceState service = new ServiceState();
-        if (mVoiceServiceState != null) {
+
+    /*
+     * TODO: perhaps this should function should reside else where.
+     */
+    static ServiceState combineVoiceDataServiceStates(ServiceState vss, ServiceState dss) {
+
+        ServiceState ss;
+        if (vss != null) {
             /*
              * Copy all the fields from voice service state as voice phone has
              * the majority fields updated if data service is also present some
              * fields will be overwritten by data service below
              */
-            service = mVoiceServiceState;
-        } else if (mDataServiceState != null) {
+            ss = new ServiceState(vss);
+        } else if (dss != null) {
             /* Voice phone did not send service state, use data service */
-            service = mDataServiceState;
+            ss = new ServiceState(dss);
         } else {
-            /* neither voice nor data , we should not get here */
-            log("Null Service state");
-            return;
+            /* we should never come here ideally */
+            ss = new ServiceState();
+            ss.setStateOutOfService();
+            return ss;
         }
 
         /*
@@ -89,34 +95,40 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
          * 3. Roaming is set if either voice or data is roaming
          */
 
-        if ((mDataServiceState != null) && (mVoiceServiceState != null)
-                && (mDataServiceState.getState() == ServiceState.STATE_IN_SERVICE)) {
+        if ((dss != null) && (vss != null)
+                && (dss.getState() == ServiceState.STATE_IN_SERVICE)) {
 
             /*
              * If voice was not in service it will be overwritten with data
              * service state here
              */
-            service.setState(ServiceState.STATE_IN_SERVICE);
+            ss.setState(ServiceState.STATE_IN_SERVICE);
 
             /* Update radio technology to reflect the data technology */
-            service.setRadioTechnology(mDataServiceState.getRadioTechnology());
+            ss.setRadioTechnology(dss.getRadioTechnology());
 
             /* Overwrite voice roaming state if data is on roaming */
-            if (mDataServiceState.getRoaming())
-                service.setRoaming(true);
+            if (dss.getRoaming())
+                ss.setRoaming(true);
         }
+
+        return ss;
+    }
+
+    private void notifyCombinedServiceState() {
+
+        ServiceState ss = combineVoiceDataServiceStates(mVoiceServiceState, mDataServiceState);
 
         try {
             // send combined service state to UI
-            mRegistry.notifyServiceState(service);
+            mRegistry.notifyServiceState(ss);
         } catch (RemoteException ex) {
             // system process is dead
         }
     }
 
-
-    public void notifyServiceState(VoicePhone sender) {
-        mVoiceServiceState = sender.getServiceState();
+    public void notifyVoiceServiceState(VoicePhone sender) {
+        mVoiceServiceState = sender.getVoiceServiceState();
         notifyCombinedServiceState();
     }
 

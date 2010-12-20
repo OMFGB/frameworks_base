@@ -17,6 +17,7 @@
 
 package com.android.internal.telephony;
 
+import android.os.Handler;
 import android.os.Message;
 import android.telephony.ServiceState;
 import com.android.internal.telephony.DataConnection;
@@ -355,4 +356,17 @@ public interface DataPhone {
 
     @Deprecated
     public void notifyDataActivity();
+
+    /**
+     * Register for data service state changed.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be a ServiceState instance
+     */
+    void registerForDataServiceStateChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for voice service state change notification.
+     * Extraneous calls are tolerated silently
+     */
+    void unregisterForDataServiceStateChanged(Handler h);
 }

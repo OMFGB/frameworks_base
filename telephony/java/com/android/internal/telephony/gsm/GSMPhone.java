@@ -255,7 +255,7 @@ public class GSMPhone extends PhoneBase {
 
 
     public ServiceState
-    getServiceState() {
+    getVoiceServiceState() {
         return mSST.ss;
     }
 

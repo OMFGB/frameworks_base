@@ -350,7 +350,7 @@ public final class CdmaCallTracker extends CallTracker {
     boolean
     canDial() {
         boolean ret;
-        int serviceState = phone.getServiceState().getState();
+        int serviceState = phone.getVoiceServiceState().getState();
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 

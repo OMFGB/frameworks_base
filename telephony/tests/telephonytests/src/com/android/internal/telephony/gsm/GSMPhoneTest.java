@@ -92,7 +92,7 @@ public class GSMPhoneTest extends AndroidTestCase implements PerformanceTestCase
         mGSMPhone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, null);
         mGSMPhone.registerForSuppServiceFailed(mHandler, SUPP_SERVICE_FAILED, null);
 
-        mGSMPhone.registerForServiceStateChanged(mHandler, SERVICE_STATE_CHANGED, null);
+        mGSMPhone.registerForVoiceServiceStateChanged(mHandler, SERVICE_STATE_CHANGED, null);
 
         // wait until we get phone in both voice and data service
         Message msg;

@@ -57,6 +57,7 @@ public class DataServiceStateTracker extends Handler {
     private RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
+    private RegistrantList mDataServiceStateRegistrants = new RegistrantList();
 
     private static final int EVENT_RADIO_STATE_CHANGED = 1;
     private static final int EVENT_DATA_NETWORK_STATE_CHANGED = 2;
@@ -458,7 +459,7 @@ public class DataServiceStateTracker extends Handler {
         mDataConnectionState = mNewDataConnectionState;
 
         if (hasChanged) {
-            mNotifier.notifyDataServiceState(mDct);
+            notifyDataServiceStateChanged(mSs);
         }
 
         if (hasDataConnectionAttached) {
@@ -483,6 +484,12 @@ public class DataServiceStateTracker extends Handler {
     }
 
 
+    private void notifyDataServiceStateChanged(ServiceState ss) {
+        mNotifier.notifyDataServiceState(mDct);
+        AsyncResult ar = new AsyncResult(null, ss, null);
+        mDataServiceStateRegistrants.notifyRegistrants(ar);
+    }
+
     /** Cancel a pending (if any) pollState() operation */
     protected void cancelPollState() {
         // This will effectively cancel the rest of the poll requests.
@@ -504,7 +511,7 @@ public class DataServiceStateTracker extends Handler {
 //                obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
     }
 
-    public ServiceState getServiceState() {
+    public ServiceState getDataServiceState() {
         return mSs;
     }
 
@@ -1003,6 +1010,14 @@ public class DataServiceStateTracker extends Handler {
 
     void unregisterForPsRestrictedEnabled(Handler h) {
         mPsRestrictEnabledRegistrants.remove(h);
+    }
+
+    public void registerForServiceStateChanged(Handler h, int what, Object obj) {
+        mDataServiceStateRegistrants.add(h, what, obj);
+    }
+
+    public void unregisterForServiceStateChanged(Handler h) {
+        mDataServiceStateRegistrants.remove(h);
     }
 
     void logd(String logString) {

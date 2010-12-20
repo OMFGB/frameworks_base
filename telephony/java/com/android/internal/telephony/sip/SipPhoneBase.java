@@ -68,7 +68,7 @@ abstract class SipPhoneBase extends PhoneBase {
         migrate(mNewRingingConnectionRegistrants, from.mNewRingingConnectionRegistrants);
         migrate(mIncomingRingRegistrants, from.mIncomingRingRegistrants);
         migrate(mDisconnectRegistrants, from.mDisconnectRegistrants);
-        migrate(mServiceStateRegistrants, from.mServiceStateRegistrants);
+        migrate(mVoiceServiceStateRegistrants, from.mVoiceServiceStateRegistrants);
         migrate(mMmiCompleteRegistrants, from.mMmiCompleteRegistrants);
         migrate(mMmiRegistrants, from.mMmiRegistrants);
         migrate(mUnknownConnectionRegistrants, from.mUnknownConnectionRegistrants);

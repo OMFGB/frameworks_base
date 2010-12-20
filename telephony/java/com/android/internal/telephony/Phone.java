@@ -17,6 +17,9 @@
 
 package com.android.internal.telephony;
 
+import android.os.Handler;
+import android.telephony.ServiceState;
+
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -46,4 +49,24 @@ public interface Phone extends DataPhone, VoicePhone {
      * @param power true means "on", false means "off".
      */
     void setRadioPower(boolean power);
+
+    /**
+     * Get the current  ServiceState. Use
+     * <code>registerForServiceStateChanged</code> to be informed of
+     * updates.
+     */
+    ServiceState getServiceState();
+
+    /**
+     * Register for ServiceState changed.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be a ServiceState instance
+     */
+    void registerForServiceStateChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for ServiceStateChange notification.
+     * Extraneous calls are tolerated silently
+     */
+    void unregisterForServiceStateChanged(Handler h);
 }

@@ -30,7 +30,7 @@ public class TestPhoneNotifier implements PhoneNotifier {
     public void notifyPhoneState(VoicePhone sender) {
     }
 
-    public void notifyServiceState(VoicePhone sender) {
+    public void notifyVoiceServiceState(VoicePhone sender) {
     }
 
     public void notifyCellLocation(VoicePhone sender) {

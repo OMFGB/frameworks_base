@@ -365,7 +365,7 @@ public class GsmConnection extends Connection {
             case CallFailCause.NORMAL_CLEARING:
             default:
                 GSMPhone phone = owner.phone;
-                int serviceState = phone.getServiceState().getState();
+                int serviceState = phone.getVoiceServiceState().getState();
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE

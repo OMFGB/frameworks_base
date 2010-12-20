@@ -112,6 +112,7 @@ public class IccCardProxy extends Handler implements IccCard {
         } else {
             mCurrentAppType = AppFamily.APP_FAM_3GPP;
         }
+        mFirstRun = true;
         updateQuiteMode();
     }
 
@@ -119,6 +120,7 @@ public class IccCardProxy extends Handler implements IccCard {
      * In case of 3GPP2 subscription it needs more information (subscription source)
      */
     private void updateQuiteMode() {
+        Log.d(LOG_TAG, "Updating quite mode");
         if (mCurrentAppType == AppFamily.APP_FAM_3GPP) {
             mInitialized = true;
             mQuiteMode = false;
@@ -140,6 +142,9 @@ public class IccCardProxy extends Handler implements IccCard {
                 break;
             case EVENT_RADIO_ON:
                 mRadioOn = true;
+                if (!mInitialized) {
+                    updateQuiteMode();
+                }
                 break;
             case EVENT_ICC_CHANGED:
                 if (mInitialized) {
@@ -180,18 +185,29 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
                 break;
             case EVENT_GET_CDMA_SUBSCRIPTION_SOURCE:
-                if (((AsyncResult)msg.obj).result != null) {
+                if (((AsyncResult)msg.obj).exception != null) {
+                    Log.d(LOG_TAG, "Exception while getting Cdma subscription.");
+                    break;
+                } else if (((AsyncResult)msg.obj).result != null) {
                     mCdmaSubscriptionFromNv =
                         ((int[])((AsyncResult) msg.obj).result)[0] == CDMA_SUBSCRIPTION_NV;
                     Log.d(LOG_TAG, "Received Cdma subscription source from NV: " +
                             mCdmaSubscriptionFromNv);
                 } else {
-                    Log.d(LOG_TAG, "GET_CDMA_SUBSCRIPTION_SOURCE failed. " +
-                            "No problem, probably just gsm mode");
+                    Log.d(LOG_TAG, "Sanity check failed. EVENT_GET_CDMA_SUBSCRIPTION_SOURCE " +
+                            "exception and result both null: " + ((AsyncResult)msg.obj).exception +
+                            " " + ((AsyncResult)msg.obj).result);
+                    break;
                 }
-                mQuiteMode = mCdmaSubscriptionFromNv &&
-                        (mCurrentAppType == AppFamily.APP_FAM_3GPP2) &&
-                        !mIsMultimodeCdmaPhone;
+                boolean newQuiteMode = mCdmaSubscriptionFromNv
+                        && (mCurrentAppType == AppFamily.APP_FAM_3GPP2) && !mIsMultimodeCdmaPhone;
+                if (mQuiteMode == false && newQuiteMode == true) {
+                    // Last thing to do before switching to quite mode is
+                    // broadcast ICC_READY
+                    Log.d(LOG_TAG, "Switching to QuiteMode.");
+                    broadcastIccStateChangedIntent(INTENT_VALUE_ICC_READY, null);
+                }
+                mQuiteMode = newQuiteMode;
                 Log.d(LOG_TAG, "QuiteMode is " + mQuiteMode + " (app_type: " +
                         mCurrentAppType + " nv: " + mCdmaSubscriptionFromNv +
                         " multimode: " + mIsMultimodeCdmaPhone + ")");

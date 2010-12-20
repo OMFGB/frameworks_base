@@ -51,6 +51,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
+import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
@@ -70,7 +71,6 @@ import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.gsm.stk.StkService;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.IccVmNotSupportedException;
 
@@ -104,7 +104,7 @@ public class GSMPhone extends PhoneBase {
     GsmSMSDispatcher mSMS;
     SIMRecords mSIMRecords;
     SimCard mSimCard;
-    StkService mStkService;
+    CatService mStkService;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
     SimSmsInterfaceManager mSimSmsIntManager;
@@ -153,7 +153,7 @@ public class GSMPhone extends PhoneBase {
             mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
             mSubInfo = new PhoneSubInfo(this);
         }
-        mStkService = StkService.getInstance(mCM, mSIMRecords, mContext,
+        mStkService = CatService.getInstance(mCM, mSIMRecords, mContext,
                 (SIMFileHandler)mIccFileHandler, mSimCard);
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);

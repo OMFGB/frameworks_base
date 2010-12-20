@@ -2597,8 +2597,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_SESSION_END:
                 if (RILJ_LOGD) unsljLog(response);
 
-                if (mStkSessionEndRegistrant != null) {
-                    mStkSessionEndRegistrant.notifyRegistrant(
+                if (mCatSessionEndRegistrant != null) {
+                    mCatSessionEndRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
                 }
                 break;
@@ -2606,8 +2606,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_PROACTIVE_COMMAND:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
-                if (mStkProCmdRegistrant != null) {
-                    mStkProCmdRegistrant.notifyRegistrant(
+                if (mCatProCmdRegistrant != null) {
+                    mCatProCmdRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
                 }
                 break;
@@ -2615,8 +2615,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_EVENT_NOTIFY:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
-                if (mStkEventRegistrant != null) {
-                    mStkEventRegistrant.notifyRegistrant(
+                if (mCatEventRegistrant != null) {
+                    mCatEventRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
                 }
                 break;
@@ -2624,8 +2624,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_STK_CALL_SETUP:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
-                if (mStkCallSetUpRegistrant != null) {
-                    mStkCallSetUpRegistrant.notifyRegistrant(
+                if (mCatCallSetUpRegistrant != null) {
+                    mCatCallSetUpRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
                 }
                 break;

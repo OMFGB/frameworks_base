@@ -31,6 +31,7 @@ public interface IccConstants {
     static final int EF_MWIS = 0x6FCA;
     static final int EF_MBDN = 0x6fc7;
     static final int EF_PNN = 0x6fc5;
+    static final int EF_OPL = 0x6fc6;
     static final int EF_SPN = 0x6F46;
     static final int EF_SMS = 0x6F3C;
     static final int EF_ICCID = 0x2fe2;

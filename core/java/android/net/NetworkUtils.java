@@ -17,7 +17,11 @@
 package android.net;
 
 import java.net.InetAddress;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.UnknownHostException;
+
+import android.util.Log;
 
 /**
  * Native methods for managing network interfaces.
@@ -25,17 +29,17 @@ import java.net.UnknownHostException;
  * {@hide}
  */
 public class NetworkUtils {
+
+    private static final String TAG = "NetworkUtils";
+
     /** Bring the named network interface up. */
     public native static int enableInterface(String interfaceName);
 
     /** Bring the named network interface down. */
     public native static int disableInterface(String interfaceName);
 
-    /** Add a route to the specified host via the named interface. */
-    public native static int addHostRoute(String interfaceName, int hostaddr);
-
-    /** Add a default route for the named interface. */
-    public native static int setDefaultRoute(String interfaceName, int gwayAddr);
+    /** Add a route to the specified host or gateway via the named interface. */
+    public native static int addRoute(String interfaceName, String hostAddr, int prefixLength);
 
     /** Return the gateway address for the default route for the named interface. */
     public native static int getDefaultRoute(String interfaceName);
@@ -155,4 +159,65 @@ public class NetworkUtils {
      * {@hide}
      */
     public native static boolean runDhcpRenew(String interfaceName, DhcpInfo ipInfo);
+
+    /**
+     * Look up a host name and return the result as an InetAddress.
+     * This can only be used for IPv4 addresses.
+     * @param hostAddr is an Int corresponding to the IPv4 address in network
+     * byte order
+     * @return the IP address as an {@code InetAddress}, returns null if
+     * unable to lookup host address.
+     */
+    public static InetAddress intToInetAddress(int hostAddress) {
+        InetAddress inetAddress;
+        String hostName;
+
+        hostName = (0xff & hostAddress) + "." + (0xff & (hostAddress >> 8)) + "." +
+            (0xff & (hostAddress >> 16)) + "." + (0xff & (hostAddress >> 24));
+
+        try {
+            inetAddress = InetAddress.getByName(hostName);
+        } catch (UnknownHostException e) {
+            return null;
+        }
+
+        return inetAddress;
+    }
+
+    /**
+     * Add a route to the specified host/gateway.
+     * @param interfaceName interface on which the route should be added
+     * @param hostAddress the IP address to which the route is desired,
+     * in network byte order.
+     * @param prefixLength specifies default or host route, value=32/128 for IPv4/IPv6
+     * Host route respectively and value=0 for Default IPv4/IPv6 route.
+     * @return {@code true} on success, {@code false} on failure
+     */
+    public static boolean addRoute(String interfaceName, InetAddress hostAddress, int prefixLength) {
+        String address = hostAddress.getHostAddress();
+        return addRoute(interfaceName, address, prefixLength) == 0;
+    }
+
+    /**
+     * Add a route to the specified host via the named interface.
+     * @param interfaceName interface on which the route should be added
+     * @param hostAddress the IP address to which the route is desired,
+     * @return {@code true} on success, {@code false} on failure
+     */
+    public static boolean addHostRoute(String interfaceName, InetAddress hostAddress) {
+        int prefixLength;
+        String address = hostAddress.getHostAddress();
+
+        if (hostAddress instanceof Inet4Address) {
+            prefixLength = 32;
+        } else if (hostAddress instanceof Inet6Address) {
+            prefixLength = 128;
+        } else {
+            Log.w(TAG, "addHostRoute failure: address is neither IPv4 nor IPv6" +
+                      "(" + address + ")");
+            return false;
+        }
+
+        return addRoute(interfaceName, address, prefixLength) == 0;
+    }
 }

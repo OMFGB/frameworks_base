@@ -25,9 +25,8 @@
 extern "C" {
 int ifc_enable(const char *ifname);
 int ifc_disable(const char *ifname);
-int ifc_add_host_route(const char *ifname, uint32_t addr);
+int ifc_add_route(const char *ifname, const char *addr, int prefixLength);
 int ifc_remove_host_routes(const char *ifname);
-int ifc_set_default_route(const char *ifname, uint32_t gateway);
 int ifc_get_default_route(const char *ifname);
 int ifc_remove_default_route(const char *ifname);
 int ifc_reset_connections(const char *ifname);
@@ -96,13 +95,16 @@ static jint android_net_utils_disableInterface(JNIEnv* env, jobject clazz, jstri
     return (jint)result;
 }
 
-static jint android_net_utils_addHostRoute(JNIEnv* env, jobject clazz, jstring ifname, jint addr)
+static jint android_net_utils_addRoute(JNIEnv* env, jobject clazz, jstring ifname,
+          jstring addr, jint prefixLength)
 {
     int result;
 
     const char *nameStr = env->GetStringUTFChars(ifname, NULL);
-    result = ::ifc_add_host_route(nameStr, addr);
+    const char *addrStr = env->GetStringUTFChars(addr, NULL);
+    result = ::ifc_add_route(nameStr, addrStr, prefixLength);
     env->ReleaseStringUTFChars(ifname, nameStr);
+    env->ReleaseStringUTFChars(addr, addrStr);
     return (jint)result;
 }
 
@@ -112,16 +114,6 @@ static jint android_net_utils_removeHostRoutes(JNIEnv* env, jobject clazz, jstri
 
     const char *nameStr = env->GetStringUTFChars(ifname, NULL);
     result = ::ifc_remove_host_routes(nameStr);
-    env->ReleaseStringUTFChars(ifname, nameStr);
-    return (jint)result;
-}
-
-static jint android_net_utils_setDefaultRoute(JNIEnv* env, jobject clazz, jstring ifname, jint gateway)
-{
-    int result;
-
-    const char *nameStr = env->GetStringUTFChars(ifname, NULL);
-    result = ::ifc_set_default_route(nameStr, gateway);
     env->ReleaseStringUTFChars(ifname, nameStr);
     return (jint)result;
 }
@@ -253,9 +245,8 @@ static JNINativeMethod gNetworkUtilMethods[] = {
 
     { "enableInterface", "(Ljava/lang/String;)I",  (void *)android_net_utils_enableInterface },
     { "disableInterface", "(Ljava/lang/String;)I",  (void *)android_net_utils_disableInterface },
-    { "addHostRoute", "(Ljava/lang/String;I)I",  (void *)android_net_utils_addHostRoute },
+    { "addRoute", "(Ljava/lang/String;Ljava/lang/String;I)I",  (void *)android_net_utils_addRoute },
     { "removeHostRoutes", "(Ljava/lang/String;)I",  (void *)android_net_utils_removeHostRoutes },
-    { "setDefaultRoute", "(Ljava/lang/String;I)I",  (void *)android_net_utils_setDefaultRoute },
     { "getDefaultRoute", "(Ljava/lang/String;)I",  (void *)android_net_utils_getDefaultRoute },
     { "removeDefaultRoute", "(Ljava/lang/String;)I",  (void *)android_net_utils_removeDefaultRoute },
     { "resetConnections", "(Ljava/lang/String;)I",  (void *)android_net_utils_resetConnections },

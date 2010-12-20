@@ -536,6 +536,9 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
         case EF_ICCID:
             return MF_SIM;
+        case EF_PBR:
+            // we only support global phonebook.
+            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         case EF_IMG:
             return MF_SIM + DF_TELECOM + DF_GRAPHICS;
         }

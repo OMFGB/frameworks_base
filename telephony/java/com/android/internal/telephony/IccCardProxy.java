@@ -46,13 +46,15 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private static final String LOG_TAG = "RIL_IccCardProxy";
 
-    private static final int EVENT_ICC_CHANGED = 1;
-    private static final int EVENT_ICC_ABSENT = 2;
-    private static final int EVENT_ICC_LOCKED = 3;
-    private static final int EVENT_APP_READY = 4;
-    private static final int EVENT_RECORDS_LOADED = 6;
-    private static final int EVENT_IMSI_READY = 7;
-    private static final int EVENT_PERSO_LOCKED = 8;
+    private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 1;
+    private static final int EVENT_RADIO_ON = 2;
+    private static final int EVENT_ICC_CHANGED = 3;
+    private static final int EVENT_ICC_ABSENT = 4;
+    private static final int EVENT_ICC_LOCKED = 5;
+    private static final int EVENT_APP_READY = 6;
+    private static final int EVENT_RECORDS_LOADED = 7;
+    private static final int EVENT_IMSI_READY = 8;
+    private static final int EVENT_PERSO_LOCKED = 9;
 
     private Context mContext;
     private CommandsInterface cm;
@@ -67,6 +69,9 @@ public class IccCardProxy extends Handler implements IccCard {
     private UiccCardApplication mApplication = null;
     private UiccApplicationRecords mAppRecords = null;
 
+    private boolean mFirstRun = true;
+    private boolean mRadioOn = false;
+
     public IccCardProxy(Context mContext, CommandsInterface cm) {
         super();
         this.mContext = mContext;
@@ -74,6 +79,8 @@ public class IccCardProxy extends Handler implements IccCard {
 
         mUiccManager = UiccManager.getInstance(mContext, cm);
         mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+        cm.registerForOn(this,EVENT_RADIO_ON, null);
+        cm.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
 
         //Force update
         sendMessage(obtainMessage(EVENT_ICC_CHANGED));
@@ -83,6 +90,8 @@ public class IccCardProxy extends Handler implements IccCard {
         //Cleanup icc references
         mUiccManager.unregisterForIccChanged(this);
         mUiccManager = null;
+        cm.unregisterForOn(this);
+        cm.unregisterForOffOrNotAvailable(this);
     }
 
     /*
@@ -101,6 +110,12 @@ public class IccCardProxy extends Handler implements IccCard {
 
     public void handleMessage(Message msg) {
         switch (msg.what) {
+            case EVENT_RADIO_OFF_OR_UNAVAILABLE:
+                mRadioOn = false;
+                break;
+            case EVENT_RADIO_ON:
+                mRadioOn = true;
+                break;
             case EVENT_ICC_CHANGED:
                 updateIccAvailability();
                 updateStateProperty();
@@ -147,6 +162,13 @@ public class IccCardProxy extends Handler implements IccCard {
 
         UiccCardApplication newApplication = mUiccManager.getCurrentApplication(mCurrentAppType);
 
+        if (mFirstRun) {
+            if (newApplication == null) {
+                broadcastIccStateChangedIntent(INTENT_VALUE_ICC_ABSENT, null);
+            }
+            mFirstRun = false;
+        }
+
         if (mApplication != newApplication) {
             if (mApplication != null) {
                 mApplication.unregisterForUnavailable(this);
@@ -156,7 +178,11 @@ public class IccCardProxy extends Handler implements IccCard {
                 mAppRecords = null;
             }
             if (newApplication == null) {
-                broadcastIccStateChangedIntent(INTENT_VALUE_ICC_NOT_READY, null);
+                if (mRadioOn) {
+                    broadcastIccStateChangedIntent(INTENT_VALUE_ICC_ABSENT, null);
+                } else {
+                    broadcastIccStateChangedIntent(INTENT_VALUE_ICC_NOT_READY, null);
+                }
             } else {
                 mApplication = newApplication;
                 /*

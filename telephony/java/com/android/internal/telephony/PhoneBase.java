@@ -659,10 +659,16 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
         mCM.setSmscAddress(address, result);
     }
 
+    /**
+     * Set the TTY mode
+     */
     public void setTTYMode(int ttyMode, Message onComplete) {
         mCM.setTTYMode(ttyMode, onComplete);
     }
 
+    /**
+     * Queries the TTY mode
+     */
     public void queryTTYMode(Message onComplete) {
         mCM.queryTTYMode(onComplete);
     }

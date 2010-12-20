@@ -1087,10 +1087,10 @@ public final class SIMRecords extends IccRecords {
                 handleFileUpdate(efid);
                 break;
             case CommandsInterface.SIM_REFRESH_INIT:
-		if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
-                // need to reload all files (that we care about)
+                log("handleSimRefresh with SIM_REFRESH_INIT, Delay SIM IO until SIM_READY");
+                // need to reload all files (that we care about after
+                // SIM_READY)
                 adnCache.reset();
-                fetchSimRecords();
                 break;
             case CommandsInterface.SIM_REFRESH_RESET:
 		if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");

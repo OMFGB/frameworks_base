@@ -23,6 +23,8 @@ public class StkResponseMessage {
         String usersInput  = null;
         boolean usersYesNoSelection = false;
         boolean usersConfirm = false;
+        boolean includeAdditionalInfo = false;
+        int additionalInfo = 0;
 
         public StkResponseMessage(StkCmdMessage cmdMsg) {
             this.cmdDet = cmdMsg.mCmdDet;
@@ -46,6 +48,11 @@ public class StkResponseMessage {
 
         public void setConfirmation(boolean confirm) {
             usersConfirm = confirm;
+        }
+
+        public void setAdditionalInfo(boolean includeAdditionalInfo, int additionalInfo) {
+            this.includeAdditionalInfo = includeAdditionalInfo;
+            this.additionalInfo = additionalInfo;
         }
 
         CommandDetails getCmdDetails() {

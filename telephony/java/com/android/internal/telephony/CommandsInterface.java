@@ -588,7 +588,7 @@ public interface CommandsInterface {
      * ar.exception and ar.result are null on success
      */
 
-    void supplyIccPin(String pin, Message result);
+    void supplyIccPin(int slot, String aid, String pin, Message result);
 
     /**
      * Supply the ICC PUK to the ICC card
@@ -602,7 +602,7 @@ public interface CommandsInterface {
      * ar.exception and ar.result are null on success
      */
 
-    void supplyIccPuk(String puk, String newPin, Message result);
+    void supplyIccPuk(int slot, String aid, String puk, String newPin, Message result);
 
     /**
      * Supply the ICC PIN2 to the ICC card
@@ -618,7 +618,7 @@ public interface CommandsInterface {
      * ar.exception and ar.result are null on success
      */
 
-    void supplyIccPin2(String pin2, Message result);
+    void supplyIccPin2(int slot, String aid, String pin2, Message result);
 
     /**
      * Supply the SIM PUK2 to the SIM card
@@ -634,10 +634,10 @@ public interface CommandsInterface {
      * ar.exception and ar.result are null on success
      */
 
-    void supplyIccPuk2(String puk2, String newPin2, Message result);
+    void supplyIccPuk2(int slot, String aid, String puk2, String newPin2, Message result);
 
-    void changeIccPin(String oldPin, String newPin, Message result);
-    void changeIccPin2(String oldPin2, String newPin2, Message result);
+    void changeIccPin(int slot, String aid, String oldPin, String newPin, Message result);
+    void changeIccPin2(int slot, String aid, String oldPin2, String newPin2, Message result);
 
     void changeBarringPassword(String facility, String oldPwd, String newPwd, Message result);
 
@@ -706,7 +706,7 @@ public interface CommandsInterface {
      *  ar.userObject contains the orignal value of result.obj
      *  ar.result is String containing IMSI on success
      */
-    void getIMSI(Message result);
+    void getIMSI(int slot, String aid, Message result);
 
     /**
      *  returned message
@@ -1005,7 +1005,7 @@ public interface CommandsInterface {
      * response.obj will be an AsyncResult
      * response.obj.userObj will be a IccIoResult on success
      */
-    void iccIO (int command, int fileid, String path, int p1, int p2, int p3,
+    void iccIO (int slot, String aid, int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, Message response);
 
     /**
@@ -1114,7 +1114,7 @@ public interface CommandsInterface {
      * @param response is callback message
      */
 
-    void queryFacilityLock (String facility, String password, int serviceClass,
+    void queryFacilityLock (int slot, String aid, String facility, String password, int serviceClass,
         Message response);
 
     /**
@@ -1124,7 +1124,7 @@ public interface CommandsInterface {
      * @param serviceClass is a sum of SERVICE_CLASS_*
      * @param response is callback message
      */
-    void setFacilityLock (String facility, boolean lockState, String password,
+    void setFacilityLock (int slot, String aid, String facility, boolean lockState, String password,
         int serviceClass, Message response);
 
 

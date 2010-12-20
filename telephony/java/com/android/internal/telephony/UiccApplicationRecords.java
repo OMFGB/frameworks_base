@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +17,123 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.util.Log;
+import com.android.internal.telephony.UiccConstants.AppType;
 
-import java.util.ArrayList;
-
-/**
- * {@hide}
+/** This class will handle application specific records.
+ * It will be subclassed by RuimRecords, UsimRecords etc.
+ * Every user of this class will be registered for Unavailable with every
+ * object it gets reference to. It is the user's responsibility to unregister
+ * and remove reference to object, once UNAVAILABLE callback is received.
  */
-public abstract class IccRecords extends Handler implements IccConstants {
+public abstract class UiccApplicationRecords extends Handler{
+    protected boolean mDestroyed = false; //set to true once this object is commanded to be disposed of.
+    // Reference to UiccRecords to be able to access files
+    // outside if this application's DF
+    protected UiccRecords mUiccRecords;
+    protected Context mContext;
+    protected CommandsInterface mCi;
+    protected UiccCardApplication mParentApp;
+    protected IccFileHandler mFh;
+    protected UiccCard mParentCard;
 
+    public static final int EVENT_MWI = 0;
+    public static final int EVENT_CFI = 1;
+    public static final int EVENT_SPN = 2;
+    public static final int EVENT_EONS = 3;
+
+    // Internal events
+    protected static final int EVENT_APP_READY = 1;
+
+    private RegistrantList mUnavailableRegistrants = new RegistrantList();
+    protected RegistrantList mRecordsEventsRegistrants = new RegistrantList();
+    protected RegistrantList mNewSmsRegistrants = new RegistrantList();
+    protected RegistrantList mNetworkSelectionModeAutomaticRegistrants = new RegistrantList();
+    protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
+
+    public UiccApplicationRecords(UiccCardApplication parent, Context c, CommandsInterface ci, UiccRecords ur) {
+        mContext = c;
+        mCi = ci;
+        mUiccRecords = ur;
+        mParentApp = parent;
+        mFh = mParentApp.getIccFileHandler();
+        mParentCard = mParentApp.getCard();
+        mParentApp.registerForReady(this, EVENT_APP_READY, null);
+    }
+
+    public synchronized void dispose() {
+        mDestroyed = true;
+        mParentCard = null;
+        mFh = null;
+        mParentApp.unregisterForReady(this);
+        mParentApp = null;
+        mUiccRecords = null;
+        mUnavailableRegistrants.notifyRegistrants();
+        //TODO: Do we need to to anything here? Probably - once we have code here
+    }
+
+    public synchronized void registerForUnavailable(Handler h, int what, Object obj) {
+        if (mDestroyed) {
+            return;
+        }
+
+        Registrant r = new Registrant (h, what, obj);
+        mUnavailableRegistrants.add(r);
+    }
+    public synchronized void unregisterForUnavailable(Handler h) {
+        mUnavailableRegistrants.remove(h);
+    }
+
+    public UiccCardApplication getCardApplication() {
+        return mParentApp;
+    }
+
+    public synchronized void registerForRecordsEvents(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mRecordsEventsRegistrants.add(r);
+    }
+    public synchronized void unregisterForRecordsEvents(Handler h) {
+        mRecordsEventsRegistrants.remove(h);
+    }
+
+    public synchronized void registerForNewSms(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mNewSmsRegistrants.add(r);
+    }
+    public synchronized void unregisterForNewSms(Handler h) {
+        mNewSmsRegistrants.remove(h);
+    }
+
+    public synchronized void registerForNetworkSelectionModeAutomatic(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mNetworkSelectionModeAutomaticRegistrants.add(r);
+    }
+    public synchronized void unregisterForNetworkSelectionModeAutomatic(Handler h) {
+        mNetworkSelectionModeAutomaticRegistrants.remove(h);
+    }
+
+    public synchronized void registerForImsiReady(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mImsiReadyRegistrants.add(r);
+        if (mImsi != null && mImsi.length() > 0) {
+            r.notifyRegistrant();
+        }
+    }
+    public synchronized void unregisterForImsiReady(Handler h) {
+        mImsiReadyRegistrants.remove(h);
+    }
+
+    // IccRecords
     protected static final boolean DBG = true;
     // ***** Instance Variables
 
-    protected PhoneBase phone;
     protected RegistrantList recordsLoadedRegistrants = new RegistrantList();
+    protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
 
     protected int recordsToLoad;  // number of pending load requests
 
@@ -47,6 +146,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public String iccid;
     protected String msisdn = null;  // My mobile number
     protected String msisdnTag = null;
+    protected String mImsi = null;
     protected String voiceMailNum = null;
     protected String voiceMailTag = null;
     protected String newVoiceMailNum = null;
@@ -73,12 +173,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // ***** Event Constants
     protected static final int EVENT_SET_MSISDN_DONE = 30;
 
-    // ***** Constructor
-
-    public IccRecords(PhoneBase p) {
-        this.phone = p;
-    }
-
     protected abstract void onRadioOffOrNotAvailable();
 
     //***** Public Methods
@@ -86,7 +180,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return adnCache;
     }
 
-    public void registerForRecordsLoaded(Handler h, int what, Object obj) {
+    public synchronized void registerForRecordsLoaded(Handler h, int what, Object obj) {
+        if (mDestroyed) {
+            return;
+        }
+
         Registrant r = new Registrant(h, what, obj);
         recordsLoadedRegistrants.add(r);
 
@@ -94,9 +192,22 @@ public abstract class IccRecords extends Handler implements IccConstants {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
-
-    public void unregisterForRecordsLoaded(Handler h) {
+    public synchronized void unregisterForRecordsLoaded(Handler h) {
         recordsLoadedRegistrants.remove(h);
+    }
+
+    /** Register for IccRefresh */
+    public void registerForIccRefreshReset(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mIccRefreshRegistrants.add(r);
+    }
+
+    public void unregisterForIccRefreshReset(Handler h) {
+        mIccRefreshRegistrants.remove(h);
+    }
+
+    public void onIccRefreshReset() {
+        mIccRefreshRegistrants.notifyRegistrants();
     }
 
     public String getMsisdnNumber() {
@@ -129,7 +240,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         AdnRecord adn = new AdnRecord(msisdnTag, msisdn);
 
-        new AdnRecordLoader(phone).updateEF(adn, EF_MSISDN, EF_EXT1, 1, null,
+        new AdnRecordLoader(mFh).updateEF(adn, IccConstants.EF_MSISDN, IccConstants.EF_EXT1, 1, null,
                 obtainMessage(EVENT_SET_MSISDN_DONE, onComplete));
     }
 

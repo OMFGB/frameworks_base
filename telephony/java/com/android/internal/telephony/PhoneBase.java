@@ -100,8 +100,13 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SET_ENHANCED_VP                = 24;
     protected static final int EVENT_EMERGENCY_CALLBACK_MODE_ENTER  = 25;
     protected static final int EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE = 26;
-    protected static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE   = 27;
+    protected static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE    = 27;
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED= 28;
+    //other
+    protected static final int EVENT_ICC_CHANGED                    = 29;
+    protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 30;
+    protected static final int EVENT_NEW_ICC_SMS                    = 31;
+    protected static final int EVENT_ICC_RECORD_EVENTS              = 32;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -111,7 +116,6 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     /* Instance Variables */
     public CommandsInterface mCM;
-    protected IccFileHandler mIccFileHandler;
     boolean mDnsCheckDisabled = false;
     public DataConnectionTracker mDataConnection;
     boolean mDoesRilSendMultipleCallRing;
@@ -657,9 +661,13 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
-     * Get state
+     * Returns the ICC card interface for this phone, or null
+     * if not applicable to underlying technology.
      */
-    public abstract Phone.State getState();
+    public UiccCard getUiccCard() {
+        Log.e(LOG_TAG, "getUiccCard: not supported for " + getPhoneName());
+        return null;
+    }
 
     /**
      * Retrieves the IccFileHandler of the Phone instance

@@ -55,7 +55,11 @@ import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.UiccManager;
 import com.android.internal.telephony.DataConnection.FailCause;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -155,6 +159,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     // for tracking retries on a secondary APN
     private RetryManager mSecondaryRetryManager;
 
+    protected static final AppFamily mAppFamily = AppFamily.APP_FAM_3GPP;
+
     BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
     {
         @Override
@@ -205,9 +211,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     GsmDataConnectionTracker(GSMPhone p) {
         super(p);
         mGsmPhone = p;
+
         p.mCM.registerForAvailable (this, EVENT_RADIO_AVAILABLE, null);
         p.mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        p.mSIMRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
         p.mCM.registerForDataStateChanged (this, EVENT_DATA_STATE_CHANGED, null);
         p.mCT.registerForVoiceCallEnded (this, EVENT_VOICE_CALL_ENDED, null);
         p.mCT.registerForVoiceCallStarted (this, EVENT_VOICE_CALL_STARTED, null);
@@ -290,9 +296,10 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
     public void dispose() {
         //Unregister for all events
+        mUiccManager.unregisterForIccChanged(this);
+
         phone.mCM.unregisterForAvailable(this);
         phone.mCM.unregisterForOffOrNotAvailable(this);
-        mGsmPhone.mSIMRecords.unregisterForRecordsLoaded(this);
         phone.mCM.unregisterForDataStateChanged(this);
         mGsmPhone.mCT.unregisterForVoiceCallEnded(this);
         mGsmPhone.mCT.unregisterForVoiceCallStarted(this);
@@ -357,7 +364,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     public boolean isDataConnectionAsDesired() {
         boolean roaming = phone.getServiceState().getRoaming();
 
-        if (mGsmPhone.mSIMRecords.getRecordsLoaded() &&
+        if (mUiccAppRecords != null && mUiccAppRecords.getRecordsLoaded() &&
                 mGsmPhone.mSST.getCurrentGprsState() == ServiceState.STATE_IN_SERVICE &&
                 (!roaming || getDataOnRoamingEnabled()) &&
             !mIsWifiConnected &&
@@ -462,7 +469,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
         if ((state == State.IDLE || state == State.SCANNING)
                 && (gprsState == ServiceState.STATE_IN_SERVICE || noAutoAttach)
-                && mGsmPhone.mSIMRecords.getRecordsLoaded()
+                && mUiccAppRecords != null
+                && mUiccAppRecords.getRecordsLoaded()
                 && (mGsmPhone.mSST.isConcurrentVoiceAndData() ||
                         phone.getState() == Phone.State.IDLE )
                 && isDataAllowed()
@@ -490,7 +498,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                 log("trySetupData: Not ready for data: " +
                     " dataState=" + state +
                     " gprsState=" + gprsState +
-                    " sim=" + mGsmPhone.mSIMRecords.getRecordsLoaded() +
+                    " sim=" + ((mUiccAppRecords != null) ? mUiccAppRecords.getRecordsLoaded() : null) +
                     " UMTS=" + mGsmPhone.mSST.isConcurrentVoiceAndData() +
                     " phoneState=" + phone.getState() +
                     " isDataAllowed=" + isDataAllowed() +
@@ -1282,7 +1290,12 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
      */
     private void createAllApnList() {
         allApns = new ArrayList<ApnSetting>();
-        String operator = mGsmPhone.mSIMRecords.getSIMOperatorNumeric();
+        String operator;
+        if (mUiccAppRecords != null && mUiccAppRecords instanceof SIMRecords) {
+            operator = ((SIMRecords)mUiccAppRecords).getSIMOperatorNumeric();
+        } else {
+            operator = "";
+        }
 
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
@@ -1361,7 +1374,12 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             return apnList;
         }
 
-        String operator = mGsmPhone.mSIMRecords.getSIMOperatorNumeric();
+        String operator;
+        if (mUiccAppRecords != null && mUiccAppRecords instanceof SIMRecords) {
+            operator = ((SIMRecords)mUiccAppRecords).getSIMOperatorNumeric();
+        } else {
+            operator = "";
+        }
 
         if (mRequestedApnType.equals(Phone.APN_TYPE_DEFAULT)) {
             if (canSetPreferApn && preferredApn != null) {
@@ -1552,6 +1570,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                 break;
         }
     }
+
 
     protected void log(String s) {
         Log.d(LOG_TAG, "[GsmDataConnectionTracker] " + s);

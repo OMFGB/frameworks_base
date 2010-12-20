@@ -19,6 +19,7 @@ package com.android.internal.telephony.gsm;
 import android.os.Message;
 import android.util.Log;
 
+import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 
 /**
@@ -32,7 +33,9 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
 
     public SimPhoneBookInterfaceManager(GSMPhone phone) {
         super(phone);
-        adnCache = phone.mSIMRecords.getAdnCache();
+        if (phone.mSIMRecords != null) {
+            adnCache = phone.mSIMRecords.getAdnCache();
+        }
         //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
     }
 
@@ -49,6 +52,14 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         if(DBG) Log.d(LOG_TAG, "SimPhoneBookInterfaceManager finalized");
     }
 
+    public void updateSimRecords(SIMRecords simRecords) {
+        if (simRecords != null) {
+            adnCache = simRecords.getAdnCache();
+        } else {
+            adnCache = null;
+        }
+    }
+
     public int[] getAdnRecordsSize(int efid) {
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
@@ -58,11 +69,15 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
             //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
             Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE);
 
-            phone.getIccFileHandler().getEFLinearRecordSize(efid, response);
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                logd("interrupted while trying to load from the SIM");
+            IccFileHandler fh = phone.getIccFileHandler();
+            //IccFileHandler can be null if there is no icc card present.
+            if (fh != null) {
+                fh.getEFLinearRecordSize(efid, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to load from the SIM");
+                }
             }
         }
 

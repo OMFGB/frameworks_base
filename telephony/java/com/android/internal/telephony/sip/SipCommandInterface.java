@@ -40,22 +40,22 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void getIccCardStatus(Message result) {
     }
 
-    public void supplyIccPin(String pin, Message result) {
+    public void supplyIccPin(int slot, String aid, String pin, Message result) {
     }
 
-    public void supplyIccPuk(String puk, String newPin, Message result) {
+    public void supplyIccPuk(int slot, String aid, String puk, String newPin, Message result) {
     }
 
-    public void supplyIccPin2(String pin, Message result) {
+    public void supplyIccPin2(int slot, String aid, String pin, Message result) {
     }
 
-    public void supplyIccPuk2(String puk, String newPin2, Message result) {
+    public void supplyIccPuk2(int slot, String aid, String puk, String newPin2, Message result) {
     }
 
-    public void changeIccPin(String oldPin, String newPin, Message result) {
+    public void changeIccPin(int slot, String aid, String oldPin, String newPin, Message result) {
     }
 
-    public void changeIccPin2(String oldPin2, String newPin2, Message result) {
+    public void changeIccPin2(int slot, String aid, String oldPin2, String newPin2, Message result) {
     }
 
     public void changeBarringPassword(String facility, String oldPwd,
@@ -81,7 +81,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
             Message result) {
     }
 
-    public void getIMSI(Message result) {
+    public void getIMSI(int slot, String aid, Message result) {
     }
 
     public void getIMEI(Message result) {
@@ -214,8 +214,8 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
 
-    public void iccIO (int command, int fileid, String path, int p1, int p2,
-            int p3, String data, String pin2, Message result) {
+    public void iccIO(int slot, String aid, int command, int fileid, String path, int p1, int p2, int p3,
+            String data, String pin2, Message response) {
     }
 
     public void getCLIR(Message result) {
@@ -258,12 +258,12 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void getBasebandVersion (Message response) {
     }
 
-    public void queryFacilityLock (String facility, String password,
-            int serviceClass, Message response) {
+    public void queryFacilityLock (int slot, String aid, String facility, String password, int serviceClass,
+        Message response) {
     }
 
-    public void setFacilityLock (String facility, boolean lockState,
-            String password, int serviceClass, Message response) {
+    public void setFacilityLock (int slot, String aid, String facility, boolean lockState, String password,
+        int serviceClass, Message response) {
     }
 
     public void sendUSSD (String ussdString, Message response) {
@@ -330,7 +330,13 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void setGsmBroadcastActivation(boolean activate, Message response) {
     }
 
+    public void getVoiceRadioTechnology(Message result) {
+    }
+
     // ***** Methods for CDMA support
+    public void getCdmaSubscriptionSource(Message result) {
+    }
+
     public void getDeviceIdentity(Message response) {
     }
 
@@ -347,6 +353,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     public void setCdmaSubscription(int cdmaSubscription , Message response) {
+    }
+
+    public void getCdmaPrlVersion(Message result) {
     }
 
     public void queryTTYMode(Message response) {
@@ -371,5 +380,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     public void invokeDepersonalization(String pin, int type, Message response) {
+    }
+
+    void setFacilityLock (int slot, String aid, String facility, boolean lockState, String password,
+        int serviceClass, Message response) {
     }
 }

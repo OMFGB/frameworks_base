@@ -20,6 +20,7 @@ import android.content.Context;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.MmiCode;
+import com.android.internal.telephony.UiccCardApplication;
 
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -54,6 +55,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
     CDMAPhone phone;
     Context context;
+    UiccCardApplication mUiccApp;
 
     String action;              // ACTION_REGISTER
     String sc;                  // Service Code
@@ -98,7 +100,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
      */
 
     public static CdmaMmiCode
-    newFromDialString(String dialString, CDMAPhone phone) {
+    newFromDialString(String dialString, CDMAPhone phone, UiccCardApplication app) {
         Matcher m;
         CdmaMmiCode ret = null;
 
@@ -106,7 +108,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
         // Is this formatted like a standard supplementary service code?
         if (m.matches()) {
-            ret = new CdmaMmiCode(phone);
+            ret = new CdmaMmiCode(phone, app);
             ret.poundString = makeEmptyNull(m.group(MATCH_GROUP_POUND_STRING));
             ret.action = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
             ret.sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
@@ -135,10 +137,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
     // Constructor
 
-    CdmaMmiCode (CDMAPhone phone) {
+    CdmaMmiCode (CDMAPhone phone, UiccCardApplication app) {
         super(phone.getHandler().getLooper());
         this.phone = phone;
         this.context = phone.getContext();
+        mUiccApp = app;
     }
 
     // MmiCode implementation
@@ -206,8 +209,10 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                         // invalid length
                         handlePasswordError(com.android.internal.R.string.invalidPin);
                     } else {
-                        phone.mCM.supplyIccPuk(oldPinOrPuk, newPin,
+                        if (mUiccApp != null) {
+                            mUiccApp.supplyPuk(oldPinOrPuk, newPin,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
+                        }
                     }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");

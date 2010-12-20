@@ -67,4 +67,5 @@ public interface IccConstants {
     static final String DF_GRAPHICS = "5F50";
     static final String DF_GSM = "7F20";
     static final String DF_CDMA = "7F25";
+    static final String ADF = "7FFF";
 }

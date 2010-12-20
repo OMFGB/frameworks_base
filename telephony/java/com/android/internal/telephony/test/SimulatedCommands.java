@@ -110,7 +110,7 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(result);
     }
 
-    public void supplyIccPin(String pin, Message result)  {
+    public void supplyIccPin(int slot, String aid, String pin, Message result)  {
         if (mSimLockedState != SimLockState.REQUIRE_PIN) {
             Log.i(LOG_TAG, "[SimCmd] supplyIccPin: wrong state, state=" +
                     mSimLockedState);
@@ -152,7 +152,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
-    public void supplyIccPuk(String puk, String newPin, Message result)  {
+    public void supplyIccPuk(int slot, String aid, String puk, String newPin, Message result)  {
         if (mSimLockedState != SimLockState.REQUIRE_PUK) {
             Log.i(LOG_TAG, "[SimCmd] supplyIccPuk: wrong state, state=" +
                     mSimLockedState);
@@ -194,7 +194,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
-    public void supplyIccPin2(String pin2, Message result)  {
+    public void supplyIccPin2(int slot, String aid, String pin2, Message result)  {
         if (mSimFdnEnabledState != SimFdnState.REQUIRE_PIN2) {
             Log.i(LOG_TAG, "[SimCmd] supplyIccPin2: wrong state, state=" +
                     mSimFdnEnabledState);
@@ -235,7 +235,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
-    public void supplyIccPuk2(String puk2, String newPin2, Message result)  {
+    public void supplyIccPuk2(int slot, String aid, String puk2, String newPin2, Message result)  {
         if (mSimFdnEnabledState != SimFdnState.REQUIRE_PUK2) {
             Log.i(LOG_TAG, "[SimCmd] supplyIccPuk2: wrong state, state=" +
                     mSimLockedState);
@@ -276,7 +276,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
-    public void changeIccPin(String oldPin, String newPin, Message result)  {
+    public void changeIccPin(int slot, String aid, String oldPin, String newPin, Message result)  {
         if (oldPin != null && oldPin.equals(mPinCode)) {
             mPinCode = newPin;
             if (result != null) {
@@ -297,7 +297,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
-    public void changeIccPin2(String oldPin2, String newPin2, Message result)  {
+    public void changeIccPin2(int slot, String aid, String oldPin2, String newPin2, Message result)  {
         if (oldPin2 != null && oldPin2.equals(mPin2Code)) {
             mPin2Code = newPin2;
             if (result != null) {
@@ -343,7 +343,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param serviceClass is a sum of SERVICE_CLASS_*
      */
 
-    public void queryFacilityLock (String facility, String pin,
+    public void queryFacilityLock (int slot, String aid, String facility, String pin,
                                    int serviceClass, Message result) {
         if (facility != null &&
                 facility.equals(CommandsInterface.CB_FACILITY_BA_SIM)) {
@@ -378,7 +378,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param pin the SIM pin or "" if not required
      * @param serviceClass is a sum of SERVICE_CLASS_*
      */
-    public void setFacilityLock (String facility, boolean lockEnabled,
+    public void setFacilityLock (int slot, String aid, String facility, boolean lockEnabled,
                                  String pin, int serviceClass,
                                  Message result) {
         if (facility != null &&
@@ -517,7 +517,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the orignal value of result.obj
      *  ar.result is String containing IMSI on success
      */
-    public void getIMSI(Message result) {
+    public void getIMSI(int slot, String aid, Message result) {
         resultSuccess(result, "012345678901234");
     }
 
@@ -1045,7 +1045,7 @@ public final class SimulatedCommands extends BaseCommands
      * response.obj will be an AsyncResult
      * response.obj.userObj will be a SimIoResult on success
      */
-    public void iccIO (int command, int fileid, String path, int p1, int p2,
+    public void iccIO (int slot, String aid, int command, int fileid, String path, int p1, int p2,
                        int p3, String data, String pin2, Message result) {
         unimplemented(result);
     }

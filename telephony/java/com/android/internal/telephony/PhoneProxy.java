@@ -48,6 +48,7 @@ public class PhoneProxy extends Handler implements Phone {
     private IccSmsInterfaceManagerProxy mIccSmsInterfaceManagerProxy;
     private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
     private PhoneSubInfoProxy mPhoneSubInfoProxy;
+    private IccCardProxy mIccProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
     private int mVoiceTechQueryContext = 0;
@@ -77,6 +78,15 @@ public class PhoneProxy extends Handler implements Phone {
 
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECHNOLOGY_CHANGED, null);
+
+        mIccProxy = new IccCardProxy(phone.getContext(), mCi);
+        mIccProxy.setVoiceRadioTech(
+                phone.getPhoneType() == Phone.PHONE_TYPE_CDMA ?
+                        RadioTechnologyFamily.RADIO_TECH_3GPP2
+                        : RadioTechnologyFamily.RADIO_TECH_3GPP);
+
+        UiccManager.getInstance(phone.getContext(), mCi);
+
     }
 
     @Override
@@ -171,6 +181,11 @@ public class PhoneProxy extends Handler implements Phone {
         mIccPhoneBookInterfaceManagerProxy.setmIccPhoneBookInterfaceManager(mActivePhone
                 .getIccPhoneBookInterfaceManager());
         mPhoneSubInfoProxy.setmPhoneSubInfo(this.mActivePhone.getPhoneSubInfo());
+        mIccProxy.setVoiceRadioTech(
+                mActivePhone.getPhoneType() == Phone.PHONE_TYPE_CDMA ?
+                        RadioTechnologyFamily.RADIO_TECH_3GPP2
+                        : RadioTechnologyFamily.RADIO_TECH_3GPP);
+
 
         mCi = ((PhoneBase)mActivePhone).mCM;
 
@@ -436,7 +451,7 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     public IccCard getIccCard() {
-        return mActivePhone.getIccCard();
+        return mIccProxy;
     }
 
     public void acceptCall() throws CallStateException {

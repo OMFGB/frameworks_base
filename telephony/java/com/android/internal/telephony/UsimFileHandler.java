@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,49 +15,31 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony;
 
-import android.os.Message;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.UiccCardApplication;
-import com.android.internal.telephony.UiccConstants.AppType;
 
 /**
  * {@hide}
+ * This class should be used to access files in USIM ADF
  */
-public final class SIMFileHandler extends IccFileHandler implements IccConstants {
-    static final String LOG_TAG = "GSM";
+public final class UsimFileHandler extends IccFileHandler implements IccConstants {
+    static final String LOG_TAG = "RIL_UsimFH";
 
-    //***** Instance Variables
-
-    //***** Constructor
-
-    public SIMFileHandler(UiccCardApplication app, int slotId, String aid, CommandsInterface ci) {
+    public UsimFileHandler(UiccCardApplication app, int slotId, String aid, CommandsInterface ci) {
         super(app, slotId, aid, ci);
     }
 
-    public void dispose() {
-        super.dispose();
-    }
-
     protected void finalize() {
-        Log.d(LOG_TAG, "SIMFileHandler finalized");
-    }
-
-    //***** Overridden from IccFileHandler
-
-    @Override
-    public void handleMessage(Message msg) {
-        super.handleMessage(msg);
+        Log.d(LOG_TAG, "UsimFileHandler finalized");
     }
 
     protected String getEFPath(int efid) {
-        // TODO(): DF_GSM can be 7F20 or 7F21 to handle backward compatibility.
-        // Implement this after discussion with OEMs.
         switch(efid) {
         case EF_SMS:
             return MF_SIM + DF_TELECOM;
@@ -72,16 +55,13 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_SPDI:
         case EF_SST:
         case EF_CFIS:
-            return MF_SIM + DF_GSM;
-
         case EF_MAILBOX_CPHS:
         case EF_VOICE_MAIL_INDICATOR_CPHS:
         case EF_CFF_CPHS:
         case EF_SPN_CPHS:
         case EF_SPN_SHORT_CPHS:
         case EF_INFO_CPHS:
-        case EF_CSP_CPHS:
-            return MF_SIM + DF_GSM;
+            return MF_SIM + ADF;
 
         case EF_PBR:
             // we only support global phonebook.
@@ -89,16 +69,19 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         }
         String path = getCommonIccEFPath(efid);
         if (path == null) {
-            Log.e(LOG_TAG, "Error: EF Path being returned in null");
+            // The EFids in USIM phone book entries are decided by the card manufacturer.
+            // So if we don't match any of the cases above and if its a USIM return
+            // the phone book path.
+            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         }
         return path;
     }
 
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[SIMFileHandler] " + msg);
+        Log.d(LOG_TAG, msg);
     }
 
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[SIMFileHandler] " + msg);
+        Log.e(LOG_TAG, msg);
     }
 }

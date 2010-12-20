@@ -60,6 +60,8 @@ public class MMDataConnection extends DataConnection {
 
         logi("Connecting : dataProfile = " + cp.dp.toString());
 
+        int radioTech = cp.radioTech.isCdma() ? 1 : 0;
+
         /* case APN */
         if (cp.dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP_APN) {
             ApnSetting apn = (ApnSetting) cp.dp;
@@ -72,12 +74,13 @@ public class MMDataConnection extends DataConnection {
                         : RILConstants.SETUP_DATA_AUTH_NONE;
             }
             this.mCM.setupDataCall(
-                    Integer.toString(0),
+                    Integer.toString(radioTech),
                     Integer.toString(0), apn.apn, apn.user, apn.password, Integer.toString(authType),
                     Integer.toString(cp.ipv == IPVersion.IPV6 ? 1 : 0),
                     obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp));
         } else if (cp.dp.getDataProfileType() == DataProfileType.PROFILE_TYPE_3GPP2_NAI) {
-            this.mCM.setupDataCall(Integer.toString(1),
+            this.mCM.setupDataCall(
+                    Integer.toString(radioTech),
                     //TODO - fill in this from DP
                     Integer.toString(0), null, null, null, Integer
                     .toString(RILConstants.SETUP_DATA_AUTH_PAP_CHAP), Integer

@@ -1383,6 +1383,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             } finally {
                 mWakeLock.release();
             }
+        } catch (NumberFormatException ex) {
+            Log.e(LOG_TAG, "NITZ: Parsing NITZ time " + nitz, ex);
         } catch (RuntimeException ex) {
             Log.e(LOG_TAG, "NITZ: Parsing NITZ time " + nitz, ex);
         }

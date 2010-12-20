@@ -51,6 +51,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mNetworkStateRegistrants = new RegistrantList();
     protected RegistrantList mDataConnectionRegistrants = new RegistrantList();
     protected RegistrantList mRadioTechnologyChangedRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaPrlChangedRegistrants = new RegistrantList();
     protected RegistrantList mIccStatusChangedRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOnRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOffRegistrants = new RegistrantList();
@@ -121,6 +123,24 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mRadioStateChangedRegistrants.remove(h);
         }
+    }
+
+    public void registerForCdmaSubscriptionSourceChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mCdmaSubscriptionSourceChangedRegistrants.add(r);
+    }
+
+    public void unregisterForCdmaSubscriptionSourceChanged(Handler h) {
+        mCdmaSubscriptionSourceChangedRegistrants.remove(h);
+    }
+
+    public void registerForCdmaPrlChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mCdmaPrlChangedRegistrants.add(r);
+    }
+
+    public void unregisterForCdmaPrlChanged(Handler h) {
+        mCdmaPrlChangedRegistrants.remove(h);
     }
 
     public void registerForOn(Handler h, int what, Object obj) {

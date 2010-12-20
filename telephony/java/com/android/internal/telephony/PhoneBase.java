@@ -31,11 +31,18 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.R;
+import com.android.internal.telephony.DataPhone.DataActivityState;
+import com.android.internal.telephony.DataPhone.DataState;
+import com.android.internal.telephony.DataPhone.IPVersion;
+import com.android.internal.telephony.VoicePhone.State;
+import com.android.internal.telephony.gsm.NetworkInfo;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 
 import java.util.List;
@@ -975,4 +982,833 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
         mModemPowerSaveStatus = value;
     }
 
+    public Phone asPhone() {
+        return new PhoneAdapter(this);
+    }
+
+    class PhoneAdapter implements Phone {
+        private VoicePhone mVoicePhone;
+
+        PhoneAdapter(VoicePhone phone) {
+            mVoicePhone = phone;
+        }
+        public void acceptCall() throws CallStateException {
+            mVoicePhone.acceptCall();
+        }
+
+        public void activateCellBroadcastSms(int activate, Message response) {
+            mVoicePhone.activateCellBroadcastSms(activate, response);
+        }
+
+        public Phone asPhone() {
+            return mVoicePhone.asPhone();
+        }
+
+        public boolean canConference() {
+            return mVoicePhone.canConference();
+        }
+
+        public boolean canTransfer() {
+            return mVoicePhone.canTransfer();
+        }
+
+        public void clearDisconnected() {
+            mVoicePhone.clearDisconnected();
+        }
+
+        public void conference() throws CallStateException {
+            mVoicePhone.conference();
+        }
+
+        public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
+            return mVoicePhone.dial(dialString, uusInfo);
+        }
+
+        public Connection dial(String dialString) throws CallStateException {
+            return mVoicePhone.dial(dialString);
+        }
+
+        public void disableLocationUpdates() {
+            mVoicePhone.disableLocationUpdates();
+        }
+
+        public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
+            mVoicePhone.enableEnhancedVoicePrivacy(enable, onComplete);
+        }
+
+        public void enableLocationUpdates() {
+            mVoicePhone.enableLocationUpdates();
+        }
+
+        public void exitEmergencyCallbackMode() {
+            mVoicePhone.exitEmergencyCallbackMode();
+        }
+
+        public void explicitCallTransfer() throws CallStateException {
+            mVoicePhone.explicitCallTransfer();
+        }
+
+        public void getAvailableNetworks(Message response) {
+            mVoicePhone.getAvailableNetworks(response);
+        }
+
+        public Call getBackgroundCall() {
+            return mVoicePhone.getBackgroundCall();
+        }
+
+        public boolean getCallForwardingIndicator() {
+            return mVoicePhone.getCallForwardingIndicator();
+        }
+
+        public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
+            mVoicePhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
+        }
+
+        public void getCallWaiting(Message onComplete) {
+            mVoicePhone.getCallWaiting(onComplete);
+        }
+
+        public int getCdmaEriIconIndex() {
+            return mVoicePhone.getCdmaEriIconIndex();
+        }
+
+        public int getCdmaEriIconMode() {
+            return mVoicePhone.getCdmaEriIconMode();
+        }
+
+        public String getCdmaEriText() {
+            return mVoicePhone.getCdmaEriText();
+        }
+
+        public String getCdmaMin() {
+            return mVoicePhone.getCdmaMin();
+        }
+
+        public String getCdmaPrlVersion() {
+            return mVoicePhone.getCdmaPrlVersion();
+        }
+
+        public void getCellBroadcastSmsConfig(Message response) {
+            mVoicePhone.getCellBroadcastSmsConfig(response);
+        }
+
+        public CellLocation getCellLocation() {
+            return mVoicePhone.getCellLocation();
+        }
+
+        public Context getContext() {
+            return mVoicePhone.getContext();
+        }
+
+        public String getDeviceId() {
+            return mVoicePhone.getDeviceId();
+        }
+
+        public String getDeviceSvn() {
+            return mVoicePhone.getDeviceSvn();
+        }
+
+        public void getEnhancedVoicePrivacy(Message onComplete) {
+            mVoicePhone.getEnhancedVoicePrivacy(onComplete);
+        }
+
+        public String getEsn() {
+            return mVoicePhone.getEsn();
+        }
+
+        public Call getForegroundCall() {
+            return mVoicePhone.getForegroundCall();
+        }
+
+        public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager() {
+            return mVoicePhone.getIccPhoneBookInterfaceManager();
+        }
+
+        public boolean getIccRecordsLoaded() {
+            return mVoicePhone.getIccRecordsLoaded();
+        }
+
+        public String getIccSerialNumber() {
+            return mVoicePhone.getIccSerialNumber();
+        }
+
+        public IccSmsInterfaceManager getIccSmsInterfaceManager() {
+            return mVoicePhone.getIccSmsInterfaceManager();
+        }
+
+        public String getLine1AlphaTag() {
+            return mVoicePhone.getLine1AlphaTag();
+        }
+
+        public String getLine1Number() {
+            return mVoicePhone.getLine1Number();
+        }
+
+        public String getMeid() {
+            return mVoicePhone.getMeid();
+        }
+
+        public boolean getMessageWaitingIndicator() {
+            return mVoicePhone.getMessageWaitingIndicator();
+        }
+
+        public boolean getMute() {
+            return mVoicePhone.getMute();
+        }
+
+        public void getNeighboringCids(Message response) {
+            mVoicePhone.getNeighboringCids(response);
+        }
+
+        public void getOutgoingCallerIdDisplay(Message onComplete) {
+            mVoicePhone.getOutgoingCallerIdDisplay(onComplete);
+        }
+
+        public List<? extends MmiCode> getPendingMmiCodes() {
+            return mVoicePhone.getPendingMmiCodes();
+        }
+
+        public String getPhoneName() {
+            return mVoicePhone.getPhoneName();
+        }
+
+        public PhoneSubInfo getPhoneSubInfo() {
+            return mVoicePhone.getPhoneSubInfo();
+        }
+
+        public int getPhoneType() {
+            return mVoicePhone.getPhoneType();
+        }
+
+        public void getPreferredNetworkType(Message response) {
+            mVoicePhone.getPreferredNetworkType(response);
+        }
+
+        public Call getRingingCall() {
+            return mVoicePhone.getRingingCall();
+        }
+
+        public SignalStrength getSignalStrength() {
+            return mVoicePhone.getSignalStrength();
+        }
+
+        public SimulatedRadioControl getSimulatedRadioControl() {
+            return mVoicePhone.getSimulatedRadioControl();
+        }
+
+        public void getSmscAddress(Message result) {
+            mVoicePhone.getSmscAddress(result);
+        }
+
+        public State getState() {
+            return mVoicePhone.getState();
+        }
+
+        public String getSubscriberId() {
+            return mVoicePhone.getSubscriberId();
+        }
+
+        public boolean getUnitTestMode() {
+            return mVoicePhone.getUnitTestMode();
+        }
+
+        public String getVoiceMailAlphaTag() {
+            return mVoicePhone.getVoiceMailAlphaTag();
+        }
+
+        public String getVoiceMailNumber() {
+            return mVoicePhone.getVoiceMailNumber();
+        }
+
+        public int getVoiceMessageCount() {
+            return mVoicePhone.getVoiceMessageCount();
+        }
+
+        public ServiceState getVoiceServiceState() {
+            return mVoicePhone.getVoiceServiceState();
+        }
+
+        public boolean handleInCallMmiCommands(String command) throws CallStateException {
+            return mVoicePhone.handleInCallMmiCommands(command);
+        }
+
+        public boolean handlePinMmi(String dialString) {
+            return mVoicePhone.handlePinMmi(dialString);
+        }
+
+        public void invokeDepersonalization(String pin, int type, Message response) {
+            mVoicePhone.invokeDepersonalization(pin, type, response);
+        }
+
+        public void invokeOemRilRequestRaw(byte[] data, Message response) {
+            mVoicePhone.invokeOemRilRequestRaw(data, response);
+        }
+
+        public void invokeOemRilRequestStrings(String[] strings, Message response) {
+            mVoicePhone.invokeOemRilRequestStrings(strings, response);
+        }
+
+        public boolean isCspPlmnEnabled() {
+            return mVoicePhone.isCspPlmnEnabled();
+        }
+
+        public boolean isMinInfoReady() {
+            return mVoicePhone.isMinInfoReady();
+        }
+
+        public boolean isModemPowerSave() {
+            return mVoicePhone.isModemPowerSave();
+        }
+
+        public boolean isOtaSpNumber(String dialStr) {
+            return mVoicePhone.isOtaSpNumber(dialStr);
+        }
+
+        public void queryAvailableBandMode(Message response) {
+            mVoicePhone.queryAvailableBandMode(response);
+        }
+
+        public void queryCdmaRoamingPreference(Message response) {
+            mVoicePhone.queryCdmaRoamingPreference(response);
+        }
+
+        public void queryTTYMode(Message onComplete) {
+            mVoicePhone.queryTTYMode(onComplete);
+        }
+
+        public void registerForCallReestablishInd(Handler h, int what, Object obj) {
+            mVoicePhone.registerForCallReestablishInd(h, what, obj);
+        }
+
+        public void registerForCallWaiting(Handler h, int what, Object obj) {
+            mVoicePhone.registerForCallWaiting(h, what, obj);
+        }
+
+        public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
+            mVoicePhone.registerForCdmaOtaStatusChange(h, what, obj);
+        }
+
+        public void registerForDisconnect(Handler h, int what, Object obj) {
+            mVoicePhone.registerForDisconnect(h, what, obj);
+        }
+
+        public void registerForDisplayInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForDisplayInfo(h, what, obj);
+        }
+
+        public void registerForEcmTimerReset(Handler h, int what, Object obj) {
+            mVoicePhone.registerForEcmTimerReset(h, what, obj);
+        }
+
+        public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj) {
+            mVoicePhone.registerForInCallVoicePrivacyOff(h, what, obj);
+        }
+
+        public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj) {
+            mVoicePhone.registerForInCallVoicePrivacyOn(h, what, obj);
+        }
+
+        public void registerForIncomingRing(Handler h, int what, Object obj) {
+            mVoicePhone.registerForIncomingRing(h, what, obj);
+        }
+
+        public void registerForLineControlInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForLineControlInfo(h, what, obj);
+        }
+
+        public void registerForMmiComplete(Handler h, int what, Object obj) {
+            mVoicePhone.registerForMmiComplete(h, what, obj);
+        }
+
+        public void registerForMmiInitiate(Handler h, int what, Object obj) {
+            mVoicePhone.registerForMmiInitiate(h, what, obj);
+        }
+
+        public void registerForNewRingingConnection(Handler h, int what, Object obj) {
+            mVoicePhone.registerForNewRingingConnection(h, what, obj);
+        }
+
+        public void registerForNumberInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForNumberInfo(h, what, obj);
+        }
+
+        public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
+            mVoicePhone.registerForPreciseCallStateChanged(h, what, obj);
+        }
+
+        public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForRedirectedNumberInfo(h, what, obj);
+        }
+
+        public void registerForResendIncallMute(Handler h, int what, Object obj) {
+            mVoicePhone.registerForResendIncallMute(h, what, obj);
+        }
+
+        public void registerForRingbackTone(Handler h, int what, Object obj) {
+            mVoicePhone.registerForRingbackTone(h, what, obj);
+        }
+
+        public void registerForSignalInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForSignalInfo(h, what, obj);
+        }
+
+        public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
+            mVoicePhone.registerForSubscriptionInfoReady(h, what, obj);
+        }
+
+        public void registerForSuppServiceFailed(Handler h, int what, Object obj) {
+            mVoicePhone.registerForSuppServiceFailed(h, what, obj);
+        }
+
+        public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
+            mVoicePhone.registerForSuppServiceNotification(h, what, obj);
+        }
+
+        public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerForT53AudioControlInfo(h, what, obj);
+        }
+
+        public void registerForUnknownConnection(Handler h, int what, Object obj) {
+            mVoicePhone.registerForUnknownConnection(h, what, obj);
+        }
+
+        public void registerForVoiceServiceStateChanged(Handler h, int what, Object obj) {
+            mVoicePhone.registerForVoiceServiceStateChanged(h, what, obj);
+        }
+
+        public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
+            mVoicePhone.registerFoT53ClirlInfo(h, what, obj);
+        }
+
+        public void rejectCall() throws CallStateException {
+            mVoicePhone.rejectCall();
+        }
+
+        public void selectNetworkManually(NetworkInfo network, Message response) {
+            mVoicePhone.selectNetworkManually(network, response);
+        }
+
+        public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete) {
+            mVoicePhone.sendBurstDtmf(dtmfString, on, off, onComplete);
+        }
+
+        public void sendDtmf(char c) {
+            mVoicePhone.sendDtmf(c);
+        }
+
+        public void sendUssdResponse(String ussdMessge) {
+            mVoicePhone.sendUssdResponse(ussdMessge);
+        }
+
+        public void setBandMode(int bandMode, Message response) {
+            mVoicePhone.setBandMode(bandMode, response);
+        }
+
+        public void setCallForwardingOption(int commandInterfaceCFReason,
+                int commandInterfaceCFAction, String dialingNumber, int timerSeconds,
+                Message onComplete) {
+            mVoicePhone.setCallForwardingOption(commandInterfaceCFReason, commandInterfaceCFAction,
+                    dialingNumber, timerSeconds, onComplete);
+        }
+
+        public void setCallWaiting(boolean enable, Message onComplete) {
+            mVoicePhone.setCallWaiting(enable, onComplete);
+        }
+
+        public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
+            mVoicePhone.setCdmaRoamingPreference(cdmaRoamingType, response);
+        }
+
+        public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
+            mVoicePhone.setCdmaSubscription(cdmaSubscriptionType, response);
+        }
+
+        public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
+            mVoicePhone.setCellBroadcastSmsConfig(configValuesArray, response);
+        }
+
+        public void setEchoSuppressionEnabled(boolean enabled) {
+            mVoicePhone.setEchoSuppressionEnabled(enabled);
+        }
+
+        public void setLine1Number(String alphaTag, String number, Message onComplete) {
+            mVoicePhone.setLine1Number(alphaTag, number, onComplete);
+        }
+
+        public void setMute(boolean muted) {
+            mVoicePhone.setMute(muted);
+        }
+
+        public void setNetworkSelectionModeAutomatic(Message response) {
+            mVoicePhone.setNetworkSelectionModeAutomatic(response);
+        }
+
+        public void setOnEcbModeExitResponse(Handler h, int what, Object obj) {
+            mVoicePhone.setOnEcbModeExitResponse(h, what, obj);
+        }
+
+        public void setOnPostDialCharacter(Handler h, int what, Object obj) {
+            mVoicePhone.setOnPostDialCharacter(h, what, obj);
+        }
+
+        public void setOnUnsolOemHookExtApp(Handler h, int what, Object obj) {
+            mVoicePhone.setOnUnsolOemHookExtApp(h, what, obj);
+        }
+
+        public void setOutgoingCallerIdDisplay(int commandInterfaceCLIRMode, Message onComplete) {
+            mVoicePhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode, onComplete);
+        }
+
+        public void setPreferredNetworkType(int networkType, Message response) {
+            mVoicePhone.setPreferredNetworkType(networkType, response);
+        }
+
+        public void setSmscAddress(String address, Message result) {
+            mVoicePhone.setSmscAddress(address, result);
+        }
+
+        public void setTTYMode(int ttyMode, Message onComplete) {
+            mVoicePhone.setTTYMode(ttyMode, onComplete);
+        }
+
+        public void setUnitTestMode(boolean f) {
+            mVoicePhone.setUnitTestMode(f);
+        }
+
+        public void setVoiceMailNumber(String alphaTag, String voiceMailNumber, Message onComplete) {
+            mVoicePhone.setVoiceMailNumber(alphaTag, voiceMailNumber, onComplete);
+        }
+
+        public void startDtmf(char c) {
+            mVoicePhone.startDtmf(c);
+        }
+
+        public void stopDtmf() {
+            mVoicePhone.stopDtmf();
+        }
+
+        public void switchHoldingAndActive() throws CallStateException {
+            mVoicePhone.switchHoldingAndActive();
+        }
+
+        public void unregisterForCallReestablishInd(Handler h) {
+            mVoicePhone.unregisterForCallReestablishInd(h);
+        }
+
+        public void unregisterForCallWaiting(Handler h) {
+            mVoicePhone.unregisterForCallWaiting(h);
+        }
+
+        public void unregisterForCdmaOtaStatusChange(Handler h) {
+            mVoicePhone.unregisterForCdmaOtaStatusChange(h);
+        }
+
+        public void unregisterForDisconnect(Handler h) {
+            mVoicePhone.unregisterForDisconnect(h);
+        }
+
+        public void unregisterForDisplayInfo(Handler h) {
+            mVoicePhone.unregisterForDisplayInfo(h);
+        }
+
+        public void unregisterForEcmTimerReset(Handler h) {
+            mVoicePhone.unregisterForEcmTimerReset(h);
+        }
+
+        public void unregisterForInCallVoicePrivacyOff(Handler h) {
+            mVoicePhone.unregisterForInCallVoicePrivacyOff(h);
+        }
+
+        public void unregisterForInCallVoicePrivacyOn(Handler h) {
+            mVoicePhone.unregisterForInCallVoicePrivacyOn(h);
+        }
+
+        public void unregisterForIncomingRing(Handler h) {
+            mVoicePhone.unregisterForIncomingRing(h);
+        }
+
+        public void unregisterForLineControlInfo(Handler h) {
+            mVoicePhone.unregisterForLineControlInfo(h);
+        }
+
+        public void unregisterForMmiComplete(Handler h) {
+            mVoicePhone.unregisterForMmiComplete(h);
+        }
+
+        public void unregisterForMmiInitiate(Handler h) {
+            mVoicePhone.unregisterForMmiInitiate(h);
+        }
+
+        public void unregisterForNewRingingConnection(Handler h) {
+            mVoicePhone.unregisterForNewRingingConnection(h);
+        }
+
+        public void unregisterForNumberInfo(Handler h) {
+            mVoicePhone.unregisterForNumberInfo(h);
+        }
+
+        public void unregisterForPreciseCallStateChanged(Handler h) {
+            mVoicePhone.unregisterForPreciseCallStateChanged(h);
+        }
+
+        public void unregisterForRedirectedNumberInfo(Handler h) {
+            mVoicePhone.unregisterForRedirectedNumberInfo(h);
+        }
+
+        public void unregisterForResendIncallMute(Handler h) {
+            mVoicePhone.unregisterForResendIncallMute(h);
+        }
+
+        public void unregisterForRingbackTone(Handler h) {
+            mVoicePhone.unregisterForRingbackTone(h);
+        }
+
+        public void unregisterForSignalInfo(Handler h) {
+            mVoicePhone.unregisterForSignalInfo(h);
+        }
+
+        public void unregisterForSubscriptionInfoReady(Handler h) {
+            mVoicePhone.unregisterForSubscriptionInfoReady(h);
+        }
+
+        public void unregisterForSuppServiceFailed(Handler h) {
+            mVoicePhone.unregisterForSuppServiceFailed(h);
+        }
+
+        public void unregisterForSuppServiceNotification(Handler h) {
+            mVoicePhone.unregisterForSuppServiceNotification(h);
+        }
+
+        public void unregisterForT53AudioControlInfo(Handler h) {
+            mVoicePhone.unregisterForT53AudioControlInfo(h);
+        }
+
+        public void unregisterForT53ClirInfo(Handler h) {
+            mVoicePhone.unregisterForT53ClirInfo(h);
+        }
+
+        public void unregisterForUnknownConnection(Handler h) {
+            mVoicePhone.unregisterForUnknownConnection(h);
+        }
+
+        public void unregisterForVoiceServiceStateChanged(Handler h) {
+            mVoicePhone.unregisterForVoiceServiceStateChanged(h);
+        }
+
+        public void unsetOnEcbModeExitResponse(Handler h) {
+            mVoicePhone.unsetOnEcbModeExitResponse(h);
+        }
+
+        public void unSetOnUnsolOemHookExtApp(Handler h) {
+            mVoicePhone.unSetOnUnsolOemHookExtApp(h);
+        }
+
+        public void updateServiceLocation() {
+            mVoicePhone.updateServiceLocation();
+        }
+
+        @Override
+        public IccCard getIccCard() {
+            return null;
+        }
+
+        @Override
+        public ServiceState getServiceState() {
+            return mVoicePhone.getVoiceServiceState();
+        }
+
+        @Override
+        public void registerForServiceStateChanged(Handler h, int what, Object obj) {
+            mVoicePhone.registerForVoiceServiceStateChanged(h, what, obj);
+        }
+
+        @Override
+        public void setRadioPower(boolean power) {
+            logWrongPhone("setRadioPower");
+            PhoneFactory.getDefaultPhone().setRadioPower(power);
+        }
+
+        @Override
+        public void unregisterForServiceStateChanged(Handler h) {
+            mVoicePhone.unregisterForVoiceServiceStateChanged(h);
+        }
+
+        @Override
+        public int disableApnType(String type) {
+            logWrongPhone("disableApnType");
+            return 0;
+        }
+
+        @Override
+        public boolean disableDataConnectivity() {
+            logWrongPhone("disableDataConnectivity");
+            return false;
+        }
+
+        @Override
+        public void disableDnsCheck(boolean b) {
+            logWrongPhone("disableDnsCheck");
+        }
+
+        @Override
+        public int enableApnType(String type) {
+            logWrongPhone("enableApnType");
+            return 0;
+        }
+
+        @Override
+        public boolean enableDataConnectivity() {
+            logWrongPhone("enableDataConnectivity");
+            return false;
+        }
+
+        @Override
+        public String getActiveApn() {
+            logWrongPhone("getActiveApn");
+            return null;
+        }
+
+        @Override
+        public String getActiveApn(String type, IPVersion ipv) {
+            logWrongPhone("getActiveApn(type,ipv)");
+            return null;
+        }
+
+        @Override
+        public String[] getActiveApnTypes() {
+            logWrongPhone("getActiveApnTypes");
+            return null;
+        }
+
+        @Override
+        public List<DataConnection> getCurrentDataConnectionList() {
+            logWrongPhone("getCurrentDataConnectionList");
+            return null;
+        }
+
+        @Override
+        public DataActivityState getDataActivityState() {
+            logWrongPhone("getDataActivityState");
+            return null;
+        }
+
+        @Override
+        public void getDataCallList(Message response) {
+            logWrongPhone("getDataCallList");
+        }
+
+        @Override
+        public DataState getDataConnectionState() {
+            logWrongPhone("getDataConnectionState");
+            return null;
+        }
+
+        @Override
+        public DataState getDataConnectionState(String type, IPVersion ipv) {
+            logWrongPhone("getDataConnectionState(type,ipv)");
+            return null;
+        }
+
+        @Override
+        public boolean getDataRoamingEnabled() {
+            logWrongPhone("getDataRoamingEnabled");
+            return false;
+        }
+
+        @Override
+        public ServiceState getDataServiceState() {
+            logWrongPhone("getDataServiceState");
+            return null;
+        }
+
+        @Override
+        public String[] getDnsServers(String apnType) {
+            logWrongPhone("getDnsServers");
+            return null;
+        }
+
+        @Override
+        public String[] getDnsServers(String apnType, IPVersion ipv) {
+            logWrongPhone("getDnsServers");
+            return null;
+        }
+
+        @Override
+        public String getGateway(String apnType) {
+            logWrongPhone("getGateway");
+            return null;
+        }
+
+        @Override
+        public String getGateway(String apnType, IPVersion ipv) {
+            logWrongPhone("getGateway");
+            return null;
+        }
+
+        @Override
+        public String getInterfaceName(String apnType) {
+            logWrongPhone("getInterfaceName");
+            return null;
+        }
+
+        @Override
+        public String getInterfaceName(String apnType, IPVersion ipv) {
+            logWrongPhone("getInterfaceName");
+            return null;
+        }
+
+        @Override
+        public String getIpAddress(String apnType) {
+            logWrongPhone("getIpAddress");
+            return null;
+        }
+
+        @Override
+        public String getIpAddress(String apnType, IPVersion ipv) {
+            logWrongPhone("getIpAddress(apnType,ipv)");
+            return null;
+        }
+
+        @Override
+        public boolean isDataConnectivityEnabled() {
+            logWrongPhone("isDataConnectivityEnabled");
+            return false;
+        }
+
+        @Override
+        public boolean isDataConnectivityPossible() {
+            logWrongPhone("isDataConnectivityPossible");
+            return false;
+        }
+
+        @Override
+        public boolean isDnsCheckDisabled() {
+            logWrongPhone("isDnsCheckDisabled");
+            return false;
+        }
+
+        @Override
+        public void notifyDataActivity() {
+            logWrongPhone("notifyDataActivity");
+        }
+
+        @Override
+        public void registerForDataServiceStateChanged(Handler h, int what, Object obj) {
+            logWrongPhone("registerForDataServiceStateChanged");
+        }
+
+        @Override
+        public void setDataRoamingEnabled(boolean enable) {
+            logWrongPhone("setDataRoamingEnabled");
+        }
+
+        @Override
+        public void unregisterForDataServiceStateChanged(Handler h) {
+            logWrongPhone("unregisterForDataServiceStateChanged");
+        }
+
+        private void logWrongPhone(String fname) {
+            Log.w(LOG_TAG, "[" + fname + "] called on a VoicePhone");
+        }
+    }
 }

@@ -83,7 +83,7 @@ public final class CallManager {
     private static final CallManager INSTANCE = new CallManager();
 
     // list of registered phones, which are PhoneBase objs
-    private final ArrayList<VoicePhone> mPhones;
+    private final ArrayList<Phone> mPhones;
 
     // list of supported ringing calls
     private final ArrayList<Call> mRingingCalls;
@@ -165,7 +165,7 @@ public final class CallManager {
     = new RegistrantList();
 
     private CallManager() {
-        mPhones = new ArrayList<VoicePhone>();
+        mPhones = new ArrayList<Phone>();
         mRingingCalls = new ArrayList<Call>();
         mBackgroundCalls = new ArrayList<Call>();
         mForegroundCalls = new ArrayList<Call>();
@@ -224,7 +224,7 @@ public final class CallManager {
      * Returns all the registered phone objects.
      * @return all the registered phone objects.
      */
-    public List<VoicePhone> getAllPhones() {
+    public List<Phone> getAllPhones() {
         return Collections.unmodifiableList(mPhones);
     }
 
@@ -237,7 +237,7 @@ public final class CallManager {
     public VoicePhone.State getState() {
         VoicePhone.State s = Phone.State.IDLE;
 
-        for (VoicePhone phone : mPhones) {
+        for (Phone phone : mPhones) {
             if (phone.getState() == Phone.State.RINGING) {
                 s = Phone.State.RINGING;
             } else if (phone.getState() == Phone.State.OFFHOOK) {
@@ -260,7 +260,7 @@ public final class CallManager {
     public int getServiceState() {
         int resultState = ServiceState.STATE_OUT_OF_SERVICE;
 
-        for (VoicePhone phone : mPhones) {
+        for (Phone phone : mPhones) {
             int serviceState = phone.getVoiceServiceState().getState();
             if (serviceState == ServiceState.STATE_IN_SERVICE) {
                 // IN_SERVICE has the highest priority
@@ -290,7 +290,7 @@ public final class CallManager {
     public boolean registerPhone(Phone phone) {
         VoicePhone basePhone = getPhoneBase(phone);
 
-        return registerVoicePhone(basePhone);
+        return registerPhone(basePhone);
     }
 
     /**
@@ -298,7 +298,7 @@ public final class CallManager {
      * @param phone to be registered
      * @return true if register successfully
      */
-    public boolean registerVoicePhone(VoicePhone phone) {
+    public boolean registerPhone(VoicePhone phone) {
         VoicePhone basePhone = phone;
 
         if (basePhone != null && !mPhones.contains(basePhone)) {
@@ -311,7 +311,7 @@ public final class CallManager {
             if (mPhones.isEmpty()) {
                 mDefaultPhone = basePhone;
             }
-            mPhones.add(basePhone);
+            mPhones.add(basePhone.asPhone());
             mRingingCalls.add(basePhone.getRingingCall());
             mBackgroundCalls.add(basePhone.getBackgroundCall());
             mForegroundCalls.add(basePhone.getForegroundCall());
@@ -328,14 +328,14 @@ public final class CallManager {
     public void unregisterPhone(Phone phone) {
         VoicePhone basePhone = getPhoneBase(phone);
 
-        unregisterVoicePhone(basePhone);
+        unregisterPhone(basePhone);
     }
 
     /**
      * unregister phone from CallManager
      * @param phone to be unregistered
      */
-    public void unregisterVoicePhone(VoicePhone phone) {
+    public void unregisterPhone(VoicePhone phone) {
         VoicePhone basePhone = phone;
 
         if (basePhone != null && mPhones.contains(basePhone)) {
@@ -363,29 +363,29 @@ public final class CallManager {
     /**
      * return the default phone or null if no phone available
      */
-    public VoicePhone getDefaultPhone() {
-        return mDefaultPhone;
+    public Phone getDefaultPhone() {
+        return mDefaultPhone.asPhone();
     }
 
     /**
      * @return the phone associated with the foreground call
      */
-    public VoicePhone getFgPhone() {
-        return getActiveFgCall().getPhone();
+    public Phone getFgPhone() {
+        return getActiveFgCall().getPhone().asPhone();
     }
 
     /**
      * @return the phone associated with the background call
      */
-    public VoicePhone getBgPhone() {
-        return getFirstActiveBgCall().getPhone();
+    public Phone getBgPhone() {
+        return getFirstActiveBgCall().getPhone().asPhone();
     }
 
     /**
      * @return the phone associated with the ringing call
      */
-    public VoicePhone getRingingPhone() {
-        return getFirstActiveRingingCall().getPhone();
+    public Phone getRingingPhone() {
+        return getFirstActiveRingingCall().getPhone().asPhone();
     }
 
     public void setAudioMode() {

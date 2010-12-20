@@ -65,7 +65,8 @@ public abstract class Call {
      */
 
     public abstract List<Connection> getConnections();
-    public abstract VoicePhone getPhone();
+    public abstract Phone getPhone();
+    public abstract VoicePhone getVoicePhone();
     public abstract boolean isMultiparty();
     public abstract void hangup() throws CallStateException;
     public abstract void hangupAllCalls() throws CallStateException;

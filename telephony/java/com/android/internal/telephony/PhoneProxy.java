@@ -1077,4 +1077,12 @@ public class PhoneProxy extends Handler implements Phone {
     public void unregisterForDataServiceStateChanged(Handler h) {
         mActiveDataPhone.unregisterForDataServiceStateChanged(h);
     }
+
+    public VoicePhone getVoicePhone() {
+        return mActiveVoicePhone;
+    }
+
+    public Phone asPhone() {
+        return this;
+    }
 }

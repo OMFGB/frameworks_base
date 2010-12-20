@@ -1501,5 +1501,5 @@ public interface VoicePhone {
      */
     boolean isCspPlmnEnabled();
 
-
+    Phone asPhone();
 }

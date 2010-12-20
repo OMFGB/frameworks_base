@@ -35,6 +35,7 @@ import android.util.Log;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.UUSInfo;
@@ -369,10 +370,13 @@ public class SipPhone extends SipPhoneBase {
         }
 
         @Override
-        public VoicePhone getPhone() {
-            return SipPhone.this;
+        public Phone getPhone() {
+            return SipPhone.this.asPhone();
         }
 
+        public VoicePhone getVoicePhone() {
+            return SipPhone.this;
+        }
         @Override
         public List<Connection> getConnections() {
             synchronized (SipPhone.class) {

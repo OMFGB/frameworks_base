@@ -20,6 +20,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.VoicePhone;
 
 import java.util.ArrayList;
@@ -68,11 +69,15 @@ class GsmCall extends Call {
         return connections;
     }
 
-    public VoicePhone
+    public Phone
     getPhone() {
-        return owner.phone;
+        return owner.phone.asPhone();
     }
 
+    public VoicePhone
+    getVoicePhone() {
+        return owner.phone;
+    }
     public boolean
     isMultiparty() {
         return connections.size() > 1;

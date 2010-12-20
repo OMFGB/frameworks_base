@@ -292,6 +292,11 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
         int[] ints;
         String[] strings;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch (msg.what) {
         case EVENT_RADIO_AVAILABLE:
             break;

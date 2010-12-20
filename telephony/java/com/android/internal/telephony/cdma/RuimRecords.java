@@ -187,6 +187,11 @@ public final class RuimRecords extends IccRecords {
 
         boolean isRecordLoadResponse = false;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         try { switch (msg.what) {
             case EVENT_RUIM_READY:
                 onRuimReady();

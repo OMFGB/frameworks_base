@@ -343,6 +343,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         String[] strings;
         Message message;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch (msg.what) {
             case EVENT_RADIO_AVAILABLE:
                 //this is unnecessary

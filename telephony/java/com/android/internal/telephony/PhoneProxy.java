@@ -245,7 +245,7 @@ public class PhoneProxy extends Handler implements Phone {
             }
         }
 
-        Phone oldPhone = mActiveVoicePhone;
+        VoicePhone oldPhone = mActiveVoicePhone;
 
         // Give the garbage collector a hint to start the garbage collection
         // asap NOTE this has been disabled since radio technology change could

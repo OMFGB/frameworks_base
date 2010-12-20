@@ -35,7 +35,7 @@ import android.util.Log;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.UUSInfo;
 

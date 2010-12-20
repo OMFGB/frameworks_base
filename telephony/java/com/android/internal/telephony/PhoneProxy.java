@@ -200,7 +200,11 @@ public class PhoneProxy extends Handler implements Phone {
 
         mActiveVoicePhone.unregisterForVoiceServiceStateChanged(this);
 
+        CallManager.getInstance().unregisterPhone(mActiveVoicePhone);
+
         deleteAndCreatePhone(newVoiceRadioTech);
+
+        CallManager.getInstance().registerPhone(mActiveVoicePhone);
 
         if (mResetModemOnRadioTechnologyChange) { // restore power state
             logd("Resetting Radio");

@@ -301,7 +301,7 @@ public final class CallManager {
     public boolean registerPhone(VoicePhone phone) {
         VoicePhone basePhone = phone;
 
-        if (basePhone != null && !mPhones.contains(basePhone)) {
+        if (basePhone != null && !mPhones.contains(basePhone.asPhone())) {
 
             if (DBG) {
                 Log.d(LOG_TAG, "registerPhone(" +
@@ -338,19 +338,19 @@ public final class CallManager {
     public void unregisterPhone(VoicePhone phone) {
         VoicePhone basePhone = phone;
 
-        if (basePhone != null && mPhones.contains(basePhone)) {
+        if (basePhone != null && mPhones.contains(basePhone.asPhone())) {
 
             if (DBG) {
                 Log.d(LOG_TAG, "unregisterPhone(" +
                         phone.getPhoneName() + " " + phone + ")");
             }
 
-            mPhones.remove(basePhone);
+            mPhones.remove(basePhone.asPhone());
             mRingingCalls.remove(basePhone.getRingingCall());
             mBackgroundCalls.remove(basePhone.getBackgroundCall());
             mForegroundCalls.remove(basePhone.getForegroundCall());
             unregisterForPhoneStates(basePhone);
-            if (basePhone == mDefaultPhone) {
+            if (basePhone.asPhone() == mDefaultPhone) {
                 if (mPhones.isEmpty()) {
                     mDefaultPhone = null;
                 } else {

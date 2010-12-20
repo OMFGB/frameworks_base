@@ -425,13 +425,13 @@ public class MobileDataStateTracker extends NetworkStateTracker {
      */
     public boolean reconnect() {
         setTeardownRequested(false);
+        /*
+         * enable first, so that intents are processed, as soon as
+         * setEnableApn() is called
+         */
+        mEnabled = true;
         switch (setEnableApn(mApnType, true)) {
             case Phone.APN_ALREADY_ACTIVE:
-                /* APN is already active, we are not going to any more intents from
-                 * data connection tracker, so we need to rebroadcast the intent.
-                 */
-                mEnabled = true;
-
                 logv("dct reports apn already active. " + this);
 
                 setDetailedState(DetailedState.CONNECTING, Phone.REASON_APN_CHANGED, null);
@@ -463,11 +463,12 @@ public class MobileDataStateTracker extends NetworkStateTracker {
 
                 break;
             case Phone.APN_REQUEST_STARTED:
-                mEnabled = true;
+                logv("dct reports apn request started " + this);
                 // no need to do anything - we're already due some status update
                 // intents
                 break;
             case Phone.APN_REQUEST_FAILED:
+                logv("dct reports apn request failed " + this);
                 if (mPhoneService == null && mApnType == Phone.APN_TYPE_DEFAULT) {
                     // on startup we may try to talk to the phone before it's ready
                     // since the phone will come up enabled, go with that.
@@ -482,6 +483,7 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             case Phone.APN_TYPE_NOT_AVAILABLE:
                 // Default is always available, but may be off due to
                 // AirplaneMode or E-Call or whatever..
+                logv("dct reports apn type not available " + this);
                 if (mApnType != Phone.APN_TYPE_DEFAULT) {
                     mEnabled = false;
                 }

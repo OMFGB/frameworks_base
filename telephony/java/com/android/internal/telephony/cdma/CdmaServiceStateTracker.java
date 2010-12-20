@@ -487,6 +487,12 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION NID=" + cdmaSubscription[2] );
                     mMin = cdmaSubscription[3];
+                    /*
+                     * TODO : remove this from here when RIL sends the PRL
+                     * in EVENT_GET_CDMA_PRL_VERSION
+                     */
+                    mPrlVersion = cdmaSubscription[4];
+                    Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION PRL version=" + mPrlVersion);
                     Log.d(LOG_TAG,"GET_CDMA_SUBSCRIPTION MDN=" + mMdn);
                     //Notify apps subscription info is ready
                     if (cdmaForSubscriptionInfoReadyRegistrants != null) {

@@ -163,8 +163,8 @@ public class CDMAPhone extends PhoneBase {
         mSST = new CdmaServiceStateTracker (this);
         mSMS = new CdmaSMSDispatcher(this);
 
-        //TODO: fusion - RuimPhoneBookInterfaceManager expects mRuimRecords at start.
-        //mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
+        //TODO: fusion move RuimPhoneBookInterfaceManager functionality to IccPhoneBookIntManager
+        mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -237,9 +237,7 @@ public class CDMAPhone extends PhoneBase {
             mCT.dispose();
             mSST.dispose();
             mSMS.dispose();
-
-            //TODO -  fusion
-            //mRuimPhoneBookInterfaceManager.dispose();
+            mRuimPhoneBookInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
 
@@ -1092,7 +1090,7 @@ public class CDMAPhone extends PhoneBase {
                 if (mRuimRecords != null) {
                     unregisterForRuimRecordEvents();
                     mRuimRecords = null;
-                    //TODO: fusion - mRuimPhoneBookIntManager.setSIMRecords(mSIMRecords);
+                    mRuimPhoneBookInterfaceManager.updateRuimRecords(null);
                 }
                 m3gpp2Application = null;
                 mRuimCard = null;
@@ -1102,7 +1100,7 @@ public class CDMAPhone extends PhoneBase {
                 m3gpp2Application = new3gpp2Application;
                 mRuimCard = new3gpp2Application.getCard();
                 mRuimRecords = (RuimRecords) m3gpp2Application.getApplicationRecords();
-                //TODO: fusion - mRuimPhoneBookIntManager.setSIMRecords(mSIMRecords);
+                mRuimPhoneBookInterfaceManager.updateRuimRecords(mRuimRecords);
                 registerForRuimRecordEvents();
             }
         }

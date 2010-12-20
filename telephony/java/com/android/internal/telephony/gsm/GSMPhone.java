@@ -153,7 +153,6 @@ public class GSMPhone extends PhoneBase {
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
             mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
-            mSubInfo = new PhoneSubInfo(this);
         }
 
         mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
@@ -220,8 +219,7 @@ public class GSMPhone extends PhoneBase {
             mCT.dispose();
             mSST.dispose();
 
-            //TODO - fusion
-            //mSimPhoneBookIntManager.dispose();
+            mSimPhoneBookIntManager.dispose();
             mSimSmsIntManager.dispose();
             mSubInfo.dispose();
 
@@ -1362,7 +1360,7 @@ public class GSMPhone extends PhoneBase {
                 if (mSIMRecords != null) {
                     unregisterForSimRecordEvents();
                     mSIMRecords = null;
-                    //TODO: fusion - mSimPhoneBookIntManager.setSIMRecords(mSIMRecords);
+                    mSimPhoneBookIntManager.updateSimRecords(null);
                 }
                 m3gppApplication = null;
                 mSimCard = null;
@@ -1373,7 +1371,7 @@ public class GSMPhone extends PhoneBase {
                 mSimCard = new3gppApplication.getCard();
                 mSIMRecords = (SIMRecords) m3gppApplication.getApplicationRecords();
                 registerForSimRecordEvents();
-                //TODO: fusion - mSimPhoneBookIntManager.setSIMRecords(mSIMRecords);
+                mSimPhoneBookIntManager.updateSimRecords(mSIMRecords);
             }
         }
     }

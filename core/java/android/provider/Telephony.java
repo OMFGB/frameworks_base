@@ -613,6 +613,8 @@ public final class Telephony {
                 Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
                 byte[][] pduObjs = new byte[messages.length][];
 
+                int encoding = intent.getIntExtra("encoding", -1);
+
                 for (int i = 0; i < messages.length; i++) {
                     pduObjs[i] = (byte[]) messages[i];
                 }
@@ -621,7 +623,11 @@ public final class Telephony {
                 SmsMessage[] msgs = new SmsMessage[pduCount];
                 for (int i = 0; i < pduCount; i++) {
                     pdus[i] = pduObjs[i];
-                    msgs[i] = SmsMessage.createFromPdu(pdus[i]);
+                    if (-1 != encoding) {
+                        msgs[i] = SmsMessage.createFromPdu(pdus[i], encoding);
+                    } else {
+                        msgs[i] = SmsMessage.createFromPdu(pdus[i]);
+                    }
                 }
                 return msgs;
             }

@@ -54,7 +54,6 @@ import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.IccException;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
-import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.UiccCard;
 import com.android.internal.telephony.UiccCardApplication;
@@ -94,7 +93,7 @@ public class CDMAPhone extends PhoneBase {
     // Default Emergency Callback Mode exit timer
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
-    static final String VM_COUNT_CDMA = "vm_count_key_cdma";
+    public static final String VM_COUNT_CDMA = "vm_count_key_cdma";
     private static final String VM_NUMBER_CDMA = "vm_number_key_cdma";
     private String mVmNumber = null;
 
@@ -103,7 +102,6 @@ public class CDMAPhone extends PhoneBase {
 
     // Instance Variables
     CdmaCallTracker mCT;
-    CdmaSMSDispatcher mSMS;
     CdmaServiceStateTracker mSST;
 
     /* icc stuff */
@@ -115,7 +113,6 @@ public class CDMAPhone extends PhoneBase {
 
     ArrayList <CdmaMmiCode> mPendingMmis = new ArrayList<CdmaMmiCode>();
     RuimPhoneBookInterfaceManager mRuimPhoneBookInterfaceManager;
-    RuimSmsInterfaceManager mRuimSmsInterfaceManager;
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
     WakeLock mWakeLock;
@@ -161,11 +158,9 @@ public class CDMAPhone extends PhoneBase {
         mCM.setPhoneType(VoicePhone.PHONE_TYPE_CDMA);
         mCT = new CdmaCallTracker(this);
         mSST = new CdmaServiceStateTracker (this);
-        mSMS = new CdmaSMSDispatcher(this);
 
         //TODO: fusion move RuimPhoneBookInterfaceManager functionality to IccPhoneBookIntManager
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
-        mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -237,9 +232,7 @@ public class CDMAPhone extends PhoneBase {
             //Force all referenced classes to unregister their former registered events
             mCT.dispose();
             mSST.dispose();
-            mSMS.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
-            mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
 
@@ -253,8 +246,6 @@ public class CDMAPhone extends PhoneBase {
 
     public void removeReferences() {
             this.mRuimPhoneBookInterfaceManager = null;
-            this.mRuimSmsInterfaceManager = null;
-            this.mSMS = null;
             this.mSubInfo = null;
 
             this.mCT = null;
@@ -795,22 +786,6 @@ public class CDMAPhone extends PhoneBase {
         if (DBG) Log.d(LOG_TAG, "sendEmergencyCallbackModeChange");
     }
 
-    /*package*/ void
-    updateMessageWaitingIndicator(boolean mwi) {
-        // this also calls notifyMessageWaitingIndicator()
-        if (mRuimRecords != null) {
-            mRuimRecords.setVoiceMessageWaiting(1, mwi ? -1 : 0);
-        }
-    }
-
-    /* This function is overloaded to send number of voicemails instead of sending true/false */
-    /*package*/ void
-    updateMessageWaitingIndicator(int mwi) {
-        if (mRuimRecords != null) {
-            mRuimRecords.setVoiceMessageWaiting(1, mwi);
-        }
-    }
-
     /**
      * Returns true if CDMA OTA Service Provisioning needs to be performed.
      */
@@ -1117,13 +1092,6 @@ public class CDMAPhone extends PhoneBase {
     }
 
     /**
-     * Retrieves the IccSmsInterfaceManager of the CDMAPhone
-     */
-    public IccSmsInterfaceManager getIccSmsInterfaceManager() {
-        return mRuimSmsInterfaceManager;
-    }
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the CDMAPhone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager() {
@@ -1173,7 +1141,7 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void activateCellBroadcastSms(int activate, Message response) {
-        mSMS.activateCellBroadcastSms(activate, response);
+        mCM.setCdmaBroadcastActivation((activate == 0), response);
     }
 
     /**
@@ -1182,7 +1150,7 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void getCellBroadcastSmsConfig(Message response) {
-        mSMS.getCellBroadcastSmsConfig(response);
+        mCM.getCdmaBroadcastConfig(response);
     }
 
     /**
@@ -1191,7 +1159,7 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
-        mSMS.setCellBroadcastConfig(configValuesArray, response);
+        mCM.setCdmaBroadcastConfig(configValuesArray, response);
     }
 
     private static final String IS683A_FEATURE_CODE = "*228";

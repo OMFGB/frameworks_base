@@ -108,8 +108,7 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
     //other
     protected static final int EVENT_ICC_CHANGED                    = 29;
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 30;
-    protected static final int EVENT_NEW_ICC_SMS                    = 31;
-    protected static final int EVENT_ICC_RECORD_EVENTS              = 32;
+    protected static final int EVENT_ICC_RECORD_EVENTS              = 31;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -1141,10 +1140,6 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
 
         public String getIccSerialNumber() {
             return mVoicePhone.getIccSerialNumber();
-        }
-
-        public IccSmsInterfaceManager getIccSmsInterfaceManager() {
-            return mVoicePhone.getIccSmsInterfaceManager();
         }
 
         public String getLine1AlphaTag() {

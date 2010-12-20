@@ -49,6 +49,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mVoiceRadioTechChangedRegistrants = new RegistrantList();
     protected RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
     protected RegistrantList mCdmaPrlChangedRegistrants = new RegistrantList();
+    protected RegistrantList mImsNetworkStateChangedRegistrants = new RegistrantList();
     protected RegistrantList mIccStatusChangedRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOnRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOffRegistrants = new RegistrantList();
@@ -71,6 +72,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCallReestablishIndRegistrants = new RegistrantList();
 
     protected Registrant mSMSRegistrant;
+    protected Registrant mCdmaSMSRegistrant;
     protected Registrant mNITZTimeRegistrant;
     protected Registrant mSignalStrengthRegistrant;
     protected Registrant mUSSDRegistrant;
@@ -147,6 +149,15 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForCdmaPrlChanged(Handler h) {
         mCdmaPrlChangedRegistrants.remove(h);
+    }
+
+    public void registerForImsNetworkStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mImsNetworkStateChangedRegistrants.add(r);
+    }
+
+    public void unregisterForImsNetworkStateChanged(Handler h) {
+        mImsNetworkStateChangedRegistrants.remove(h);
     }
 
     public void registerForOn(Handler h, int what, Object obj) {
@@ -274,6 +285,14 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unSetOnNewSMS(Handler h) {
         mSMSRegistrant.clear();
+    }
+
+    public void setOnNewCdmaSMS(Handler h, int what, Object obj) {
+        mCdmaSMSRegistrant = new Registrant (h, what, obj);
+    }
+
+    public void unSetOnNewCdmaSMS(Handler h) {
+        mCdmaSMSRegistrant.clear();
     }
 
     public void setOnNewGsmBroadcastSms(Handler h, int what, Object obj) {

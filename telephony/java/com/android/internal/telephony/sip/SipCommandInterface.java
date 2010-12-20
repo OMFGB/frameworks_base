@@ -175,6 +175,12 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void sendCdmaSms(byte[] pdu, Message result) {
     }
 
+    public void sendImsGsmSms (String smscPDU, String pdu, Message response) {
+    }
+
+    public void sendImsCdmaSms(byte[] pdu, Message response) {
+    }
+
     public void deleteSmsOnSim(int index, Message response) {
     }
 
@@ -357,6 +363,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     public void setCdmaSubscription(int cdmaSubscription , Message response) {
+    }
+
+    public void getImsRegistrationState (Message result) {
     }
 
     public void getCdmaPrlVersion(Message result) {

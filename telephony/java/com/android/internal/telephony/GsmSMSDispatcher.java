@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony;
 
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -28,12 +28,10 @@ import android.telephony.ServiceState;
 import android.util.Config;
 import android.util.Log;
 
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccUtils;
-import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsHeader;
-import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.CommandsInterface.RadioTechnologyFamily;
 import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
+import com.android.internal.telephony.UiccManager.AppFamily;
+import com.android.internal.telephony.gsm.SmsMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,11 +41,18 @@ import static android.telephony.SmsMessage.MessageClass;
 final class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GSM";
 
-    private GSMPhone mGsmPhone;
+    GsmSMSDispatcher(VoicePhone phone, CommandsInterface cm) {
+        super(phone, cm);
+        Log.d(TAG, "Register for EVENT_NEW_SMS");
+        mCm.setOnNewSMS(this, EVENT_NEW_SMS, null);
+        mCm.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
+    }
 
-    GsmSMSDispatcher(GSMPhone phone) {
-        super(phone);
-        mGsmPhone = phone;
+    public void dispose() {
+        //TODO: fusion - who should call this now?
+        super.dispose();
+        mCm.unSetOnNewSMS(this);
+        mCm.unSetOnSmsStatus(this);
     }
 
     /**
@@ -75,6 +80,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
                     PendingIntent intent = tracker.mDeliveryIntent;
                     Intent fillIn = new Intent();
                     fillIn.putExtra("pdu", IccUtils.hexStringToBytes(pduString));
+                    fillIn.putExtra("encoding", getEncoding());
                     try {
                         intent.send(mContext, Activity.RESULT_OK, fillIn);
                     } catch (CanceledException ex) {}
@@ -107,13 +113,13 @@ final class GsmSMSDispatcher extends SMSDispatcher {
 
         // Special case the message waiting indicator messages
         if (sms.isMWISetMessage()) {
-            mGsmPhone.updateMessageWaitingIndicator(true);
+            updateMessageWaitingIndicator(true);
             handled = sms.isMwiDontStore();
             if (Config.LOGD) {
                 Log.d(TAG, "Received voice mail indicator set SMS shouldStore=" + !handled);
             }
         } else if (sms.isMWIClearMessage()) {
-            mGsmPhone.updateMessageWaitingIndicator(false);
+            updateMessageWaitingIndicator(false);
             handled = sms.isMwiDontStore();
             if (Config.LOGD) {
                 Log.d(TAG, "Received voice mail indicator clear SMS shouldStore=" + !handled);
@@ -156,11 +162,20 @@ final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     /** {@inheritDoc} */
+    protected int getEncoding() {
+        return VoicePhone.PHONE_TYPE_GSM;
+    }
+
+    /** {@inheritDoc} */
     protected void sendData(String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        sendRawPdu(pdu.encodedScAddress, pdu.encodedMessage, sentIntent, deliveryIntent);
+
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+                RadioTechnologyFamily.RADIO_TECH_3GPP);
+        sendRawPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -168,7 +183,11 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null));
-        sendRawPdu(pdu.encodedScAddress, pdu.encodedMessage, sentIntent, deliveryIntent);
+
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+                RadioTechnologyFamily.RADIO_TECH_3GPP);
+        sendRawPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -220,7 +239,11 @@ final class GsmSMSDispatcher extends SMSDispatcher {
                     parts.get(i), deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                     encoding);
 
-            sendRawPdu(pdus.encodedScAddress, pdus.encodedMessage, sentIntent, deliveryIntent);
+            HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+                    parts.get(i), pdus);
+            SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                    deliveryIntent, RadioTechnologyFamily.RADIO_TECH_3GPP);
+            sendRawPdu(tracker);
         }
     }
 
@@ -255,13 +278,15 @@ final class GsmSMSDispatcher extends SMSDispatcher {
 
         // check if in service
         int ss = mPhone.getVoiceServiceState().getState();
-        if (ss != ServiceState.STATE_IN_SERVICE) {
+        // if IMS not registered on data and voice is not available...
+        if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
             for (int i = 0, count = parts.size(); i < count; i++) {
                 PendingIntent sentIntent = null;
                 if (sentIntents != null && sentIntents.size() > i) {
                     sentIntent = sentIntents.get(i);
                 }
-                SmsTracker tracker = SmsTrackerFactory(null, sentIntent, null);
+                SmsTracker tracker = SmsTrackerFactory(null, sentIntent, null,
+                        RadioTechnologyFamily.RADIO_TECH_3GPP);
                 handleNotInService(ss, tracker);
             }
             return;
@@ -305,11 +330,10 @@ final class GsmSMSDispatcher extends SMSDispatcher {
                     parts.get(i), deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                     encoding);
 
-            HashMap<String, Object> map = new HashMap<String, Object>();
-            map.put("smsc", pdus.encodedScAddress);
-            map.put("pdu", pdus.encodedMessage);
-
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent);
+            HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+                    parts.get(i), pdus);
+            SmsTracker tracker =  SmsTrackerFactory(map, sentIntent,
+                    deliveryIntent, RadioTechnologyFamily.RADIO_TECH_3GPP);
             sendSms(tracker);
         }
     }
@@ -322,8 +346,15 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        mCm.sendSMS(IccUtils.bytesToHexString(smsc),
-                IccUtils.bytesToHexString(pdu), reply);
+
+        if (tracker.mRetryCount > 0 || !isIms()) {
+            // this is retry, use old method
+            mCm.sendSMS(IccUtils.bytesToHexString(smsc),
+                    IccUtils.bytesToHexString(pdu), reply);
+        } else {
+            mCm.sendImsGsmSms(IccUtils.bytesToHexString(smsc),
+                    IccUtils.bytesToHexString(pdu), reply);
+        }
     }
 
     /**
@@ -358,27 +389,6 @@ final class GsmSMSDispatcher extends SMSDispatcher {
         }
     }
 
-    /** {@inheritDoc} */
-    protected void activateCellBroadcastSms(int activate, Message response) {
-        // Unless CBS is implemented for GSM, this point should be unreachable.
-        Log.e(TAG, "Error! The functionality cell broadcast sms is not implemented for GSM.");
-        response.recycle();
-    }
-
-    /** {@inheritDoc} */
-    protected void getCellBroadcastSmsConfig(Message response){
-        // Unless CBS is implemented for GSM, this point should be unreachable.
-        Log.e(TAG, "Error! The functionality cell broadcast sms is not implemented for GSM.");
-        response.recycle();
-    }
-
-    /** {@inheritDoc} */
-    protected  void setCellBroadcastConfig(int[] configValuesArray, Message response) {
-        // Unless CBS is implemented for GSM, this point should be unreachable.
-        Log.e(TAG, "Error! The functionality cell broadcast sms is not implemented for GSM.");
-        response.recycle();
-    }
-
     private int resultToCause(int rc) {
         switch (rc) {
             case Activity.RESULT_OK:
@@ -391,5 +401,34 @@ final class GsmSMSDispatcher extends SMSDispatcher {
             default:
                 return CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR;
         }
+    }
+
+    protected void updateIccAvailability() {
+        UiccCardApplication newApplication = mUiccManager
+                .getCurrentApplication(AppFamily.APP_FAM_3GPP);
+
+        if (mApplication != newApplication) {
+            if (mApplication != null) {
+                Log.d(TAG, "Removing stale 3gpp Application.");
+                if (mRecords != null) {
+                    mRecords.unregisterForNewSms(this);
+                    mRecords = null;
+                }
+                mApplication = null;
+            }
+            if (newApplication != null) {
+                Log.d(TAG, "New 3gpp application found");
+                mApplication = newApplication;
+                mRecords = mApplication.getApplicationRecords();
+                mRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
+            }
+        }
+    }
+
+    /*package*/ void
+    updateMessageWaitingIndicator(boolean mwi) {
+        // this also calls notifyMessageWaitingIndicator()
+        if (mRecords != null)
+            mRecords.setVoiceMessageWaiting(1, mwi ? -1 : 0);
     }
 }

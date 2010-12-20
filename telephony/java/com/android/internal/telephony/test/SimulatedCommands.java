@@ -1492,4 +1492,16 @@ public final class SimulatedCommands extends BaseCommands
     public void getCdmaPrlVersion(Message response) {
         unimplemented(response);
     }
+
+    public void getImsRegistrationState(Message response) {
+        unimplemented(response);
+    }
+
+    public void sendImsCdmaSms(byte[] pdu, Message response){
+        unimplemented(response);
+    }
+
+    public void sendImsGsmSms(String smscPDU, String pdu, Message response){
+        unimplemented(response);
+    }
 }

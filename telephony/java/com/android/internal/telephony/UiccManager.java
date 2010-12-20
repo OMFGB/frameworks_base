@@ -137,14 +137,9 @@ public class UiccManager extends Handler{
 
         UiccCardStatusResponse status = (UiccCardStatusResponse)ar.result;
 
-        boolean cardsChanged = false;
-
         for (int i = 0; i < UiccConstants.RIL_MAX_CARDS; i++) {
             //Update already existing cards
             if (mUiccCards[i] != null && i < status.cards.length) {
-                if (mUiccCards[i].getCardState() != status.cards[i].card_state) {
-                    cardsChanged = true;
-                }
                 mUiccCards[i].update(status.cards[i], mContext, mCi);
             }
 
@@ -152,19 +147,16 @@ public class UiccManager extends Handler{
             if (mUiccCards[i] != null && i >= status.cards.length) {
                 mUiccCards[i].dispose();
                 mUiccCards[i] = null;
-                cardsChanged = true;
             }
 
             //Create added cards
             if (mUiccCards[i] == null && i < status.cards.length) {
                 mUiccCards[i] = new UiccCard(this, i, status.cards[i], mContext, mCi);
-                cardsChanged = true;
             }
         }
 
-        if (cardsChanged) {
-            mIccChangedRegistrants.notifyRegistrants();
-        }
+        Log.d(mLogTag, "Notifying IccChangedRegistrants");
+        mIccChangedRegistrants.notifyRegistrants();
     }
 
     private synchronized void disposeCards() {

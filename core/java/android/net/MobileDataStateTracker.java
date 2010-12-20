@@ -278,8 +278,10 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                         state = DataState.CONNECTED;
                     }
 
-                    String extraInfo = "ipv4 apn name = " + mIpv4ApnName + "," +
-                            "ipv6 apn name = " + mIpv6ApnName;
+                    String extraInfo = null;
+                    if (mIpv4MobileDataState == DataState.CONNECTED) {
+                        extraInfo = mIpv4ApnName;
+                    }
 
                     if (needDetailedStateUpdate) {
                         switch (state) {

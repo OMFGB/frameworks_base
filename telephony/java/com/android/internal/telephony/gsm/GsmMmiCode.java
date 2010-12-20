@@ -477,18 +477,39 @@ public final class GsmMmiCode extends Handler implements MmiCode {
      * AND conditions are correct for it to be treated as such.
      */
     static private boolean isShortCode(String dialString, GSMPhone phone) {
+        //check for any  Adapt change requirements.
+        boolean  shortCodeExclusionFlag = false;
+        if (SystemProperties.getBoolean ("persist.cust.tel.adapt", false)) {
+            if (dialString.length() == 2) {
+                Log.i(LOG_TAG,
+                        "Adapt, Number needs to be checked for short code exclusion list");
+                shortCodeExclusionFlag = isExcludedShortCode(dialString);
+            }
+        }
         // Refer to TS 22.030 Figure 3.5.3.2:
         // A 1 or 2 digit "short code" is treated as USSD if it is entered while on a call or
         // does not satisfy the condition (exactly 2 digits && starts with '1').
         return ((dialString != null && dialString.length() <= 2)
                 && !PhoneNumberUtils.isEmergencyNumber(dialString)
                 && (phone.isInCall()
-                    || !((dialString.length() == 2 && dialString.charAt(0) == '1')
-                         /* While contrary to TS 22.030, there is strong precedence
-                          * for treating "0" and "00" as call setup strings.
-                          */
-                         || dialString.equals("0")
-                         || dialString.equals("00"))));
+                        || !((dialString
+                .length() == 2 && dialString.charAt(0) == '1')
+                || shortCodeExclusionFlag
+                /*
+                 * While contrary to TS 22.030, there is strong precedence for
+                 * treating "0" and "00" as call setup strings.
+                 */
+                || dialString.equals("0") || dialString.equals("00"))));
+
+    }
+
+    /**
+     *  return true if the Short Code needs to be excluded as part of Adapt requirements
+     */
+    static boolean isExcludedShortCode(String dialString) {
+        return ( (dialString.charAt(0) == '*' || dialString.charAt(0) == '#')
+                && (dialString
+                .charAt(1) >= '1' && dialString.charAt(1) <= '9'));
     }
 
     /**

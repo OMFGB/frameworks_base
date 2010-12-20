@@ -54,7 +54,9 @@ import android.content.Intent;
 import android.content.Context;
 import android.database.ContentObserver;
 import com.android.internal.app.IBatteryStats;
+import com.android.internal.telephony.DataPhone.IPVersion;
 
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -2671,5 +2673,20 @@ public class WifiStateTracker extends NetworkStateTracker {
             return Settings.Secure.getInt(mContext.getContentResolver(),
                     Settings.Secure.WIFI_NETWORKS_AVAILABLE_NOTIFICATION_ON, 1) == 1;
         }
+    }
+
+    @Override
+    public String getInterfaceName(IPVersion ipv) {
+        return mInterfaceName;
+    }
+
+    @Override
+    public InetAddress getGateway(IPVersion ipv) {
+        return NetworkUtils.intToInetAddress(mDhcpInfo.gateway);
+    }
+
+    @Override
+    public InetAddress getIpAdress(IPVersion ipv) {
+        return NetworkUtils.intToInetAddress(mWifiInfo.getIpAddress());
     }
 }

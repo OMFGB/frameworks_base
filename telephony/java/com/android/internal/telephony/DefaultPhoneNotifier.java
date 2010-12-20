@@ -186,11 +186,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         Log.v("DATA", "[DefaultPhoneNotifier] : "
                 + apnType + ", " + ipv + ", " + sender.getDataConnectionState(apnType, ipv));
 
-        /* TODO : clean up this - notify data connection expects an array of types!*/
-        ArrayList<String> typeArrayList = new ArrayList<String>();
-        typeArrayList.add(apnType);
-        String typeArray[] = new String[typeArrayList.size()];
-        typeArray= (String[]) typeArrayList.toArray(typeArray);
+
 
         try {
             mRegistry.notifyDataConnection(
@@ -200,11 +196,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                     convertDataState(sender.getDataConnectionState(apnType, ipv)),
                     sender.getActiveApn(apnType, ipv),
                     sender.getInterfaceName(apnType, ipv),
+                    sender.getIpAddress(apnType, ipv),
+                    sender.getGateway(apnType, ipv),
                     sender.isDataConnectivityPossible(),
                     ((telephony != null) ? telephony.getNetworkType() :
                         TelephonyManager.NETWORK_TYPE_UNKNOWN),
-                    reason,
-                    sender.getGateway(null));
+                    reason);
         } catch (RemoteException ex) {
             // system process is dead
         }

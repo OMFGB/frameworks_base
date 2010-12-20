@@ -309,7 +309,7 @@ public class NetworkInfo implements Parcelable {
      * @param detailedState the {@link DetailedState}.
      * @param reason a {@code String} indicating the reason for the state change,
      * if one was supplied. May be {@code null}.
-     * @param extraInfo an optional {@code String} providing addditional network state
+     * @param extraInfo an optional {@code String} providing additional network state
      * information passed up from the lower networking layers.
      */
     void setDetailedState(DetailedState detailedState, boolean isIpv4Connected,

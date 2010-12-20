@@ -362,8 +362,8 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
             int anyDataConnectionState,
             String apnType, String ipVersion,
             int state, String apn, String interfaceName,
-            boolean isDataConnectivityPossible, int networkType, String reason,
-            String gateway) {
+            String ipAddress, String gwAddress,
+            boolean isDataConnectivityPossible, int networkType, String reason) {
 
         if (!checkNotifyPermission("notifyDataConnection()" )) {
             return;
@@ -394,7 +394,7 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
 
         broadcastDataConnectionStateChanged(anyDataConnectionState, apnType, ipVersion, state, apn,
-                interfaceName, isDataConnectivityPossible, reason, gateway);
+                interfaceName, ipAddress, gwAddress, isDataConnectivityPossible, reason);
 
     }
 
@@ -557,8 +557,8 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
     private void broadcastDataConnectionStateChanged(int anyDataConnectionState,
             String apnType, String ipVersion,
             int state, String apn, String interfaceName,
-            boolean isDataConnectivityPossible, String reason,
-            String gateway) {
+            String ipAddress, String gwAddress,
+            boolean isDataConnectivityPossible, String reason) {
         // Note: not reporting to the battery stats service here, because the
         // status bar takes care of that after taking into account all of the
         // required info.
@@ -576,13 +576,9 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         intent.putExtra(Phone.DATA_APN_TYPE_STATE,
                 DefaultPhoneNotifier.convertDataState(state).toString());
         intent.putExtra(Phone.DATA_IFACE_NAME_KEY, interfaceName);
-        byte[] gatewayAddr = null;
-        if (gateway != null) {
-            gatewayAddr = NetworkUtils.ipStringToByteArray(gateway);
-        }
-        intent.putExtra(DataPhone.DATA_GATEWAY_KEY, gatewayAddr);
-
         intent.putExtra(Phone.DATA_APN_KEY, apn);
+        intent.putExtra(Phone.DATA_IP_ADDRESS_KEY, ipAddress);
+        intent.putExtra(Phone.DATA_GW_ADDRESS_KEY, gwAddress);
 
         //TODO: perhaps sticky is not a good idea, as we broadcast for each <apn type/ip version>
         //and last broadcast may not be very relevant.

@@ -140,6 +140,10 @@ public enum DataConnectionFailCause {
             case PDP_FAIL_GPRS_REGISTRATION_FAIL:
                 cause = DataConnectionFailCause.GPRS_REGISTRATION_FAIL;
                 break;
+            case PDP_FAIL_ONLY_IPV4_ALLOWED:
+            case PDP_FAIL_ONLY_IPV6_ALLOWED:
+                cause = DataConnectionFailCause.IP_VERSION_NOT_SUPPORTED;
+                break;
             //TODO: fusion - add radio tech changed, tethered mode on etc.
             default:
                 cause = DataConnectionFailCause.UNKNOWN;
@@ -161,7 +165,11 @@ public enum DataConnectionFailCause {
     private static final int PDP_FAIL_SERVICE_OPTION_NOT_SUPPORTED = 0x20;
     private static final int PDP_FAIL_SERVICE_OPTION_NOT_SUBSCRIBED = 0x21;
     private static final int PDP_FAIL_SERVICE_OPTION_OUT_OF_ORDER = 0x22;
-    private static final int PDP_FAIL_NSAPI_IN_USE      = 0x23;
+    private static final int PDP_FAIL_NSAPI_IN_USE = 0x23;
+    private static final int PDP_FAIL_NETWORK_FAILURE = 0x26;
+    private static final int PDP_FAIL_ONLY_IPV4_ALLOWED = 0x32;
+    private static final int PDP_FAIL_ONLY_IPV6_ALLOWED = 0x33;
+    private static final int PDP_FAIL_ONLY_SINGLE_BEARER_ALLOWED = 0x34;
     private static final int PDP_FAIL_PROTOCOL_ERRORS   = 0x6F;
     private static final int PDP_FAIL_ERROR_UNSPECIFIED = 0xffff;
 

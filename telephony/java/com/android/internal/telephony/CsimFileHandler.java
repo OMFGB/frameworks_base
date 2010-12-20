@@ -48,7 +48,14 @@ public final class CsimFileHandler extends IccFileHandler implements IccConstant
         case EF_RUIM_SPN:
             return MF_SIM + ADF;
         }
-        return getCommonIccEFPath(efid);
+        String path = getCommonIccEFPath(efid);
+        if (path == null) {
+            // The EFids in UICC phone book entries are decided by the card manufacturer.
+            // So if we don't match any of the cases above and if its a UICC return
+            // the global 3g phone book path.
+            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
+        }
+        return path;
     }
 
     protected void logd(String msg) {

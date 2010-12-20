@@ -27,6 +27,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.text.TextUtils;
 import android.util.Log;
 import android.os.SystemProperties;
 
@@ -533,7 +534,7 @@ public final class CdmaCallTracker extends CallTracker {
             if (DBG_POLL) log("poll: conn[i=" + i + "]=" +
                     conn+", dc=" + dc);
 
-            if (conn != null && dc != null && conn.address.length() != 0 && !conn.compareTo(dc)) {
+            if (conn != null && dc != null && !TextUtils.isEmpty(conn.address) && !conn.compareTo(dc)) {
                 // This means we received a different call than we expected in the call list.
                 // Drop the call, and set conn to null, so that the dc can be processed as a new
                 // call by the logic below.

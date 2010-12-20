@@ -988,8 +988,13 @@ public abstract class PhoneBase extends Handler implements VoicePhone {
         mModemPowerSaveStatus = value;
     }
 
+    PhoneAdapter mAsPhoneAdapter = null;
+
     public Phone asPhone() {
-        return new PhoneAdapter(this);
+        if (mAsPhoneAdapter == null) {
+            mAsPhoneAdapter = new PhoneAdapter(this);
+        }
+        return mAsPhoneAdapter;
     }
 
     class PhoneAdapter implements Phone {

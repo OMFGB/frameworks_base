@@ -1261,8 +1261,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     /** code is registration state 0-5 from TS 27.007 7.2 */
     private int regCodeToServiceState(int code) {
+        phone.setPowerSaveStatus(false);
         switch (code) {
             case 0:
+                phone.setPowerSaveStatus(true);
+                return ServiceState.STATE_OUT_OF_SERVICE;
+
             case 2: // 2 is "searching"
             case 3: // 3 is "registration denied"
             case 4: // 4 is "unknown" no vaild in current baseband

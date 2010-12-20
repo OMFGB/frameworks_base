@@ -259,7 +259,13 @@ interface ITelephony {
       * Returns the network type
       */
     int getNetworkType();
-    
+
+    /**
+     * Checks whether the modem is in power save mode
+     * {@hide}
+     */
+    boolean isModemPowerSave();
+
     /**
      * Return true if an ICC card is present
      */

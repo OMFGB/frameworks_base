@@ -915,4 +915,8 @@ public class PhoneProxy extends Handler implements Phone {
     public void invokeDepersonalization(String pin, int type, Message response) {
         mActivePhone.invokeDepersonalization(pin, type, response);
     }
+
+    public boolean isModemPowerSave() {
+        return mActivePhone.isModemPowerSave();
+    }
 }

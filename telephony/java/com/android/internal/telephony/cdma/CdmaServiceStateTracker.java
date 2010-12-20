@@ -1321,10 +1321,11 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     /** code is registration state 0-5 from TS 27.007 7.2 */
-    private int
-    regCodeToServiceState(int code) {
+    private int regCodeToServiceState(int code) {
+        phone.setPowerSaveStatus(false);
         switch (code) {
         case 0: // Not searching and not registered
+            phone.setPowerSaveStatus(true);
             return ServiceState.STATE_OUT_OF_SERVICE;
         case 1:
             return ServiceState.STATE_IN_SERVICE;

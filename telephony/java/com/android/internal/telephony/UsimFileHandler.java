@@ -50,6 +50,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_SPN:
         case EF_AD:
         case EF_MBDN:
+        case EF_MSISDN:
         case EF_PNN:
         case EF_OPL:
         case EF_SPDI:
@@ -60,6 +61,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_CFF_CPHS:
         case EF_SPN_CPHS:
         case EF_SPN_SHORT_CPHS:
+        case EF_FDN:
         case EF_INFO_CPHS:
             return MF_SIM + ADF;
 

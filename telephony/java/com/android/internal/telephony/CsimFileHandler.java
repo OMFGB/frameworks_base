@@ -43,6 +43,8 @@ public final class CsimFileHandler extends IccFileHandler implements IccConstant
         switch(efid) {
         case EF_SMS:
         case EF_CST:
+        case EF_FDN:
+        case EF_MSISDN:
         case EF_RUIM_SPN:
             return MF_SIM + ADF;
         }

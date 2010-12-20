@@ -1,5 +1,6 @@
 /*
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2009, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -33,6 +34,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
+import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
+import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
 
 /**
  * SimSmsInterfaceManager to provide an inter-process communication to
@@ -66,7 +69,10 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
                     ar = (AsyncResult)msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
-                            mSms  = buildValidRawData((ArrayList<byte[]>) ar.result);
+                            mSms  = (List<SmsRawData>)
+                                    buildValidRawData((ArrayList<byte[]>) ar.result);
+                            //Mark SMS as read after importing it from SIM.
+                            markMessagesAsRead((ArrayList<byte[]>) ar.result);
                         } else {
                             if(DBG) log("Cannot load Sms records");
                             if (mSms != null)
@@ -78,6 +84,26 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
             }
         }
     };
+
+    private void markMessagesAsRead(ArrayList<byte[]> messages) {
+        if (messages == null) {
+            return;
+        }
+        int count = messages.size();
+
+        for (int i = 0; i < count; i++) {
+             byte[] ba = messages.get(i);
+             if (ba[0] == STATUS_ON_ICC_UNREAD) {
+                 int n = ba.length;
+                 byte[] nba = new byte[n - 1];
+                 System.arraycopy(ba, 1, nba, 0, n - 1);
+                 byte[] record = makeSmsRecordData(STATUS_ON_ICC_READ, nba);
+                 ((SIMFileHandler)mPhone.getIccFileHandler()).updateEFLinearFixed(
+                   IccConstants.EF_SMS, i + 1, record, null, null);
+                 log("SMS " + (i + 1) + " marked as read");
+             }
+        }
+    }
 
     public SimSmsInterfaceManager(GSMPhone phone, SMSDispatcher dispatcher) {
         super(phone);

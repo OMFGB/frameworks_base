@@ -23,11 +23,14 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.util.Log;
 
 /**
  * {@hide}
  */
 public abstract class ServiceStateTracker extends Handler {
+
+    static final String LOG_TAG = "ServiceStateTracker";
 
     /**
      *  Access technology currently in use.
@@ -272,4 +275,52 @@ public abstract class ServiceStateTracker extends Handler {
         // This will effectively cancel the rest of the poll requests.
         pollingContext = new int[1];
     }
+
+    /**
+     * send signal-strength-changed notification if changed Called both for
+     * solicited and unsolicited signal strength updates
+     */
+    protected void onSignalStrengthResult(AsyncResult ar, PhoneBase phone, boolean isGsm) {
+        SignalStrength oldSignalStrength = mSignalStrength;
+        int gsmRssi = 99, lteRssi = 99;
+        int gsmBer = -1, cdmaDbm = -1, cdmaEcio = -1, evdoRssi = -1, evdoEcio = -1, evdoSnr = -1, lteRsrp = -1, lteRsrq = -1;
+
+        // This signal is used for both voice and data radio signal so parse
+        // all fields
+
+        if (ar.exception == null) {
+            int[] ints = (int[]) ar.result;
+            // check for sizeof RIL_SignalStrength
+            if ((ints.length == 7) || (ints.length == 10)) {
+                gsmRssi = (ints[0] >= 0) ? ints[0] : 99;
+                gsmBer = ints[1];
+                cdmaDbm = (ints[2] > 0) ? -ints[2] : -120;
+                cdmaEcio = (ints[3] > 0) ? -ints[3] : -160;
+                evdoRssi = (ints[4] > 0) ? -ints[4] : -120;
+                evdoEcio = (ints[5] > 0) ? -ints[5] : -1;
+                evdoSnr = ((ints[6] > 0) && (ints[6] <= 8)) ? ints[6] : -1;
+            }
+            if (ints.length == 10) {
+                lteRssi = (ints[7] >= 0) ? ints[7] : 99;
+                lteRsrp = ((ints[8] >= 0) && (ints[8] <= 97)) ? ints[8] : -1;
+                lteRsrq = ((ints[9] >= 0) && (ints[9] <= 34)) ? ints[9] : -1;
+            }
+        }
+
+        mSignalStrength = new SignalStrength(gsmRssi, gsmBer, cdmaDbm, cdmaEcio, evdoRssi,
+                evdoEcio, evdoSnr, lteRssi, lteRsrp, lteRsrq, isGsm);
+
+        if (!mSignalStrength.equals(oldSignalStrength)) {
+            try {
+                // This takes care of delayed EVENT_POLL_SIGNAL_STRENGTH
+                // (scheduled after POLL_PERIOD_MILLIS) during Radio Technology
+                // Change)
+                phone.notifySignalStrength();
+            } catch (NullPointerException ex) {
+                Log.d(LOG_TAG, "onSignalStrengthResult() Phone already destroyed: " + ex
+                        + "SignalStrength not notified");
+            }
+        }
+    }
+
 }

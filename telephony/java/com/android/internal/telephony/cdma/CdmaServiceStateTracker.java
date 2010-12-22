@@ -395,7 +395,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
                 return;
             }
             ar = (AsyncResult) msg.obj;
-            onSignalStrengthResult(ar);
+            onSignalStrengthResult(ar, phone, false);
             queueNextSignalStrengthPoll();
 
             break;
@@ -529,7 +529,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             // so we don't have to ask it.
             dontPollSignalStrength = true;
 
-            onSignalStrengthResult(ar);
+            onSignalStrengthResult(ar, phone, false);
             break;
 
         case EVENT_RUIM_RECORDS_LOADED:
@@ -851,7 +851,7 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     private void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1, false);
+        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1, 99, -1, -1, false);
     }
 
     /**
@@ -1167,40 +1167,6 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
 
         // TODO Don't poll signal strength if screen is off
         sendMessageDelayed(msg, POLL_PERIOD_MILLIS);
-    }
-
-    /**
-     *  send signal-strength-changed notification if changed
-     *  Called both for solicited and unsolicited signal strength updates
-     */
-    private void
-    onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
-
-        if (ar.exception != null) {
-            // Most likely radio is resetting/disconnected change to default values.
-            setSignalStrengthDefaultValues();
-        } else {
-            int[] ints = (int[])ar.result;
-            int offset = 2;
-            int cdmaDbm = (ints[offset] > 0) ? -ints[offset] : -120;
-            int cdmaEcio = (ints[offset+1] > 0) ? -ints[offset+1] : -160;
-            int evdoRssi = (ints[offset+2] > 0) ? -ints[offset+2] : -120;
-            int evdoEcio = (ints[offset+3] > 0) ? -ints[offset+3] : -1;
-            int evdoSnr  = ((ints[offset+4] > 0) && (ints[offset+4] <= 8)) ? ints[offset+4] : -1;
-
-            //log(String.format("onSignalStrengthResult cdmaDbm=%d cdmaEcio=%d evdoRssi=%d evdoEcio=%d evdoSnr=%d",
-            //        cdmaDbm, cdmaEcio, evdoRssi, evdoEcio, evdoSnr));
-            mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio,
-                    evdoRssi, evdoEcio, evdoSnr, false);
-        }
-
-        try {
-            phone.notifySignalStrength();
-        } catch (NullPointerException ex) {
-            log("onSignalStrengthResult() Phone already destroyed: " + ex
-                    + "SignalStrength not notified");
-        }
     }
 
     /** code is registration state 0-5 from TS 27.007 7.2 */

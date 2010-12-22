@@ -331,11 +331,6 @@ public class CDMAPhone extends PhoneBase {
         mCT.clearDisconnected();
     }
 
-    /*package*/ void
-    notifySignalStrength() {
-        mNotifier.notifySignalStrength(this);
-    }
-
     public Connection
     dial (String dialString) throws CallStateException {
         // Need to make sure dialString gets parsed properly

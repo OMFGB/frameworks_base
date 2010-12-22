@@ -36,8 +36,11 @@ public class SignalStrength implements Parcelable {
     private int mEvdoDbm;   // This value is the EVDO RSSI value
     private int mEvdoEcio;  // This value is the EVDO Ec/Io
     private int mEvdoSnr;   // Valid values are 0-8.  8 is the highest signal to noise ratio
+    private int mLteRssi;   // LTE RSSI - Rxed Signal Strength Indicator value (0-31, 99)
+    private int mLteRsrp;   // LTE RSRP - Reference signal received power in dBm - 0-97 TS 36.331
+    private int mLteRsrq;   // LTE RSRQ in dB, 0-34  TS 36.331
 
-    private boolean isGsm; // This value is set by the ServiceStateTracker onSignalStrengthResult
+    private boolean mIsGsm; // This value is set by the ServiceStateTracker onSignalStrengthResult
 
     /**
      * Create a new SignalStrength from a intent notifier Bundle
@@ -63,14 +66,7 @@ public class SignalStrength implements Parcelable {
      * @hide
      */
     public SignalStrength() {
-        mGsmSignalStrength = 99;
-        mGsmBitErrorRate = -1;
-        mCdmaDbm = -1;
-        mCdmaEcio = -1;
-        mEvdoDbm = -1;
-        mEvdoEcio = -1;
-        mEvdoSnr = -1;
-        isGsm = true;
+        this(99, -1, -1, -1, -1, -1, -1, true);
     }
 
     /**
@@ -78,9 +74,20 @@ public class SignalStrength implements Parcelable {
      *
      * @hide
      */
-    public SignalStrength(int gsmSignalStrength, int gsmBitErrorRate,
-            int cdmaDbm, int cdmaEcio,
-            int evdoDbm, int evdoEcio, int evdoSnr, boolean gsm) {
+    public SignalStrength(int gsmSignalStrength, int gsmBitErrorRate, int cdmaDbm, int cdmaEcio,
+            int evdoDbm, int evdoEcio, int evdoSnr, boolean isGsm) {
+        this(gsmSignalStrength, gsmBitErrorRate, cdmaDbm, cdmaEcio, evdoDbm, evdoEcio, evdoSnr, 99,
+                -1, -1, isGsm);
+    }
+
+    /**
+     * Constructor
+     *
+     * @hide
+     */
+    public SignalStrength(int gsmSignalStrength, int gsmBitErrorRate, int cdmaDbm, int cdmaEcio,
+            int evdoDbm, int evdoEcio, int evdoSnr, int lteRssi, int lteRsrp, int lteRsrq,
+            boolean isGsm) {
         mGsmSignalStrength = gsmSignalStrength;
         mGsmBitErrorRate = gsmBitErrorRate;
         mCdmaDbm = cdmaDbm;
@@ -88,7 +95,10 @@ public class SignalStrength implements Parcelable {
         mEvdoDbm = evdoDbm;
         mEvdoEcio = evdoEcio;
         mEvdoSnr = evdoSnr;
-        isGsm = gsm;
+        mLteRssi = lteRssi;
+        mLteRsrp = lteRsrp;
+        mLteRsrq = lteRsrq;
+        mIsGsm = isGsm;
     }
 
     /**
@@ -113,7 +123,10 @@ public class SignalStrength implements Parcelable {
         mEvdoDbm = s.mEvdoDbm;
         mEvdoEcio = s.mEvdoEcio;
         mEvdoSnr = s.mEvdoSnr;
-        isGsm = s.isGsm;
+        mLteRssi = s.mLteRssi;
+        mLteRsrp = s.mLteRsrp;
+        mLteRsrq = s.mLteRsrq;
+        mIsGsm = s.mIsGsm;
     }
 
     /**
@@ -129,7 +142,10 @@ public class SignalStrength implements Parcelable {
         mEvdoDbm = in.readInt();
         mEvdoEcio = in.readInt();
         mEvdoSnr = in.readInt();
-        isGsm = (in.readInt() != 0);
+        mLteRssi = in.readInt();
+        mLteRsrp = in.readInt();
+        mLteRsrq = in.readInt();
+        mIsGsm = (in.readInt() != 0);
     }
 
     /**
@@ -143,7 +159,10 @@ public class SignalStrength implements Parcelable {
         out.writeInt(mEvdoDbm);
         out.writeInt(mEvdoEcio);
         out.writeInt(mEvdoSnr);
-        out.writeInt(isGsm ? 1 : 0);
+        out.writeInt(mLteRssi);
+        out.writeInt(mLteRsrp);
+        out.writeInt(mLteRsrq);
+        out.writeInt(mIsGsm ? 1 : 0);
     }
 
     /**
@@ -218,10 +237,34 @@ public class SignalStrength implements Parcelable {
     }
 
     /**
+     * Get the LTE RSSI value in dBm
+     * @hide
+     */
+    public int getLteRssi() {
+        return this.mLteRssi;
+    }
+
+    /**
+     * Get the LTE RSRP
+     * @hide
+     */
+    public int getLteRsrp() {
+        return this.mLteRsrp;
+    }
+
+    /**
+     * Get the LTE RSRQ
+     * @hide
+     */
+    public int getLteRsrq() {
+        return this.mLteRsrq;
+    }
+
+    /**
      * @return true if this is for GSM
      */
     public boolean isGsm() {
-        return this.isGsm;
+        return this.mIsGsm;
     }
 
     /**
@@ -233,7 +276,8 @@ public class SignalStrength implements Parcelable {
                 + mGsmBitErrorRate
                 + mCdmaDbm + mCdmaEcio
                 + mEvdoDbm + mEvdoEcio + mEvdoSnr
-                + (isGsm ? 1 : 0));
+                + mLteRssi + mLteRsrp + mLteRsrq
+                + (mIsGsm ? 1 : 0));
     }
 
     /**
@@ -260,7 +304,10 @@ public class SignalStrength implements Parcelable {
                 && mEvdoDbm == s.mEvdoDbm
                 && mEvdoEcio == s.mEvdoEcio
                 && mEvdoSnr == s.mEvdoSnr
-                && isGsm == s.isGsm);
+                && mLteRssi == s.mLteRssi
+                && mLteRsrp == s.mLteRsrp
+                && mLteRsrq == s.mLteRsrq
+                && mIsGsm == s.mIsGsm);
     }
 
     /**
@@ -276,7 +323,10 @@ public class SignalStrength implements Parcelable {
                 + " " + mEvdoDbm
                 + " " + mEvdoEcio
                 + " " + mEvdoSnr
-                + " " + (isGsm ? "gsm" : "cdma"));
+                + " " + mLteRssi
+                + " " + mLteRsrp
+                + " " + mLteRsrq
+                + " " + (mIsGsm ? "gsm" : "cdma"));
     }
 
     /**
@@ -305,7 +355,10 @@ public class SignalStrength implements Parcelable {
         mEvdoDbm = m.getInt("EvdoDbm");
         mEvdoEcio = m.getInt("EvdoEcio");
         mEvdoSnr = m.getInt("EvdoSnr");
-        isGsm = m.getBoolean("isGsm");
+        mLteRssi = m.getInt("LteRssi");
+        mLteRsrp = m.getInt("LteRsrp");
+        mLteRsrq = m.getInt("LteRsrq");
+        mIsGsm = m.getBoolean("isGsm");
     }
 
     /**
@@ -322,6 +375,9 @@ public class SignalStrength implements Parcelable {
         m.putInt("EvdoDbm", mEvdoDbm);
         m.putInt("EvdoEcio", mEvdoEcio);
         m.putInt("EvdoSnr", mEvdoSnr);
-        m.putBoolean("isGsm", Boolean.valueOf(isGsm));
+        m.putInt("LteRssi", mLteRssi);
+        m.putInt("LteRsrp", mLteRsrp);
+        m.putInt("LteRsrq", mLteRsrq);
+        m.putBoolean("isGsm", Boolean.valueOf(mIsGsm));
     }
 }

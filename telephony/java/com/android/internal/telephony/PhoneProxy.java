@@ -562,8 +562,12 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     public void setRadioPower(boolean power) {
-        mDesiredPowerState = power;
-        setPowerStateToDesired();
+        if (power != mDesiredPowerState) {
+            mDesiredPowerState = power;
+            setPowerStateToDesired();
+        } else {
+            logd("Power state " + power + " is already the desired power state");
+        }
     }
 
     private synchronized void setPowerStateToDesired() {

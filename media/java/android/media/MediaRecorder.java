@@ -154,6 +154,8 @@ public class MediaRecorder
          * is available.
          */
         public static final int VOICE_COMMUNICATION = 7;
+        public static final int FM_RX = 8;
+        public static final int FM_RX_A2DP = 9;
     }
 
     /**

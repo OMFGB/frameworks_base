@@ -373,7 +373,6 @@
     <!-- Boolean indicating if restoring network selection should be skipped -->
     <!-- The restoring is handled by modem if it is true-->
     <bool translatable="false" name="skip_restoring_network_selection">false</bool>
-
     <!-- Do not translate. Defines the slots is Two Digit Number for dialing normally not USSD -->
     <string-array name="config_twoDigitNumberPattern">
     </string-array>
@@ -416,4 +415,7 @@
     <string name="config_wimaxServiceClassname"></string>
     <!-- Name of the wimax state tracker clas -->
     <string name="config_wimaxStateTrackerClassname"></string>
+    <!-- Handle notifications differently if device only uses an amber/green
+    LED. This also needs a liblights module that enables them accordingly. -->
+    <bool name="config_amber_green_light">false</bool>
 </resources>

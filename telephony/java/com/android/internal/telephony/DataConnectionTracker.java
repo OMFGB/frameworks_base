@@ -549,7 +549,20 @@ public abstract class DataConnectionTracker extends Handler {
 
     // notify data connection as failed - applicable for default type only?
     void notifyDataConnectionFail(String reason) {
-        mNotifier.notifyDataConnectionFailed(mPhone, reason);
+        /*
+         * Notify data connection fail ONLY if no other data call is active and
+         * we give up on DEFAULT, or this will cause route deletion issues in
+         * network state trackers.
+         */
+        boolean isAnyServiceActive = false;
+        for (DataServiceType ds : DataServiceType.values()) {
+            if (mDpt.isServiceTypeActive(ds)) {
+                isAnyServiceActive = true;
+            }
+        }
+        if (isAnyServiceActive == false) {
+            mNotifier.notifyDataConnectionFailed(mPhone, reason);
+        }
     }
 
     public void getDataCallList(Message response) {

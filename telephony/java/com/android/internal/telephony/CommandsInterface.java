@@ -273,6 +273,9 @@ public interface CommandsInterface {
     void registerForDataStateChanged(Handler h, int what, Object obj);
     void unregisterForDataStateChanged(Handler h);
 
+    void registerForTetheredModeStateChanged(Handler h, int what, Object obj);
+    void unregisterForTetheredModeStateChanged(Handler h);
+
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
     void unregisterForInCallVoicePrivacyOn(Handler h);

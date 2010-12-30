@@ -16,8 +16,11 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.RILConstants.*;
+
 import java.util.ArrayList;
 import java.util.List;
+
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -221,6 +224,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mCm.registerForOn(this, EVENT_RADIO_ON, null);
         mCm.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mCm.registerForDataStateChanged(this, EVENT_DATA_CALL_LIST_CHANGED, null);
+        mCm.registerForTetheredModeStateChanged(this, EVENT_TETHERED_MODE_STATE_CHANGED, null);
 
         mDsst.registerForDataConnectionAttached(this, EVENT_DATA_CONNECTION_ATTACHED, null);
         mDsst.registerForDataConnectionDetached(this, EVENT_DATA_CONNECTION_DETACHED, null);
@@ -315,6 +319,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mCm.unregisterForOn(this);
         mCm.unregisterForOffOrNotAvailable(this);
         mCm.unregisterForDataStateChanged(this);
+        mCm.unregisterForTetheredModeStateChanged(this);
 
         mCm.unregisterForCdmaOtaProvision(this);
 
@@ -409,6 +414,9 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 updateDataConnections(REASON_PS_RESTRICT_DISABLED);
                 break;
 
+            case EVENT_TETHERED_MODE_STATE_CHANGED:
+                onTetheredModeStateChanged((AsyncResult) msg.obj);
+                break;
             default:
                 super.handleMessage(msg);
                 break;
@@ -675,6 +683,42 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         }
         notifyDataActivity();
     }
+
+    void onTetheredModeStateChanged(AsyncResult ar) {
+        int[] ret = (int[])ar.result;
+
+        if (ret == null || ret.length != 1) {
+            loge("Error: Invalid Tethered mode received");
+            return;
+        }
+
+        int mode = ret[0];
+        logd("onTetheredModeStateChanged: mode:" + mode);
+
+        switch (mode) {
+            case RIL_TETHERED_MODE_ON:
+                /* Indicates that an internal data call was created in the
+                 * modem. Do nothing, just information for now
+                 */
+                logd("Unsol Indication: RIL_TETHERED_MODE_ON");
+            break;
+            case RIL_TETHERED_MODE_OFF:
+                logd("Unsol Indication: RIL_TETHERED_MODE_OFF");
+                /* This indicates that an internal modem data call (e.g. tethered)
+                 * had ended. Reset the retry count for all DataService types since
+                 * all have become unblocked and stand a chance of initiating a call
+                 * again.
+                 */
+                for (DataServiceType ds : DataServiceType.values()) {
+                    mDpt.getRetryManager(ds).resetRetryCount();
+                }
+                updateDataConnections(REASON_TETHERED_MODE_STATE_CHANGED);
+            break;
+            default:
+                loge("Error: Invalid Tethered mode:" + mode);
+        }
+    }
+
 
     private DataCallState getDataCallStateByCid(ArrayList<DataCallState> states, int cid) {
         for (int i = 0, s = states.size(); i < s; i++) {

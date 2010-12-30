@@ -43,7 +43,11 @@ public enum DataConnectionFailCause {
     PREF_RADIO_TECHNOLOGY_CHANGED,
     TETHERED_MODE_CALL_ON,
     IP_VERSION_NOT_SUPPORTED,
-    PDP_NOT_AVAILABLE;
+    PDP_NOT_AVAILABLE,
+    SIGNAL_LOST,
+    PREF_RADIO_TECH_CHANGED,
+    RADIO_POWER_OFF,
+    TETHERED_CALL_ON;
 
     /*
      * indicates that setup failure is caused by some sort of data profile
@@ -144,7 +148,18 @@ public enum DataConnectionFailCause {
             case PDP_FAIL_ONLY_IPV6_ALLOWED:
                 cause = DataConnectionFailCause.IP_VERSION_NOT_SUPPORTED;
                 break;
-            //TODO: fusion - add radio tech changed, tethered mode on etc.
+            case PDP_FAIL_SIGNAL_LOST:
+                cause = DataConnectionFailCause.SIGNAL_LOST;
+                break;
+            case PDP_FAIL_PREF_RADIO_TECH_CHANGED:
+                cause = DataConnectionFailCause.PREF_RADIO_TECH_CHANGED;
+                break;
+            case PDP_FAIL_RADIO_POWER_OFF:
+                cause = DataConnectionFailCause.RADIO_POWER_OFF;
+                break;
+            case PDP_FAIL_TETHERED_CALL_ON:
+                cause = DataConnectionFailCause.TETHERED_CALL_ON;
+                break;
             default:
                 cause = DataConnectionFailCause.UNKNOWN;
         }
@@ -175,4 +190,8 @@ public enum DataConnectionFailCause {
 
     private static final int PDP_FAIL_REGISTRATION_FAIL = -1;
     private static final int PDP_FAIL_GPRS_REGISTRATION_FAIL = -2;
+    private static final int PDP_FAIL_SIGNAL_LOST = -3;
+    private static final int PDP_FAIL_PREF_RADIO_TECH_CHANGED = -4;
+    private static final int PDP_FAIL_RADIO_POWER_OFF = -5;
+    private static final int PDP_FAIL_TETHERED_CALL_ON = -6;
 }

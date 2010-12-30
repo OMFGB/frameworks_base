@@ -108,6 +108,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final int EVENT_MASTER_DATA_ENABLED = 16;
     protected static final int EVENT_MASTER_DATA_DISABLED = 17;
     protected static final int EVENT_RADIO_TECHNOLOGY_CHANGED = 18;
+    protected static final int EVENT_TETHERED_MODE_STATE_CHANGED = 19;
 
     protected static final int EVENT_CDMA_OTA_PROVISION = 20;
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 21;
@@ -144,6 +145,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final String REASON_DATA_NETWORK_DETACH = "dataNetworkDetached";
     protected static final String REASON_DATA_PROFILE_LIST_CHANGED = "dataProfileDbChanged";
     protected static final String REASON_CDMA_SUBSCRIPTION_SOURCE_CHANGED = "cdmaSubscriptionSourceChanged";
+    protected static final String REASON_TETHERED_MODE_STATE_CHANGED = "tetheredModeStateChanged";
 
     /**
      * Default constructor

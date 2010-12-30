@@ -145,6 +145,10 @@ cat include/telephony/ril.h | \
     static final int DATA_PROFILE_OEM_BASE  = 1000;
 
 
+    /** Tethered mode on/off indication for RIL_UNSOL_TETHERED_MODE_STATE_CHANGED */
+    int RIL_TETHERED_MODE_ON = 1;
+    int RIL_TETHERED_MODE_OFF = 0;
+
     int RIL_REQUEST_GET_SIM_STATUS = 1;
     int RIL_REQUEST_ENTER_SIM_PIN = 2;
     int RIL_REQUEST_ENTER_SIM_PUK = 3;
@@ -292,4 +296,5 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 1035;
     int RIL_UNSOL_TETHERED_MODE_STATE_CHANGED = 1036;
     int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 1037;
+
 }

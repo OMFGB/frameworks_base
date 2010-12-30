@@ -116,6 +116,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
     private static final String INTENT_RECONNECT_ALARM = "com.android.internal.telephony.gprs-reconnect";
     private static final String INTENT_RECONNECT_ALARM_EXTRA_REASON = "reason";
+    private static final String INTENT_RECONNECT_ALARM_SERVICE_TYPE = "ds";
+    private static final String INTENT_RECONNECT_ALARM_IP_VERSION = "ipv";
 
     /**
      * Constants for the data connection activity:
@@ -152,6 +154,9 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
     private static final boolean SUPPORT_IPV6 = SystemProperties.getBoolean(
             "persist.telephony.support_ipv6", true);
 
+    private static final boolean SUPPORT_SERVICE_ARBITRATION =
+        SystemProperties.getBoolean("persist.telephony.ds.arbit", false);
+
     boolean mIsEhrpdCapable = false;
     //used for NV+CDMA
     String mCdmaHomeOperatorNumeric = null;
@@ -176,8 +181,9 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
     BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
-        public void onReceive(Context context, Intent intent) {
+        public synchronized void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            logv("intent received :" + action);
             if (action.equals(Intent.ACTION_SCREEN_ON)) {
                 mPollNetStat.notifyScreenState(true);
                 stopNetStatPoll();
@@ -188,10 +194,14 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 stopNetStatPoll();
                 startNetStatPoll();
 
-            } else if (action.equals((INTENT_RECONNECT_ALARM))) {
+            } else if (action.startsWith((INTENT_RECONNECT_ALARM))) {
                 String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
+                DataServiceType ds = DataServiceType.valueOf(intent.getStringExtra(INTENT_RECONNECT_ALARM_SERVICE_TYPE));
+                IPVersion ipv = IPVersion.valueOf(intent.getStringExtra(INTENT_RECONNECT_ALARM_IP_VERSION));
+                /* set state as scanning so that updateDataConnections will process the data call */
+                if (mDpt.getState(ds, ipv)==State.WAITING_ALARM)
+                    mDpt.setState(State.SCANNING, ds, ipv);
                 updateDataConnections(reason);
-
             } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                 final android.net.NetworkInfo networkInfo = (NetworkInfo) intent
                         .getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
@@ -251,7 +261,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mDpt.registerForDataProfileDbChanged(this, EVENT_DATA_PROFILE_DB_CHANGED, null);
 
         IntentFilter filter = new IntentFilter();
-        filter.addAction(INTENT_RECONNECT_ALARM);
+        for (DataServiceType ds : DataServiceType.values()) {
+            filter.addAction(getAlarmIntentName(ds, IPVersion.IPV4));
+            filter.addAction(getAlarmIntentName(ds, IPVersion.IPV6));
+        }
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -309,6 +322,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
 
         //used in CDMA+NV case.
         mCdmaHomeOperatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
+
+        logv("SUPPORT_IPV4 = " + SUPPORT_IPV4);
+        logv("SUPPORT_IPV6 = " + SUPPORT_IPV6);
+        logv("SUPPORT_SERVICE_ARBITRATION = " + SUPPORT_SERVICE_ARBITRATION);
     }
 
     public void dispose() {
@@ -720,7 +737,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                  * again.
                  */
                 for (DataServiceType ds : DataServiceType.values()) {
-                    mDpt.getRetryManager(ds).resetRetryCount();
+                    mDpt.getRetryManager(ds, IPVersion.IPV4).resetRetryCount();
+                    mDpt.getRetryManager(ds, IPVersion.IPV6).resetRetryCount();
                 }
                 updateDataConnections(REASON_TETHERED_MODE_STATE_CHANGED);
             break;
@@ -768,7 +786,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             logi("Data call setup : SUCCESS");
             logi("  service type  : " + c.ds);
             logi("  data profile  : " + c.dp.toShortString());
-            logi("  data call id  :" + c.dc.cid);
+            logi("  data call id  : " + c.dc.cid);
             logi("  ip version    : " + c.ipv);
             logi("--------------------------");
 
@@ -840,7 +858,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
              * But do not bother de-activating low priority calls if the same service
              * is already active on other ip versions.
              */
-            if (disconnectOneLowPriorityDataCall(c.ds, c.reason)) {
+            if (SUPPORT_SERVICE_ARBITRATION && disconnectOneLowPriorityDataCall(c.ds, c.reason)) {
                 logv("Disconnected low priority data call [pdp availability failure.]");
                 needDataConnectionUpdate = false;
                 // will be called, when disconnect is complete.
@@ -848,7 +866,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             // set state to scanning because can try on other data
             // profiles that might work with this ds+ipv.
             mDpt.setState(State.SCANNING, c.ds, c.ipv);
-        } else if (mDpt.isServiceTypeActive(c.ds) == false
+        } else if (SUPPORT_SERVICE_ARBITRATION && mDpt.isServiceTypeActive(c.ds) == false
                 && disconnectOneLowPriorityDataCall(c.ds, c.reason)) {
             logv("Disconnected low priority data call [pdp availability failure.]");
             /*
@@ -886,10 +904,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
              *    it will be retried forever!
              */
 
-            RetryManager retryManager = mDpt.getRetryManager(c.ds);
+            RetryManager retryManager = mDpt.getRetryManager(c.ds, c.ipv);
 
             boolean scheduleAlarm = false;
-            int nextReconnectDelay = 0; /* if scheduleAlarm == true */
+            long nextReconnectDelay = 0; /* if scheduleAlarm == true */
 
             if (retryManager.isRetryNeeded()) {
                 /* 1 : we have retries left. so Retry! */
@@ -898,7 +916,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 retryManager.increaseRetryCount();
                 // set state to scanning because can try on other data
                 // profiles that might work with this ds+ipv.
-                mDpt.setState(State.SCANNING, c.ds, c.ipv);
+                mDpt.setState(State.WAITING_ALARM, c.ds, c.ipv);
             } else {
                 /* 2 : enough of retries. disable the data profile */
                 logv("No retries left, disabling data profile. dp=" +
@@ -930,7 +948,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                         logv("Retry forever using last disabled data profile. dp=" +
                                 c.dp.toShortString() + ", ipv = " + c.ipv);
                         c.dp.setWorking(true, c.ipv);
-                        mDpt.setState(State.FAILED, c.ds, c.ipv);
+                        mDpt.setState(State.WAITING_ALARM, c.ds, c.ipv);
                         notifyDataConnection(c.ds, c.ipv, c.reason);
                         notifyDataConnectionFail(c.reason);
 
@@ -943,20 +961,22 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             }
 
             if (scheduleAlarm) {
-                logd("Scheduling next attempt on " + c.ds +
-                        " for " + (nextReconnectDelay / 1000) + "s");
+                logd("Scheduling next attempt on " + c.ds + " for " + (nextReconnectDelay / 1000)
+                        + "s. Retry count = " + retryManager.getRetryCount());
 
                 AlarmManager am = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
 
-                Intent intent = new Intent(INTENT_RECONNECT_ALARM);
+                Intent intent = new Intent(getAlarmIntentName(c.ds, c.ipv));
                 intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, c.reason);
+                intent.putExtra(INTENT_RECONNECT_ALARM_SERVICE_TYPE, c.ds.toString());
+                intent.putExtra(INTENT_RECONNECT_ALARM_IP_VERSION, c.ipv.toString());
 
                 mReconnectIntent = PendingIntent.getBroadcast(mContext, 0, intent, 0);
                 // cancel any pending wakeup - TODO: does this work?
                 am.cancel(mReconnectIntent);
                 am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime()
                         + nextReconnectDelay, mReconnectIntent);
-                needDataConnectionUpdate = false;
+                needDataConnectionUpdate = true;
             }
         }
 
@@ -965,6 +985,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         }
 
         logDataConnectionFailure(c.ds, c.dp, c.ipv, cause);
+    }
+
+    private String getAlarmIntentName(DataServiceType ds, IPVersion ipv) {
+        return (INTENT_RECONNECT_ALARM + "." + ds + "." + ipv);
     }
 
     private void logDataConnectionFailure(DataServiceType ds, DataProfile dp, IPVersion ipv,
@@ -1170,14 +1194,18 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             if (mDpt.isServiceTypeEnabled(ds) == true) {
 
                 //IPV4
-                if (SUPPORT_IPV4 && mDpt.isServiceTypeActive(ds, IPVersion.IPV4) == false) {
+                if (SUPPORT_IPV4
+                        && mDpt.isServiceTypeActive(ds, IPVersion.IPV4) == false
+                        && mDpt.getState(ds, IPVersion.IPV4) != State.WAITING_ALARM) {
                     boolean setupDone = trySetupDataCall(ds, IPVersion.IPV4, reason);
                     if (setupDone)
                         return; //one at a time, in order of priority
                 }
 
-                //IPV4
-                if (SUPPORT_IPV6 && mDpt.isServiceTypeActive(ds, IPVersion.IPV6) == false) {
+                //IPV6
+                if (SUPPORT_IPV6
+                        && mDpt.isServiceTypeActive(ds, IPVersion.IPV6) == false
+                        && mDpt.getState(ds, IPVersion.IPV6) != State.WAITING_ALARM) {
                     boolean setupDone = trySetupDataCall(ds, IPVersion.IPV6, reason);
                     if (setupDone)
                         return; //one at a time, in order of priority
@@ -1317,7 +1345,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         if (dc == null) {
             // if this happens, it probably means that our data call list is not
             // big enough!
-            boolean ret = disconnectOneLowPriorityDataCall(ds, reason);
+            boolean ret = SUPPORT_SERVICE_ARBITRATION && disconnectOneLowPriorityDataCall(ds, reason);
             // irrespective of ret, we should return true here
             // - if a call was indeed disconnected, then updateDataConnections()
             //   will take care of setting up call again

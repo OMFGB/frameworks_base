@@ -66,6 +66,7 @@ public abstract class DataConnectionTracker extends Handler {
         INITING,
         CONNECTING,
         SCANNING,
+        WAITING_ALARM,
         CONNECTED,
         DISCONNECTING,
         FAILED
@@ -398,6 +399,7 @@ public abstract class DataConnectionTracker extends Handler {
                 case INITING:
                 case CONNECTING:
                 case SCANNING:
+                case WAITING_ALARM:
                     ret = DataState.CONNECTING;
                     break;
             }

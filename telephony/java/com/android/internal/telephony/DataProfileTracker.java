@@ -392,8 +392,8 @@ public class DataProfileTracker extends Handler {
         return dsMap.get(ds).getState(ipv);
     }
 
-    RetryManager getRetryManager(DataServiceType ds) {
-        return dsMap.get(ds).getRetryManager();
+    RetryManager getRetryManager(DataServiceType ds, IPVersion ipv) {
+        return dsMap.get(ds).getRetryManager(ipv);
     }
 
     void registerForDataProfileDbChanged(Handler h, int what, Object obj) {

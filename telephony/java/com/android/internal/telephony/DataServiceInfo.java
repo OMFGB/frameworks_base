@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.content.Context;
 import android.os.SystemProperties;
@@ -66,7 +67,7 @@ public class DataServiceInfo {
     /** Retry configuration for secondary networks: 4 tries in 20 sec */
     private  static final String SECONDARY_DATA_RETRY_CONFIG = "max_retries=3, 5000, 5000, 5000";
 
-    private RetryManager mRetryMgr;
+    private HashMap <IPVersion, RetryManager> mRetryMgr;
 
     public DataServiceInfo(Context context, DataServiceType serviceType) {
         super();
@@ -76,30 +77,38 @@ public class DataServiceInfo {
 
         mDataProfileList = new ArrayList<DataProfile>();
 
-        mRetryMgr = new RetryManager();
+        /* Two retry managers as v4 and v6 could be tried in parallel */
+        mRetryMgr = new HashMap<Phone.IPVersion, RetryManager>();
+        mRetryMgr.put(IPVersion.IPV4, createRetryManager(serviceType));
+        mRetryMgr.put(IPVersion.IPV6, createRetryManager(serviceType));
+
+        clear();
+    }
+
+    private RetryManager createRetryManager(DataServiceType serviceType) {
+        RetryManager retryMgr = new RetryManager();
         if (serviceType == DataServiceType.SERVICE_TYPE_DEFAULT) {
-            if (!mRetryMgr.configure(SystemProperties.get("ro.gsm.data_retry_config"))) {
-                if (!mRetryMgr.configure(DEFAULT_DATA_RETRY_CONFIG)) {
+            if (!retryMgr.configure(SystemProperties.get("ro.gsm.data_retry_config"))) {
+                if (!retryMgr.configure(DEFAULT_DATA_RETRY_CONFIG)) {
                     // Should never happen, log an error and default to a simple
                     // linear sequence.
                     loge("Could not configure using DEFAULT_DATA_RETRY_CONFIG="
                             + DEFAULT_DATA_RETRY_CONFIG);
-                    mRetryMgr.configure(20, 2000, 1000);
+                    retryMgr.configure(20, 2000, 1000);
                 }
             }
         } else { // secondary service type
-            if (!mRetryMgr.configure(SystemProperties.get("ro.gsm.2nd_data_retry_config"))) {
-                if (!mRetryMgr.configure(SECONDARY_DATA_RETRY_CONFIG)) {
+            if (!retryMgr.configure(SystemProperties.get("ro.gsm.2nd_data_retry_config"))) {
+                if (!retryMgr.configure(SECONDARY_DATA_RETRY_CONFIG)) {
                     // Should never happen, log an error and default to a simple
                     // sequence.
                     loge("Could not configure using SECONDARY_DATA_RETRY_CONFIG="
                             + SECONDARY_DATA_RETRY_CONFIG);
-                    mRetryMgr.configure("max_retries=3, 333, 333, 333");
+                    retryMgr.configure("max_retries=3, 333, 333, 333");
                 }
             }
         }
-
-        clear();
+        return retryMgr;
     }
 
     private void clear() {
@@ -110,15 +119,16 @@ public class DataServiceInfo {
     }
 
     void resetServiceConnectionState() {
-        if (ipv4State == State.FAILED)
+        if (ipv4State == State.FAILED || ipv4State == State.WAITING_ALARM)
             setState(State.IDLE, IPVersion.IPV4);
-        if (ipv6State == State.FAILED)
+        if (ipv6State == State.FAILED || ipv6State == State.WAITING_ALARM)
             setState(State.IDLE, IPVersion.IPV6);
-        mRetryMgr.resetRetryCount();
+        mRetryMgr.get(IPVersion.IPV4).resetRetryCount();
+        mRetryMgr.get(IPVersion.IPV6).resetRetryCount();
     }
 
-    RetryManager getRetryManager() {
-        return mRetryMgr;
+    RetryManager getRetryManager(IPVersion ipv) {
+        return mRetryMgr.get(ipv);
     }
 
     // gets the next data profile of the specified data profile type and ip

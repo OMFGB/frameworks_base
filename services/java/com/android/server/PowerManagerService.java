@@ -67,6 +67,7 @@ import static android.provider.Settings.System.SCREEN_OFF_TIMEOUT;
 import static android.provider.Settings.System.STAY_ON_WHILE_PLUGGED_IN;
 import static android.provider.Settings.System.WINDOW_ANIMATION_SCALE;
 import static android.provider.Settings.System.TRANSITION_ANIMATION_SCALE;
+import static android.provider.Settings.System.TORCH_STATE;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -246,6 +247,8 @@ class PowerManagerService extends IPowerManager.Stub
     private int mWarningSpewThrottleCount;
     private long mWarningSpewThrottleTime;
     private int mAnimationSetting = ANIM_SETTING_OFF;
+    private boolean mFlashlightAffectsLightSensor;
+    private boolean mIgnoreLightSensor;
 
     // Must match with the ISurfaceComposer constants in C++.
     private static final int ANIM_SETTING_ON = 0x01;
@@ -452,6 +455,12 @@ class PowerManagerService extends IPowerManager.Stub
                 // DIM_SCREEN
                 //mDimScreen = getInt(DIM_SCREEN) != 0;
 
+                int torchState = Settings.System.getInt(mContext.getContentResolver(),
+                        Settings.System.TORCH_STATE, 0);
+                mIgnoreLightSensor = (torchState > 0) && mFlashlightAffectsLightSensor;
+
+                updateLightSettings();
+
                 // SCREEN_BRIGHTNESS_MODE, default to manual
                 setScreenBrightnessMode(getInt(SCREEN_BRIGHTNESS_MODE,
                         Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL));
@@ -609,9 +618,12 @@ class PowerManagerService extends IPowerManager.Stub
                         + Settings.System.NAME + "=?) or ("
                         + Settings.System.NAME + "=?) or ("
                         + Settings.System.NAME + "=?) or ("
+                        + Settings.System.NAME + "=?) or ("
+                        + Settings.System.NAME + "=?) or ("
                         + Settings.System.NAME + "=?)",
                 new String[]{STAY_ON_WHILE_PLUGGED_IN, SCREEN_OFF_TIMEOUT, DIM_SCREEN,
-                        SCREEN_BRIGHTNESS_MODE, WINDOW_ANIMATION_SCALE, TRANSITION_ANIMATION_SCALE},
+                        SCREEN_BRIGHTNESS_MODE, WINDOW_ANIMATION_SCALE, TRANSITION_ANIMATION_SCALE,
+                        TORCH_STATE, Settings.System.LIGHTS_CHANGED},
                 null);
         mSettings = new ContentQueryMap(settingsCursor, Settings.System.NAME, true, mHandler);
         SettingsObserver settingsObserver = new SettingsObserver();
@@ -2971,7 +2983,8 @@ class PowerManagerService extends IPowerManager.Stub
         public void onSensorChanged(SensorEvent event) {
             synchronized (mLocks) {
                 // ignore light sensor while screen is turning off
-                if (isScreenTurningOffLocked()) {
+                // or when flashlight would affect it
+                if (isScreenTurningOffLocked() || mIgnoreLightSensor) {
                     return;
                 }
 

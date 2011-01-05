@@ -24,6 +24,8 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
+import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.IPhoneSubInfo;
 import com.android.internal.telephony.ITelephony;
@@ -32,6 +34,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.Phone.IPVersion;
 
 import java.util.List;
 
@@ -560,6 +563,85 @@ public class TelephonyManager {
         } catch (NullPointerException ex) {
             // This could happen before phone restarts due to crashing
             return false;
+        }
+    }
+
+    /** {@hide} */
+    public String getActiveInterfaceName(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String ifName = telephony.getActiveInterfaceName(apnType, ipv.toString());
+                if(TextUtils.isEmpty(ifName)){
+                    Log.i(TAG,"interface name is null or empty");
+                    return null;
+                } else {
+                    return ifName;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
+        }
+    }
+
+
+    /** {@hide} */
+    public String getActiveIpAddress(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String ipAddr = telephony.getActiveIpAddress(apnType, ipv.toString());
+                if(TextUtils.isEmpty(ipAddr)){
+                    Log.i(TAG,"ipAddr is null or empty");
+                    return null;
+                } else {
+                    return ipAddr;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
+        }
+    }
+
+    /** {@hide} */
+    public String getActiveGateway(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String gatewayAddr = telephony.getActiveGateway(apnType, ipv.toString());
+                if(TextUtils.isEmpty(gatewayAddr)){
+                    Log.i(TAG,"gatewayAddr is null or empty");
+                    return null;
+                } else {
+                    return gatewayAddr;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
         }
     }
 

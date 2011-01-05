@@ -275,5 +275,23 @@ interface ITelephony {
      * Return true if an ICC card is present
      */
     boolean hasIccCard();
+
+   /**
+     * Returns Interface Name used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveInterfaceName(String apnType, String ipv);
+
+    /**
+     * Returns Ip address used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveIpAddress(String apnType, String ipv);
+
+    /**
+     * Returns Gateway address used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveGateway(String apnType, String ipv);
 }
 

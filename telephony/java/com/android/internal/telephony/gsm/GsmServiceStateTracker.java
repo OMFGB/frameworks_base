@@ -719,6 +719,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             case DATA_ACCESS_LTE:
                 ret = "LTE";
                 break;
+            case DATA_ACCESS_EHRPD:
+                ret = "EHRPD";
+                break;
             default:
                 Log.e(LOG_TAG, "Wrong network type: " + Integer.toString(type));
                 break;

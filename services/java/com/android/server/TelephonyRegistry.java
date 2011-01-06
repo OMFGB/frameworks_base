@@ -372,7 +372,8 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
                 + " interfaceName=" + interfaceName + " networkType=" + networkType);
         synchronized (mRecords) {
             /* notify clients only if there is a real change in data connection state */
-            if (mDataConnectionState != anyDataConnectionState) {
+            if ((mDataConnectionState != anyDataConnectionState)
+                    || (mDataConnectionNetworkType != networkType)) {
                 /* cache last notification for LISTEN_DATA_CONNECTION_STATE clients. */
                 mDataConnectionState = anyDataConnectionState;
                 mDataConnectionPossible = isDataConnectivityPossible;

@@ -59,6 +59,10 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Map;
+
+import android.net.LinkInfo;
+import com.android.server.CNE;
 
 
 
@@ -170,6 +174,9 @@ public class ConnectivityService extends IConnectivityManager.Stub {
             MAX_NETWORK_STATE_TRACKER_EVENT + 7;
 
     private Handler mHandler;
+
+    private CNE mCneService = null;
+    private boolean mCneStarted = false;
 
     // list of DeathRecipients used to make sure features are turned off when
     // a process dies
@@ -536,7 +543,12 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 synchronized(this) {
                     mNetworkPreference = preference;
                 }
-                enforcePreference();
+                if (isCneEnabled()) {
+                    /* send it to cne and it will handle it */
+                    mCneService.setDefaultConnectionNwPref(preference);
+                } else {
+                    enforcePreference();
+                }
             }
         }
     }
@@ -1090,7 +1102,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private void handleDisconnect(NetworkInfo info) {
 
         int prevNetType = info.getType();
-
+        if (DBG) Slog.d(TAG,"Got Network Disconnected from Driver nwtype="+prevNetType);
         mNetTrackers[prevNetType].setTeardownRequested(false);
         /*
          * If the disconnected network is not the active one, then don't report
@@ -1288,8 +1300,9 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     }
 
     private void handleConnect(NetworkInfo info) {
-        int type = info.getType();
 
+        int type = info.getType();
+        if (DBG) Slog.d(TAG, "Got Network Connection Succ from Driver nwtype="+type);
         // snapshot isFailover, because sendConnectedBroadcast() resets it
         boolean isFailover = info.isFailover();
         NetworkStateTracker thisNet = mNetTrackers[type];
@@ -1302,10 +1315,14 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                         mNetAttributes[mActiveDefaultNetwork].mPriority >
                         mNetAttributes[type].mPriority) ||
                         mNetworkPreference == mActiveDefaultNetwork) {
-                        // don't accept this one
-                        if (DBG) Slog.v(TAG, "Not broadcasting CONNECT_ACTION " +
-                                "to torn down network " + info.getTypeName());
-                        teardown(thisNet);
+                        if(!isCneEnabled()) {
+                            // don't accept this one
+                            if (DBG) Slog.v(TAG, "Not broadcasting CONNECT_ACTION " +
+                                    "to torn down network " + info.getTypeName());
+                            teardown(thisNet);
+                        } else {
+                            handleDnsConfigurationChange(type);
+                        }
                         return;
                 } else {
                     // tear down the other
@@ -1314,10 +1331,13 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                     if (DBG) Slog.v(TAG, "Policy requires " +
                             otherNet.getNetworkInfo().getTypeName() +
                             " teardown");
-                    if (!teardown(otherNet)) {
-                        Slog.e(TAG, "Network declined teardown request");
-                        teardown(thisNet);
-                        return;
+                    if (!isCneEnabled()) {
+                        if (DBG) Slog.i(TAG, "CNE To support Simultaneous Nws we"+
+                                 " will not tear down other nw");
+                        if (!teardown(otherNet)) {
+                            Slog.e(TAG, "Network declined teardown request");
+                            return;
+                        }
                     }
                     if (isFailover) {
                         otherNet.releaseWakeLock();
@@ -1377,7 +1397,9 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         if (mNetTrackers[netType].getNetworkInfo().isConnected()) {
             if (mNetAttributes[netType].isDefault()) {
-                mNetTrackers[netType].addDefaultRoute();
+                if (!SystemProperties.get(CNE.UseCne,"none").equalsIgnoreCase("vendor")) {
+                    mNetTrackers[netType].addDefaultRoute();
+                }
             } else {
                 // many radios add a default route even when we don't want one.
                 // remove the default interface unless we need it for our active network
@@ -1466,6 +1488,40 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     }
 
     private void handleDnsConfigurationChange(int netType) {
+
+        if(isCneEnabled()) {
+            // reset dns list
+            if (DBG) Slog.d(TAG, "handleDnsConfigurationChange - numDnsEntries=" +
+                            mNumDnsEntries + ",netType=" + netType);
+            for (int i=1; i <= mNumDnsEntries; i++) {
+                if (DBG) Slog.d(TAG, "handleDnsConfigurationChange - reset set.dns-i=" + i);
+                SystemProperties.set("net.dns" + i, "");
+            }
+            mNumDnsEntries = 0;
+            int k = 1;
+            for (int x = mPriorityList.length-1; x>= 0; x--) {
+                int networkType = mPriorityList[x];
+                NetworkStateTracker netTracker = mNetTrackers[networkType];
+                if (netTracker != null && netTracker.getNetworkInfo().isConnected() &&
+                    !netTracker.isTeardownRequested()) {
+                    String[] dnsLst = netTracker.getNameServers();
+                    if (mNetAttributes[networkType].isDefault()) {
+                        if (DBG) Slog.d(TAG, "handleDnsConfigurationChange isDefault=" +
+                                        networkType);
+                        for (String dns : dnsLst) {
+                            if (dns != null && !TextUtils.equals(dns, "0.0.0.0")) {
+                                if (DBG) Slog.d(TAG, "adding dns " + dns + " for " +
+                                           netTracker.getNetworkInfo().getTypeName());
+                                SystemProperties.set("net.dns" + k++, dns);
+                            }
+                        }
+                        mNumDnsEntries = k;
+                    }
+                }
+            }
+            bumpDns();
+            return;
+        }
         // add default net's dns entries
         NetworkStateTracker nt = mNetTrackers[netType];
         if (nt != null && nt.getNetworkInfo().isConnected() && !nt.isTeardownRequested()) {
@@ -1855,4 +1911,227 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         sendInetConditionBroadcast(networkInfo);
         return;
     }
+
+    /* CNE related methods. */
+    public void startCne(){
+        if(!mCneStarted){
+            if(SystemProperties.get(CNE.UseCne,"none").equalsIgnoreCase("vendor") ||
+               SystemProperties.get(CNE.UseCne,"none").equalsIgnoreCase("reference")) {
+                    Slog.v(TAG, "CNE starting up");
+                    /* sychronised to wait until cne creation so that
+                     * defualt connection can start.
+                     */
+                    synchronized(this){
+                        mCneService = new CNE(mContext, this);
+                        /* send the mNetworkPreference down to cne */
+                        mCneService.sendDefaultNwPref2Cne(mNetworkPreference);
+                        mCneStarted = true;
+                    }
+            }else{
+                Slog.v(TAG, "CNE is disabled.");
+            }
+        }else{
+            Slog.e(TAG, "CNE already Started");
+        }
+    }
+
+    public boolean isCneStarted(){
+        return mCneStarted;
+    }
+
+    public boolean isCneEnabled(){
+        if((SystemProperties.get(CNE.UseCne,"none").equalsIgnoreCase("vendor") ||
+            SystemProperties.get(CNE.UseCne,"none").equalsIgnoreCase("reference")) &&
+            CNE.isCndUp)
+            return true;
+
+        return false;
+    }
+
+    /** {@hide} */
+    public boolean bringUpRat(int ratType){
+
+        Slog.d(TAG, "Bring Up Rat called for rat="+ratType);
+        int networkType = 0;
+
+        if (ratType == CNE.CNE_RAT_WLAN){
+          networkType = ConnectivityManager.TYPE_WIFI;
+        } else if (ratType == CNE.CNE_RAT_WWAN) {
+            networkType = ConnectivityManager.TYPE_MOBILE;
+        } else{
+            Slog.d(TAG, "Unknown RatType = " + ratType);
+            return false;
+        }
+        return reconnect(networkType);
+    }
+
+    private boolean reconnect(int networkType){
+        NetworkStateTracker network = mNetTrackers[networkType];
+        try{
+          network.setTeardownRequested(true);
+          Slog.d(TAG, "Sending Network Connection Request to Driver.");
+          network.reconnect();
+          return true;
+        } catch(NullPointerException e){
+            Slog.d(TAG, "network Obj is Null" + e);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /** {@hide} */
+    public boolean bringDownRat(int ratType){
+
+        int networkType = 0;
+
+        if (ratType == CNE.CNE_RAT_WLAN){
+          networkType = ConnectivityManager.TYPE_WIFI;
+          WifiStateTracker network = (WifiStateTracker)mNetTrackers[networkType];
+          if(!network.hasWifiLocks()){
+              network.resetTornDownbyConnMgr();
+              return teardown(network);
+          }else{
+              Slog.d(TAG, "WifiLocks active not issuing bring down");
+          }
+        }else if (ratType == CNE.CNE_RAT_WWAN){
+          networkType = ConnectivityManager.TYPE_MOBILE;
+          NetworkStateTracker network = mNetTrackers[networkType];
+          return teardown(network);
+        }else{
+            Slog.d(TAG, "Unknown RatType = " + ratType);
+        }
+        return false;
+
+    }
+
+
+    /** {@hide} */
+    public boolean getLink(int role,
+                           Map linkReqs,
+                           int mPid,
+                           IBinder listener){
+        if(mCneService != null) {
+            return mCneService.getLink(role,linkReqs,mPid,listener);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null");
+            return false;
+        }
+    }
+
+    /** {@hide} */
+    public boolean reportLinkSatisfaction(int role,
+                                          int mPid,
+                                          LinkInfo info,
+                                          boolean isSatisfied,
+                                          boolean isNotifyBetterCon){
+        if(mCneService != null) {
+            return mCneService.reportLinkSatisfaction(role,
+                                                      mPid,
+                                                      info,
+                                                      isSatisfied,
+                                                      isNotifyBetterCon);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null");
+            return false;
+        }
+    }
+
+    /** {@hide} */
+    public boolean switchLink(int role,
+                              int mPid,
+                              LinkInfo info,
+                              boolean isNotifyBetterLink){
+        if(mCneService != null) {
+            return mCneService.switchLink(role,
+                                          mPid,
+                                          info,
+                                          isNotifyBetterLink);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null");
+            return false;
+        }
+    }
+
+    /** {@hide} */
+    public boolean rejectSwitch(int role,
+                                int mPid,
+                                LinkInfo info,
+                                boolean isNotifyBetterLink){
+        if(mCneService != null) {
+            return mCneService.rejectSwitch(role,
+                                            mPid,
+                                            info,
+                                            isNotifyBetterLink);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null");
+            return false;
+        }
+    }
+
+    /** {@hide} */
+    public boolean releaseLink(int role,int mPid){
+        if(mCneService != null) {
+            return mCneService.releaseLink(role,mPid);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null");
+            return false;
+        }
+    }
+
+    /** {@hide}
+     * This function will be used by apps to request to start FMC
+     * @param listener callback to notifier
+     * @return {@code true} if the request has been accepted,
+     * {@code false} otherwise.  A return value of true does NOT mean that a
+     * FMC is available for the app to use. That will delivered via
+     * the FmcNotifier.
+     */
+    public boolean startFmc(IBinder listener){
+        if(mCneService != null) {
+            return mCneService.startFmc(listener);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null while calling startFmc");
+            return false;
+        }
+    }
+
+    /** {@hide}
+    * This function will be used by apps to stop FMC.
+    * @return {@code true} if the request has been accepted by Cne
+    * framework, {@code false} otherwise.
+    */
+    public boolean stopFmc(IBinder listener){
+        if(mCneService != null) {
+            return mCneService.stopFmc(listener);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null while calling startFmc");
+            return false;
+        }
+    }
+
+    /** {@hide}
+     * This function will be used by apps to request to start FMC
+     * @param listener callback to notifier
+     * @return {@code true} if there was a last sent status
+     * {@code false} otherwise.
+     */
+    public boolean getFmcStatus(IBinder listener){
+        if(mCneService != null) {
+            return mCneService.getFmcStatus(listener);
+        }
+        else {
+            Slog.d(TAG, "mCneService is null while calling startFmc");
+            return false;
+        }
+    }
+
+
+
 }

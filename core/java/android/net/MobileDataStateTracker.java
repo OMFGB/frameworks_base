@@ -454,6 +454,9 @@ public class MobileDataStateTracker extends NetworkStateTracker {
         return (setEnableApn(mApnType, false) != Phone.APN_REQUEST_FAILED);
     }
 
+    public void resetTornDownbyConnMgr() {
+    }
+
     /**
      * Re-enable mobile data connectivity after a {@link #teardown()}.
      */

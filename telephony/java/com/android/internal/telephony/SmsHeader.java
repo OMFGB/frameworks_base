@@ -83,9 +83,14 @@ public class SmsHeader {
         public boolean isEightBits;
     }
 
+    public static class SpecialSmsMsg {
+        public int msgIndType;
+        public int msgCount;
+    }
+
     /**
      * A header element that is not explicitly parsed, meaning not
-     * PortAddrs or ConcatRef.
+     * PortAddrs or ConcatRef or SpecialSmsMsg.
      */
     public static class MiscElt {
         public int id;
@@ -94,6 +99,7 @@ public class SmsHeader {
 
     public PortAddrs portAddrs;
     public ConcatRef concatRef;
+    public ArrayList<SpecialSmsMsg> specialSmsMsgList = new ArrayList<SpecialSmsMsg>();
     public ArrayList<MiscElt> miscEltList = new ArrayList<MiscElt>();
 
     public SmsHeader() {}
@@ -157,6 +163,12 @@ public class SmsHeader {
                 portAddrs.areEightBits = false;
                 smsHeader.portAddrs = portAddrs;
                 break;
+            case ELT_ID_SPECIAL_SMS_MESSAGE_INDICATION:
+                SpecialSmsMsg specialSmsMsg = new SpecialSmsMsg();
+                specialSmsMsg.msgIndType = inStream.read();
+                specialSmsMsg.msgCount = inStream.read();
+                smsHeader.specialSmsMsgList.add(specialSmsMsg);
+                break;
             default:
                 MiscElt miscElt = new MiscElt();
                 miscElt.id = id;
@@ -176,6 +188,7 @@ public class SmsHeader {
     public static byte[] toByteArray(SmsHeader smsHeader) {
         if ((smsHeader.portAddrs == null) &&
             (smsHeader.concatRef == null) &&
+            (smsHeader.specialSmsMsgList.size() == 0) &&
             (smsHeader.miscEltList.size() == 0)) {
             return null;
         }
@@ -212,6 +225,12 @@ public class SmsHeader {
                 outStream.write(portAddrs.origPort & 0x00FF);
             }
         }
+        for (SpecialSmsMsg specialSmsMsg : smsHeader.specialSmsMsgList) {
+            outStream.write(ELT_ID_SPECIAL_SMS_MESSAGE_INDICATION);
+            outStream.write(2);
+            outStream.write(specialSmsMsg.msgIndType & 0xFF);
+            outStream.write(specialSmsMsg.msgCount & 0xFF);
+        }
         for (MiscElt miscElt : smsHeader.miscEltList) {
             outStream.write(miscElt.id);
             outStream.write(miscElt.data.length);
@@ -241,6 +260,12 @@ public class SmsHeader {
             builder.append("{ destPort=" + portAddrs.destPort);
             builder.append(", origPort=" + portAddrs.origPort);
             builder.append(", areEightBits=" + portAddrs.areEightBits);
+            builder.append(" }");
+        }
+        for (SpecialSmsMsg specialSmsMsg : specialSmsMsgList) {
+            builder.append(", SpecialSmsMsg ");
+            builder.append("{ msgIndType=" + specialSmsMsg.msgIndType);
+            builder.append(", msgCount=" + specialSmsMsg.msgCount);
             builder.append(" }");
         }
         for (MiscElt miscElt : miscEltList) {

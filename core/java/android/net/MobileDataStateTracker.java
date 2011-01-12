@@ -29,6 +29,8 @@ import android.content.IntentFilter;
 import android.os.RemoteException;
 import android.os.Handler;
 import android.os.ServiceManager;
+import android.os.IBinder;
+import android.os.INetworkManagementService;
 
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.Phone;
@@ -340,9 +342,7 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                  * connectivity service should do this, but it may not if the
                  * other IP version is active.
                  */
-                if (mApnType.equals(Phone.APN_TYPE_DEFAULT)) {
-                    removeDefaultRoute(ipv);
-                } else {
+                if (!(mApnType.equals(Phone.APN_TYPE_DEFAULT))) {
                     removePrivateDnsRoutes(ipv);
                 }
             }
@@ -607,12 +607,22 @@ public class MobileDataStateTracker extends NetworkStateTracker {
         logv("Requested host route to " + hostAddress.getHostAddress() +
                 " for " + mApnType + "(" + interfaceName + ")");
 
+        boolean result = false;
         if (interfaceName != null) {
-            return NetworkUtils.addHostRoute(interfaceName, hostAddress);
-        } else {
-            return false;
+            INetworkManagementService nms = getNetworkManagementService();
+            if (nms == null) {
+                Log.w(TAG, "could not acquire NetworkManagementService.");
+                return false;
+            } else {
+                try {
+                    result = nms.addDstRoute(interfaceName, hostAddress.getHostAddress(), null);
+                } catch (RemoteException e) {
+                    Log.w(TAG, "MobileDataStateTracker failed to request host route. Exception: " + e);
+                }
+            }
         }
-    }
+        return result;
+     }
 
     /**
      * Return the IP addresses of the DNS servers available for the current

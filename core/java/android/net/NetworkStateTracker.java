@@ -29,6 +29,10 @@ import android.net.NetworkInfo.DetailedState;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.os.RemoteException;
+import android.os.ServiceManager;
+import android.os.IBinder;
+import android.os.INetworkManagementService;
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
@@ -144,6 +148,10 @@ public abstract class NetworkStateTracker extends Handler {
         return dnsAddresses;
     }
 
+    protected INetworkManagementService getNetworkManagementService () {
+        IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
+        return INetworkManagementService.Stub.asInterface(b);
+    }
 
     boolean mPrivateDnsRouteSet[] = new boolean[] {false, false};
 
@@ -161,16 +169,23 @@ public abstract class NetworkStateTracker extends Handler {
                 if (addrString != null) {
                     try {
                         InetAddress inetAddress = InetAddress.getByName(addrString);
-                        if (ipv == IPVersion.IPV4 && inetAddress instanceof Inet4Address) {
-                            Log.v(TAG, "adding ipv4 dns " + addrString + " through "
-                                    + interfaceName);
-                            NetworkUtils.addHostRoute(interfaceName, inetAddress);
-                        } else if (ipv == IPVersion.IPV6 && inetAddress instanceof Inet6Address) {
-                            Log.v(TAG, "adding ipv6 dns " + addrString + " through "
-                                    + interfaceName);
-                            NetworkUtils.addHostRoute(interfaceName, inetAddress);
+                        INetworkManagementService nms = getNetworkManagementService();
+                        if (nms == null) {
+                            Log.w(TAG, "could not acquire NetworkManagementService.");
+                            return;
+                        } else {
+                            if (ipv == IPVersion.IPV4 && inetAddress instanceof Inet4Address) {
+                                Log.v(TAG, "adding ipv4 dns " + addrString + " through "
+                                        + interfaceName);
+                            } else if (ipv == IPVersion.IPV6 && inetAddress instanceof Inet6Address) {
+                                Log.v(TAG, "adding ipv6 dns " + addrString + " through "
+                                        + interfaceName);
+                            }
+                            nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
                         }
                     } catch (UnknownHostException e) {
+                        Log.w(TAG, " DNS address " + addrString + " : Exception " + e);
+                    } catch (RemoteException e) {
                         Log.w(TAG, " DNS address " + addrString + " : Exception " + e);
                     }
                 }
@@ -199,8 +214,6 @@ public abstract class NetworkStateTracker extends Handler {
         mPrivateDnsRouteSet[index] = false;
     }
 
-    boolean mDefaultRouteSet[] = new boolean[] {false, false};
-
     public void addDefaultRoute() {
         addDefaultRoute(IPVersion.IPV4);
         addDefaultRoute(IPVersion.IPV6);
@@ -211,36 +224,36 @@ public abstract class NetworkStateTracker extends Handler {
         String interfaceName = getInterfaceName(ipv);
         InetAddress gateway = getGateway(ipv);
         int index = ipv == IPVersion.IPV4 ? 0 : 1;
+        String gwString = (gateway == null) ? "0" : gateway.getHostAddress();
 
-        if ((interfaceName != null) && (gateway != null) && mDefaultRouteSet[index] == false) {
-            Log.i(TAG, "addDefaultRoute (" + ipv + ") for " + mNetworkInfo.getTypeName() +
-                    " ("+ interfaceName + "), GatewayAddr=" + gateway);
-            if (NetworkUtils.addRoute(interfaceName, gateway, 0)) {
-                mDefaultRouteSet[index] = true;
-            } else {
+        if (interfaceName != null) {
+                Log.i(TAG, "addDefaultRoute (" + ipv + ") for " + mNetworkInfo.getTypeName() +
+                    " ("+ interfaceName + "), GatewayAddr=" + gwString);
+            boolean result = false;
+            try {
+                INetworkManagementService nms = getNetworkManagementService();
+                if (nms == null) {
+                    Log.w(TAG, "could not acquire NetworkManagementService.");
+                    return;
+                } else {
+                    if (index == 0) {
+                            result = nms.replaceV4DefaultRoute(interfaceName, gwString);
+                    } else {
+                            result = nms.replaceV6DefaultRoute(interfaceName, gwString);
+                    }
+                }
+            } catch (RemoteException e) {
+                Log.w(TAG, "  NetworkManagementService was unable to add default route. Exception: " + e);
+            }
+
+            if (!result) {
                 Log.e(TAG, "  Unable to add default route.");
             }
         }
     }
 
     public void removeDefaultRoute() {
-        removeDefaultRoute(IPVersion.IPV4);
-        removeDefaultRoute(IPVersion.IPV6);
-    }
-
-    public void removeDefaultRoute(IPVersion ipv) {
-
-        String interfaceName = getInterfaceName(ipv);
-        int index = ipv == IPVersion.IPV4 ? 0 : 1;
-
-        if (interfaceName != null && mDefaultRouteSet[index] == true) {
-            if (DBG) {
-                Log.d(TAG, "removeDefaultRoute for " + mNetworkInfo.getTypeName() + " ("
-                        + interfaceName + ")");
-            }
-            NetworkUtils.removeDefaultRoute(interfaceName);
-        }
-        mDefaultRouteSet[index] = false;
+        // do nothing since add is essentially replacing
     }
 
     /**
@@ -280,7 +293,7 @@ public abstract class NetworkStateTracker extends Handler {
     /**
      * Writes TCP buffer sizes to /sys/kernel/ipv4/tcp_[r/w]mem_[min/def/max]
      * which maps to /proc/sys/net/ipv4/tcp_rmem and tcpwmem
-     * 
+     *
      * @param bufferSizes in the format of "readMin, readInitial, readMax,
      *        writeMin, writeInitial, writeMax"
      */
@@ -306,7 +319,7 @@ public abstract class NetworkStateTracker extends Handler {
 
     /**
      * Writes string to file. Basically same as "echo -n $string > $filename"
-     * 
+     *
      * @param filename
      * @param string
      * @throws IOException

@@ -520,7 +520,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
          * possible data went out of service and came back in service without
          * data calls being disconnected
          */
-        notifyAllEnabledDataServiceTypes(REASON_DATA_NETWORK_ATTACH);
+        notifyAllDataServiceTypes(REASON_DATA_NETWORK_ATTACH);
 
         updateDataConnections(REASON_DATA_NETWORK_ATTACH);
     }
@@ -533,7 +533,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
          * connection state update, because data was detached and packets are
          * not going to flow anyway.
          */
-          notifyAllEnabledDataServiceTypes(REASON_DATA_NETWORK_DETACH);
+          notifyAllDataServiceTypes(REASON_DATA_NETWORK_DETACH);
     }
 
     protected void onRadioTechnologyChanged() {
@@ -541,7 +541,7 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         /*
          * notify radio technology changes.
          */
-        notifyAllEnabledDataServiceTypes(REASON_RADIO_TECHNOLOGY_CHANGED);
+        notifyAllDataServiceTypes(REASON_RADIO_TECHNOLOGY_CHANGED);
         /*
          * Reset all service states when radio technology hand over happens. Data
          * profiles not working on previous radio technologies might start
@@ -586,13 +586,13 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         mDpt.resetAllProfilesAsWorking();
         mDpt.resetAllServiceStates();
         updateDataConnections(REASON_VOICE_CALL_ENDED);
-        notifyAllEnabledDataServiceTypes(REASON_VOICE_CALL_ENDED);
+        notifyAllDataServiceTypes(REASON_VOICE_CALL_ENDED);
     }
 
     @Override
     protected void onVoiceCallStarted() {
         updateDataConnections(REASON_VOICE_CALL_STARTED);
-        notifyAllEnabledDataServiceTypes(REASON_VOICE_CALL_STARTED);
+        notifyAllDataServiceTypes(REASON_VOICE_CALL_STARTED);
     }
 
     @Override

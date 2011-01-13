@@ -32,6 +32,24 @@ public interface AppInterface {
     public static final String CAT_SESSION_END_ACTION =
                                     "android.intent.action.stk.session_end";
 
+    //This is broadcasted from BrowserActivity when Browser exists
+    public static final String BROWSER_TERMINATE_ACTION =
+                                   "android.intent.action.stk.browser_terminate_action";
+
+    //This is used if Browser termination was erroneous
+    public static final String BROWSER_TERMINATION_CAUSE =
+                                   "browser_termination_cause";
+
+    // This is broadcast from the ActivityManagerService when the screen
+    // switches to idle or busy state
+    public static final String CAT_IDLE_SCREEN_ACTION =
+                                    "android.intent.action.stk.idle_screen";
+
+    // This is broadcast from the Stk Apps to ActivityManagerService when the screen
+    // status is requested.
+    public static final String CHECK_SCREEN_IDLE_ACTION =
+                                    "android.intent.action.stk.check_screen_idle";
+
     /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.

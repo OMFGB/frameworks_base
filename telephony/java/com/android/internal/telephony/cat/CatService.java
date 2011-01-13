@@ -34,6 +34,8 @@ import android.util.Config;
 
 import java.io.ByteArrayOutputStream;
 
+import static  com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.*;
+
 /**
  * Enumeration for representing the tag value of COMPREHENSION-TLV objects. If
  * you want to get the actual value, call {@link #value() value} method.
@@ -248,6 +250,33 @@ public class CatService extends Handler implements AppInterface {
         }
     }
 
+    /**  This function validates the events in SETUP_EVENT_LIST which are currently
+     *   supported by the Android framework. In case of SETUP_EVENT_LIST has NULL events
+     *   or no events, all the events need to be reset.
+     */
+    private boolean isSupportedSetupEventCommand(CatCmdMessage cmdMsg) {
+        boolean flag = true;
+        int eventval;
+
+        for (int i = 0; i < cmdMsg.getSetEventList().eventList.length ; i++) {
+            eventval = cmdMsg.getSetEventList().eventList[i];
+            CatLog.d(this,"Event: "+eventval);
+            switch (eventval) {
+                /* Currently android is supporting only the below events in SetupEventList
+                 * Browser Termination,
+                 * Idle Screen Available and
+                 * Language Selection.  */
+                case BROWSER_TERMINATION_EVENT:
+                case IDLE_SCREEN_AVAILABLE_EVENT:
+                case LANGUAGE_SELECTION_EVENT:
+                    break;
+                default:
+                    flag = false;
+            }
+        }
+        return flag;
+    }
+
     /**
      * Handles RIL_UNSOL_STK_PROACTIVE_COMMAND unsolicited command from RIL.
      * Sends valid proactive command data to the application using intents.
@@ -255,7 +284,7 @@ public class CatService extends Handler implements AppInterface {
      */
     private void handleProactiveCommand(CommandParams cmdParams) {
         CatLog.d(this, cmdParams.getCommandType().name());
-
+        ResultCode resultCode;
         CatCmdMessage cmdMsg = new CatCmdMessage(cmdParams);
         switch (cmdParams.getCommandType()) {
             case SET_UP_MENU:
@@ -264,12 +293,14 @@ public class CatService extends Handler implements AppInterface {
                 } else {
                     mMenuCmd = cmdMsg;
                 }
-                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                resultCode = cmdParams.loadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED : ResultCode.OK;
+                sendTerminalResponse(cmdParams.cmdDet,resultCode, false, 0,null);
                 break;
             case DISPLAY_TEXT:
                 // when application is not required to respond, send an immediate response.
                 if (!cmdMsg.geTextMessage().responseNeeded) {
-                    sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                    resultCode = cmdParams.loadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED : ResultCode.OK;
+                    sendTerminalResponse(cmdParams.cmdDet,resultCode, false, 0,null);
                 }
                 break;
             case REFRESH:
@@ -278,7 +309,16 @@ public class CatService extends Handler implements AppInterface {
                 cmdParams.cmdDet.typeOfCommand = CommandType.SET_UP_IDLE_MODE_TEXT.value();
                 break;
             case SET_UP_IDLE_MODE_TEXT:
-                sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                resultCode = cmdParams.loadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED : ResultCode.OK;
+                sendTerminalResponse(cmdParams.cmdDet,resultCode, false, 0,null);
+                break;
+            case SET_UP_EVENT_LIST:
+                if (isSupportedSetupEventCommand(cmdMsg)) {
+                    sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
+                } else {
+                    sendTerminalResponse(cmdParams.cmdDet, ResultCode.BEYOND_TERMINAL_CAPABILITY,
+                            false, 0, null);
+                }
                 break;
             case PROVIDE_LOCAL_INFORMATION:
                 sendTerminalResponse(cmdParams.cmdDet, ResultCode.OK, false, 0, null);
@@ -392,25 +432,30 @@ public class CatService extends Handler implements AppInterface {
 
     private void encodeOptionalTags(CommandDetails cmdDet,
             ResultCode resultCode, Input cmdInput, ByteArrayOutputStream buf) {
-        switch (AppInterface.CommandType.fromInt(cmdDet.typeOfCommand)) {
-            case GET_INKEY:
-                // ETSI TS 102 384,27.22.4.2.8.4.2.
-                // If it is a response for GET_INKEY command and the response timeout
-                // occured, then add DURATION TLV for variable timeout case.
-                if ((resultCode.value() == ResultCode.NO_RESPONSE_FROM_USER.value()) &&
-                    (cmdInput != null) && (cmdInput.duration != null)) {
-                    getInKeyResponse(buf, cmdInput);
-                }
-                break;
-            case PROVIDE_LOCAL_INFORMATION:
-                if ((cmdDet.commandQualifier == CommandParamsFactory.LANGUAGE_SETTING) &&
-                    (resultCode.value() == ResultCode.OK.value())) {
-                    getPliResponse(buf);
-                }
-                break;
-            default:
-                CatLog.d(this, "encodeOptionalTags() Unsupported Cmd:" + cmdDet.typeOfCommand);
-                break;
+        AppInterface.CommandType cmdType = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+        if (cmdType != null) {
+            switch (cmdType) {
+                case GET_INKEY:
+                    // ETSI TS 102 384,27.22.4.2.8.4.2.
+                    // If it is a response for GET_INKEY command and the response timeout
+                    // occured, then add DURATION TLV for variable timeout case.
+                    if ((resultCode.value() == ResultCode.NO_RESPONSE_FROM_USER.value()) &&
+                        (cmdInput != null) && (cmdInput.duration != null)) {
+                        getInKeyResponse(buf, cmdInput);
+                    }
+                    break;
+                case PROVIDE_LOCAL_INFORMATION:
+                    if ((cmdDet.commandQualifier == CommandParamsFactory.LANGUAGE_SETTING) &&
+                        (resultCode.value() == ResultCode.OK.value())) {
+                        getPliResponse(buf);
+                    }
+                    break;
+                default:
+                    CatLog.d(this, "encodeOptionalTags() Unsupported Cmd:" + cmdDet.typeOfCommand);
+                    break;
+            }
+        } else {
+            CatLog.d(this, "encodeOptionalTags() Unsupported Command Type:" + cmdDet.typeOfCommand);
         }
     }
 
@@ -504,6 +549,42 @@ public class CatService extends Handler implements AppInterface {
         buf.write(sourceId); // source device id
         buf.write(destinationId); // destination device id
 
+        /*
+         * Check for type of event download to be sent to UICC - Browser
+         * termination,Idle screen available, User activity, Language selection
+         * etc as mentioned under ETSI TS 102 223 section 7.5
+         */
+
+        /*
+         * Currently the below events are supported:
+         * Browser Termination,
+         * Idle Screen Available and
+         * Language Selection Event.
+         * Other event download commands should be encoded similar way
+         */
+        /* TODO: eventDownload should be extended for other Envelope Commands */
+        switch (event) {
+            case BROWSER_TERMINATION_EVENT:
+                CatLog.d(sInstance, " Sending Browser termination event download to ICC");
+                tag = 0x80 | ComprehensionTlvTag.BROWSER_TERMINATION_CAUSE.value();
+                buf.write(tag);
+                // Browser Termination length should be 1 byte
+                buf.write(0x01);
+                break;
+            case IDLE_SCREEN_AVAILABLE_EVENT:
+                CatLog.d(sInstance, " Sending Idle Screen Available event download to ICC");
+                break;
+            case LANGUAGE_SELECTION_EVENT:
+                CatLog.d(sInstance, " Sending Language Selection event download to ICC");
+                tag = 0x80 | ComprehensionTlvTag.LANGUAGE.value();
+                buf.write(tag);
+                // Language length should be 2 byte
+                buf.write(0x02);
+                break;
+            default:
+                break;
+        }
+
         // additional information
         if (additionalInfo != null) {
             for (byte b : additionalInfo) {
@@ -518,6 +599,10 @@ public class CatService extends Handler implements AppInterface {
         rawData[1] = (byte) len;
 
         String hexString = IccUtils.bytesToHexString(rawData);
+
+        if (Config.LOGD) {
+            CatLog.d(this, "ENVELOPE COMMAND: " + hexString);
+        }
 
         mCmdIf.sendEnvelope(hexString, null);
     }
@@ -623,10 +708,16 @@ public class CatService extends Handler implements AppInterface {
     }
 
     private boolean validateResponse(CatResponseMessage resMsg) {
-        if (mCurrntCmd != null) {
-            return (resMsg.cmdDet.compareTo(mCurrntCmd.mCmdDet));
+        boolean validResponse = false;
+        if ((resMsg.cmdDet.typeOfCommand == CommandType.SET_UP_EVENT_LIST.value())
+                || (resMsg.cmdDet.typeOfCommand == CommandType.SET_UP_MENU.value())) {
+            CatLog.d(this, "CmdType: " + resMsg.cmdDet.typeOfCommand);
+            validResponse = true;
+        } else if (mCurrntCmd != null) {
+            validResponse = resMsg.cmdDet.compareTo(mCurrntCmd.mCmdDet);
+            CatLog.d(this, "isResponse for last valid cmd: " + validResponse);
         }
-        return false;
+        return validResponse;
     }
 
     private boolean removeMenu(Menu menu) {
@@ -650,8 +741,14 @@ public class CatService extends Handler implements AppInterface {
         // by the framework inside the history stack. That activity will be
         // available for relaunch using the latest application dialog
         // (long press on the home button). Relaunching that activity can send
-        // the same command's result again to the CatService and can cause it to
-        // get out of sync with the SIM.
+        // the same command's result again to the StkService and can cause it to
+        // get out of sync with the SIM. This can happen in case of
+        // non-interactive type Setup Event List and SETUP_MENU proactive commands.
+        // Stk framework would have already sent Terminal Response to Setup Event
+        // List and SETUP_MENU proactive commands. After sometime Stk app will send
+        // Envelope Command/Event Download. In which case, the response details doesn't
+        // match with last valid command (which are not related).
+        // However, we should allow Stk framework to send the message to ICC.
         if (!validateResponse(resMsg)) {
             return;
         }
@@ -674,39 +771,55 @@ public class CatService extends Handler implements AppInterface {
         case PRFRMD_NAA_NOT_ACTIVE:
         case PRFRMD_TONE_NOT_PLAYED:
         case LAUNCH_BROWSER_ERROR:
-            switch (AppInterface.CommandType.fromInt(cmdDet.typeOfCommand)) {
-            case SET_UP_MENU:
-                helpRequired = resMsg.resCode == ResultCode.HELP_INFO_REQUIRED;
-                sendMenuSelection(resMsg.usersMenuSelection, helpRequired);
-                return;
-            case SELECT_ITEM:
-                resp = new SelectItemResponseData(resMsg.usersMenuSelection);
-                break;
-            case GET_INPUT:
-            case GET_INKEY:
-                Input input = mCurrntCmd.geInput();
-                if (!input.yesNo) {
-                    // when help is requested there is no need to send the text
-                    // string object.
-                    if (!helpRequired) {
-                        resp = new GetInkeyInputResponseData(resMsg.usersInput,
-                                input.ucs2, input.packed);
+            AppInterface.CommandType cmdType = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+            if (cmdType != null) {
+                switch (cmdType) {
+                    case SET_UP_MENU:
+                        helpRequired = resMsg.resCode == ResultCode.HELP_INFO_REQUIRED;
+                        sendMenuSelection(resMsg.usersMenuSelection, helpRequired);
+                        return;
+                    case SELECT_ITEM:
+                        resp = new SelectItemResponseData(resMsg.usersMenuSelection);
+                        break;
+                    case GET_INPUT:
+                    case GET_INKEY:
+                        Input input = mCurrntCmd.geInput();
+                        if (!input.yesNo) {
+                            // when help is requested there is no need to send the text
+                            // string object.
+                            if (!helpRequired) {
+                                resp = new GetInkeyInputResponseData(resMsg.usersInput,
+                                        input.ucs2, input.packed);
+                            }
+                        } else {
+                            resp = new GetInkeyInputResponseData(
+                                    resMsg.usersYesNoSelection);
+                        }
+                        break;
+                    case DISPLAY_TEXT:
+                    case LAUNCH_BROWSER:
+                        break;
+                    case SET_UP_CALL:
+                        mCmdIf.handleCallSetupRequestFromSim(resMsg.usersConfirm, null);
+                        // No need to send terminal response for SET UP CALL. The user's
+                        // confirmation result is send back using a dedicated ril message
+                        // invoked by the CommandInterface call above.
+                        mCurrntCmd = null;
+                        return;
+                    case SET_UP_EVENT_LIST:
+                        if (IDLE_SCREEN_AVAILABLE_EVENT == resMsg.eventValue) {
+                            eventDownload(resMsg.eventValue, DEV_ID_DISPLAY, DEV_ID_UICC,
+                                    resMsg.addedInfo, false);
+                        } else {
+                            eventDownload(resMsg.eventValue, DEV_ID_TERMINAL, DEV_ID_UICC,
+                                    resMsg.addedInfo, false);
+                        }
+                        // No need to send the terminal response after event download.
+                        mCurrntCmd = null;
+                        return;
                     }
-                } else {
-                    resp = new GetInkeyInputResponseData(
-                            resMsg.usersYesNoSelection);
-                }
-                break;
-            case DISPLAY_TEXT:
-            case LAUNCH_BROWSER:
-                break;
-            case SET_UP_CALL:
-                mCmdIf.handleCallSetupRequestFromSim(resMsg.usersConfirm, null);
-                // No need to send terminal response for SET UP CALL. The user's
-                // confirmation result is send back using a dedicated ril message
-                // invoked by the CommandInterface call above.
-                mCurrntCmd = null;
-                return;
+            } else {
+                CatLog.d(this, "Unsupported Command Type:" + cmdDet.typeOfCommand);
             }
             break;
         case NO_RESPONSE_FROM_USER:

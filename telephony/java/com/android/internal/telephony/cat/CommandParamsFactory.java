@@ -25,6 +25,7 @@ import com.android.internal.telephony.IccFileHandler;
 
 import java.util.Iterator;
 import java.util.List;
+import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.*;
 
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
@@ -37,6 +38,7 @@ class CommandParamsFactory extends Handler {
     private CommandParams mCmdParams = null;
     private int mIconLoadState = LOAD_NO_ICON;
     private RilMessageDecoder mCaller = null;
+    private boolean mloadIcon = false;
 
     // constants
     static final int MSG_ID_LOAD_ICON_DONE = 1;
@@ -165,6 +167,9 @@ class CommandParamsFactory extends Handler {
              case PLAY_TONE:
                 cmdPending = processPlayTone(cmdDet, ctlvs);
                 break;
+             case SET_UP_EVENT_LIST:
+                    cmdPending = processSetUpEventList(cmdDet, ctlvs);
+                    break;
              case PROVIDE_LOCAL_INFORMATION:
                 cmdPending = processProvideLocalInfo(cmdDet, ctlvs);
                 break;
@@ -198,6 +203,14 @@ class CommandParamsFactory extends Handler {
         int iconIndex = 0;
 
         if (data == null) {
+            if (mloadIcon) {
+                CatLog.d(this, "Optional Icon data is NULL");
+                mCmdParams.loadIconFailed = true;
+                mloadIcon = false;
+                /** In case of icon load fail consider the
+                 ** received proactive command as valid (sending RESULT OK) */
+                return ResultCode.OK;
+            }
             return ResultCode.PRFRMD_ICON_NOT_DISPLAYED;
         }
         switch(mIconLoadState) {
@@ -209,6 +222,10 @@ class CommandParamsFactory extends Handler {
             // set each item icon.
             for (Bitmap icon : icons) {
                 mCmdParams.setIcon(icon);
+                if (icon == null && mloadIcon) {
+                    CatLog.d(this, "Optional Icon data is NULL while loading multi icons");
+                    mCmdParams.loadIconFailed = true;
+                }
             }
             break;
         }
@@ -311,6 +328,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -354,6 +372,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -410,6 +429,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new GetInputParams(cmdDet, input);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -477,6 +497,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new GetInputParams(cmdDet, input);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -590,6 +611,7 @@ class CommandParamsFactory extends Handler {
         case LOAD_NO_ICON:
             return false;
         case LOAD_SINGLE_ICON:
+            mloadIcon = true;
             mIconLoader.loadIcon(titleIconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             break;
@@ -602,6 +624,7 @@ class CommandParamsFactory extends Handler {
                 System.arraycopy(itemsIconId.recordNumbers, 0, recordNumbers,
                         1, itemsIconId.recordNumbers.length);
             }
+            mloadIcon = true;
             mIconLoader.loadIcons(recordNumbers, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             break;
@@ -644,6 +667,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -658,25 +682,48 @@ class CommandParamsFactory extends Handler {
      * @param cmdDet Command Details object retrieved.
      * @param ctlvs List of ComprehensionTlv objects following Command Details
      *        object and Device Identities object within the proactive command
-     * @return true if the command is processing is pending and additional
-     *         asynchronous processing is required.
+     * @return false. This function always returns false meaning that the command
+     *         processing is  not pending and additional asynchronous processing
+     *         is not required.
      */
     private boolean processSetUpEventList(CommandDetails cmdDet,
             List<ComprehensionTlv> ctlvs) {
 
         CatLog.d(this, "process SetUpEventList");
-        //
-        // ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.EVENT_LIST,
-        // ctlvs);
-        // if (ctlv != null) {
-        // try {
-        // byte[] rawValue = ctlv.getRawValue();
-        // int valueIndex = ctlv.getValueIndex();
-        // int valueLen = ctlv.getLength();
-        //
-        // } catch (IndexOutOfBoundsException e) {}
-        // }
-        return true;
+        ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.EVENT_LIST, ctlvs);
+        if (ctlv != null) {
+            try {
+                byte[] rawValue = ctlv.getRawValue();
+                int valueIndex = ctlv.getValueIndex();
+                int valueLen = ctlv.getLength();
+                int[] eventList = new int[valueLen];
+                int eventValue = -1;
+                int i = 0;
+                while (valueLen > 0) {
+                    eventValue = rawValue[valueIndex] & 0xff;
+                    valueIndex++;
+                    valueLen--;
+
+                    switch (eventValue) {
+                        case USER_ACTIVITY_EVENT:
+                        case IDLE_SCREEN_AVAILABLE_EVENT:
+                        case LANGUAGE_SELECTION_EVENT:
+                        case BROWSER_TERMINATION_EVENT:
+                        case BROWSING_STATUS_EVENT:
+                            eventList[i] = eventValue;
+                            i++;
+                            break;
+                        default:
+                            break;
+                    }
+
+                }
+                mCmdParams = new SetEventListParams(cmdDet, eventList);
+            } catch (IndexOutOfBoundsException e) {
+                CatLog.d(this, " IndexOutofBoundException in processSetUpEventList");
+            }
+        }
+        return false;
     }
 
     /**

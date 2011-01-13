@@ -1395,6 +1395,13 @@ public class Resources {
                     }
                 }
             }
+            mColorStateListCache.clear();
+            flushLayoutCache();
+        }
+        synchronized (mSync) {
+            if (mPluralRule != null) {
+                mPluralRule = PluralRules.ruleForLocale(config.locale);
+            }
         }
     }
 

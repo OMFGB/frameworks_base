@@ -42,7 +42,6 @@ public abstract class UiccApplicationRecords extends Handler{
     protected IccFileHandler mFh;
     protected UiccCard mParentCard;
 
-    public static final int EVENT_MWI = 0;
     public static final int EVENT_CFI = 1;
     public static final int EVENT_SPN = 2;
     public static final int EVENT_EONS = 3;
@@ -152,7 +151,6 @@ public abstract class UiccApplicationRecords extends Handler{
     protected String newVoiceMailNum = null;
     protected String newVoiceMailTag = null;
     protected boolean isVoiceMailFixed = false;
-    protected int countVoiceMessages = 0;
 
     protected int mncLength = UNINITIALIZED;
     protected int mailboxIndex = 0; // 0 is no mailbox dailing number associated
@@ -298,21 +296,7 @@ public abstract class UiccApplicationRecords extends Handler{
      *                     -1 to indicate that an unknown number of
      *                      messages are waiting
      */
-    public abstract void setVoiceMessageWaiting(int line, int countWaiting);
-
-    /** @return  true if there are messages waiting, false otherwise. */
-    public boolean getVoiceMessageWaiting() {
-        return countVoiceMessages != 0;
-    }
-
-    /**
-     * Returns number of voice messages waiting, if available
-     * If not available (eg, on an older CPHS SIM) -1 is returned if
-     * getVoiceMessageWaiting() is true
-     */
-    public int getVoiceMessageCount() {
-        return countVoiceMessages;
-    }
+    public abstract void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete );
 
     /**
      * Called by STK Service when REFRESH is received.

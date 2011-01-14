@@ -129,6 +129,8 @@ public class KeyguardUpdateMonitor {
                 }
             } else if (IccCard.INTENT_VALUE_LOCKED_NETWORK.equals(stateExtra)) {
                 this.simState = IccCard.State.NETWORK_LOCKED;
+            } else if (IccCard.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(stateExtra)) {
+                this.simState = IccCard.State.CARD_IO_ERROR;
             } else {
                 this.simState = IccCard.State.UNKNOWN;
             }

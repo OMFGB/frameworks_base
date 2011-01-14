@@ -1556,8 +1556,8 @@
     <!-- Shown in the lock screen when the SIM has become PUK locked and the user must call customer care to unlock it. -->
     <string name="lockscreen_sim_puk_locked_instructions">Please see the User Guide or contact Customer Care.</string>
 
-    <!-- Shown in the lock screen to tell the user that their SIM/RUIM is locked and they must unlock it. -->
-    <string name="lockscreen_pin_locked_message">SIM/RUIM card is locked.</string>
+    <!-- Shown in the lock screen to tell the user that their SIM is locked and they must unlock it. -->
+    <string name="lockscreen_sim_locked_message">SIM card is locked.</string>
 
     <!-- For the unlock screen, When the user enters a sim unlock code, it takes a little while to check
          whether it is valid, and to unlock the sim if it is valid.  we display a
@@ -1604,6 +1604,9 @@
     <string name="lockscreen_ruim_puk_locked_message">RUIM card is PUK-locked.</string>
     <!-- Shown in the lock screen when the RUIM has become PUK locked and the user must call customer care to unlock it. -->
     <string name="lockscreen_ruim_puk_locked_instructions">Please see the User Guide or contact Customer Care.</string>
+
+    <!-- Shown in the lock screen to tell the user that their RUIM is locked and they must unlock it. -->
+    <string name="lockscreen_ruim_locked_message">RUIM card is locked.</string>
 
     <!-- For the unlock screen, Information message shown in dialog when user has too many failed attempts -->
     <string name="lockscreen_too_many_failed_attempts_dialog_message">

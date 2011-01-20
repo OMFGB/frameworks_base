@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,11 +125,31 @@ public class KeyguardUpdateMonitor {
                     this.simState = IccCard.State.PIN_REQUIRED;
                 } else if (IccCard.INTENT_VALUE_LOCKED_ON_PUK.equals(lockedReason)) {
                     this.simState = IccCard.State.PUK_REQUIRED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_NETWORK.equals(lockedReason)) {
+                    this.simState = IccCard.State.NETWORK_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_NETWORK_SUBSET.equals(lockedReason)) {
+                    this.simState = IccCard.State.SIM_NETWORK_SUBSET_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_CORPORATE.equals(lockedReason)) {
+                    this.simState = IccCard.State.SIM_CORPORATE_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_SERVICE_PROVIDER.equals(lockedReason)) {
+                    this.simState = IccCard.State.SIM_SERVICE_PROVIDER_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_SIM.equals(lockedReason)) {
+                    this.simState = IccCard.State.SIM_SIM_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_NETWORK1.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_NETWORK1_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_NETWORK2.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_NETWORK2_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_HRPD.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_HRPD_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_CORPORATE.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_CORPORATE_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_SERVICE_PROVIDER.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_SERVICE_PROVIDER_LOCKED;
+                } else if(IccCard.INTENT_VALUE_LOCKED_RUIM_RUIM.equals(lockedReason)) {
+                    this.simState = IccCard.State.RUIM_RUIM_LOCKED;
                 } else {
                     this.simState = IccCard.State.UNKNOWN;
                 }
-            } else if (IccCard.INTENT_VALUE_LOCKED_NETWORK.equals(stateExtra)) {
-                this.simState = IccCard.State.NETWORK_LOCKED;
             } else if (IccCard.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(stateExtra)) {
                 this.simState = IccCard.State.CARD_IO_ERROR;
             } else {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,7 +188,57 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         /**
          * The sim card is faulty.
          */
-        SimIOError(true);
+        SimIOError(true),
+
+        /**
+         * The ICC card is 'SIM network subset locked'.
+         */
+        NetworkSubsetLocked(true),
+
+        /**
+         * The ICC card is 'SIM corporate locked'.
+         */
+        CorporateLocked(true),
+
+        /**
+         * The ICC card is 'SIM service provider locked'.
+         */
+        ServiceProviderLocked(true),
+
+        /**
+         * The ICC card is 'SIM SIM locked'.
+         */
+        SimSimLocked(true),
+
+        /**
+         * The ICC card is 'RUIM network1 locked'.
+         */
+        RuimNetwork1Locked(true),
+
+        /**
+         * The ICC card is 'RUIM network2 locked'.
+         */
+        RuimNetwork2Locked(true),
+
+        /**
+         * The ICC card is 'RUIM hrpd locked'.
+         */
+        RuimHrpdLocked(true),
+
+        /**
+         * The ICC card is 'RUIM corporate locked'.
+         */
+        RuimCorporateLocked(true),
+
+        /**
+         * The ICC card is 'RUIM service provider locked'.
+         */
+        RuimServiceProviderLocked(true),
+
+        /**
+         * The ICC card is 'RUIM RUIM locked'.
+         */
+        RuimRuimLocked(true);
 
         private final boolean mShowStatusLines;
 
@@ -827,7 +878,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
             case ABSENT:
                 return Status.SimMissing;
             case NETWORK_LOCKED:
-                return Status.SimMissingLocked;
+                return Status.NetworkLocked;
             case NOT_READY:
                 return Status.SimMissing;
             case PIN_REQUIRED:
@@ -840,6 +891,26 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 return Status.SimMissing;
             case CARD_IO_ERROR:
                 return Status.SimIOError;
+            case SIM_NETWORK_SUBSET_LOCKED:
+                return Status.NetworkSubsetLocked;
+            case SIM_CORPORATE_LOCKED:
+                return Status.CorporateLocked;
+            case SIM_SERVICE_PROVIDER_LOCKED:
+                return Status.ServiceProviderLocked;
+            case SIM_SIM_LOCKED:
+                return Status.SimSimLocked;
+            case RUIM_NETWORK1_LOCKED:
+                return Status.RuimNetwork1Locked;
+            case RUIM_NETWORK2_LOCKED:
+                return Status.RuimNetwork2Locked;
+            case RUIM_HRPD_LOCKED:
+                return Status.RuimHrpdLocked;
+            case RUIM_CORPORATE_LOCKED:
+                return Status.RuimCorporateLocked;
+            case RUIM_SERVICE_PROVIDER_LOCKED:
+                return Status.RuimServiceProviderLocked;
+            case RUIM_RUIM_LOCKED:
+                return Status.RuimRuimLocked;
         }
         return Status.SimMissing;
     }
@@ -946,7 +1017,66 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 mSelector.setVisibility(View.VISIBLE);
                 mEmergencyCallButton.setVisibility(View.VISIBLE);
                 break;
+            case NetworkSubsetLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_sim_network_subset_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case CorporateLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_sim_corporate_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case ServiceProviderLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_sim_service_provider_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case SimSimLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_sim_sim_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimNetwork1Locked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_network1_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimNetwork2Locked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_network2_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimHrpdLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_hrpd_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimCorporateLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_corporate_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimServiceProviderLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_service_provider_locked_message);
+                updateLayoutForPersoText();
+                break;
+            case RuimRuimLocked:
+                //  text
+                mCarrier.setText(R.string.lockscreen_ruim_ruim_locked_message);
+                updateLayoutForPersoText();
+                break;
         }
+    }
+
+    private void updateLayoutForPersoText() {
+        mScreenLocked.setText(R.string.lockscreen_instructions_when_pattern_disabled);
+
+        // layout
+        mScreenLocked.setVisibility(View.VISIBLE);
+        mSelector.setVisibility(View.VISIBLE);
+        mEmergencyCallButton.setVisibility(View.GONE);
     }
 
     static CharSequence getCarrierString(CharSequence telephonyPlmn, CharSequence telephonySpn) {

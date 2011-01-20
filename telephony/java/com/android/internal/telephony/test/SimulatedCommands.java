@@ -1504,4 +1504,12 @@ public final class SimulatedCommands extends BaseCommands
     public void sendImsGsmSms(String smscPDU, String pdu, Message response){
         unimplemented(response);
     }
+
+    public void getDataCallProfile(int appType, Message result){
+        unimplemented(result);
+    }
+
+    public void setRilPowerOff(Message result) {
+        return;
+    }
 }

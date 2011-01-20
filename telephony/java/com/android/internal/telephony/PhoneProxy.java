@@ -27,6 +27,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
+import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CellLocation;
@@ -62,8 +63,16 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RADIO_STATE_CHANGED = 2;
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_SET_RADIO_POWER = 4;
+    private static final int EVENT_SET_RADIO_POWER_OFF = 5;
+    // maximum time we wait for the shutdown broadcast before going on.
+    private static final int MAX_RADIO_POWER_REQUEST_TIME = 5*1000;
 
     private static final String LOG_TAG = "PHONE";
+
+    // Lock for making sure the RIL power off request
+    // is successfully received by CM
+    private final Object mRadioPowerRequestLock = new Object();
+    private boolean mRadioPowerRequestDone = false;
 
     //***** Class Methods
     public PhoneProxy(Phone phone) {
@@ -142,6 +151,13 @@ public class PhoneProxy extends Handler implements Phone {
                     updatePhoneObject(newVoiceTech); 
                 } else {
                     loge("Voice Radio Technology query failed!");
+                }
+                break;
+
+            case EVENT_SET_RADIO_POWER_OFF:
+                synchronized (mRadioPowerRequestLock) {
+                    mRadioPowerRequestDone = true;
+                    mRadioPowerRequestLock.notify();
                 }
                 break;
 
@@ -584,6 +600,27 @@ public class PhoneProxy extends Handler implements Phone {
             // we want it off, but might need data to be disconnected.
             mDct.setDataConnectionAsDesired(mDesiredPowerState, powerOffMsg);
         }
+     }
+
+     public void setRilPowerOff() {
+         mRadioPowerRequestDone = false;
+         mCi.setRilPowerOff(obtainMessage(EVENT_SET_RADIO_POWER_OFF));
+         logd("Waiting for response to RADIO_POWER(2) request");
+         final long endTime = SystemClock.elapsedRealtime() + MAX_RADIO_POWER_REQUEST_TIME;
+         synchronized (mRadioPowerRequestLock) {
+             while (!mRadioPowerRequestDone) {
+                 long delay = endTime - SystemClock.elapsedRealtime();
+                 if (delay <= 0) {
+                     logd("RADIO_POWER(2) request timed out");
+                     break;
+                 }
+                 try {
+                     mRadioPowerRequestLock.wait(delay);
+                 } catch (InterruptedException e) {
+                 }
+             }
+         }
+
      }
 
     public boolean getMessageWaitingIndicator() {

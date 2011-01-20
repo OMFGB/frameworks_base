@@ -902,6 +902,11 @@ public interface Phone {
     void setRadioPower(boolean power);
 
     /**
+     * Sets the ril power off
+     */
+    void setRilPowerOff();
+
+    /**
      * Get voice message waiting indicator status. No change notification
      * available on this interface. Use PhoneStateNotifier or similar instead.
      *

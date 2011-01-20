@@ -165,6 +165,11 @@ interface ITelephony {
     boolean setRadio(boolean turnOn);
 
     /**
+     * Sets the ril power off
+     */
+    void setRilPowerOff();
+
+    /**
      * Request to update location information in service state
      */
     void updateServiceLocation();

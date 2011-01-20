@@ -1153,4 +1153,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setRadioPower(boolean power) {
         Log.e(LOG_TAG, "setRadioPower() shouldn't be called here!");
     }    
+
+    public void setRilPowerOff() {
+        return;
+    }
 }

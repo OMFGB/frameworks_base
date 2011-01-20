@@ -394,4 +394,10 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void invokeDepersonalization(String pin, int type, Message response) {
     }
+
+    public void getDataCallProfile(int appType, Message result) {
+    }
+
+    public void setRilPowerOff(Message result) {
+    }
 }

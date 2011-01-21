@@ -1348,7 +1348,7 @@ public class StatusBarPolicy {
                 iconId = R.drawable.stat_sys_no_sim;
                 mService.setIcon("data_connection", iconId, 0);
             }
-        } else {
+        } else if ((dataRadio() == CDMA) || (dataRadio() == EVDO)) {
             // CDMA case, mDataActivity can be also DATA_ACTIVITY_DORMANT
             if (hasService() && mDataState == TelephonyManager.DATA_CONNECTED) {
                 switch (mDataActivity) {
@@ -1370,6 +1370,8 @@ public class StatusBarPolicy {
             } else {
                 visible = false;
             }
+        } else {
+            visible = false;
         }
 
         long ident = Binder.clearCallingIdentity();

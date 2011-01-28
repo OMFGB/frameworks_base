@@ -349,16 +349,15 @@ public abstract class DataConnectionTracker extends Handler {
             // but no data will flow
             ret = DataState.DISCONNECTED;
         } else {
-            /*
-             * TODO: we do not keep global data connection state in DCT now.
-             * Instead, state is associated with <apn type, ipv>. The following
-             * code will be simplified once this is done.
-             */
             for (DataServiceType ds : DataServiceType.values()) {
-                if (mDpt.getState(ds, IPVersion.IPV4) == State.CONNECTED
-                        || mDpt.getState(ds, IPVersion.IPV6) == State.CONNECTED) {
+                if (getDataConnectionState(ds, IPVersion.IPV4) == DataState.CONNECTED
+                        || getDataConnectionState(ds, IPVersion.IPV6) == DataState.CONNECTED) {
                     ret = DataState.CONNECTED;
                     break;
+                } else if (getDataConnectionState(ds, IPVersion.IPV4) == DataState.SUSPENDED
+                        || getDataConnectionState(ds, IPVersion.IPV6) == DataState.SUSPENDED) {
+                    ret = DataState.SUSPENDED;
+                    //dont break
                 }
             }
         }
@@ -371,6 +370,10 @@ public abstract class DataConnectionTracker extends Handler {
         if (ds == null || ipv == null)
             return DataState.DISCONNECTED;
 
+        return getDataConnectionState(ds, ipv);
+    }
+
+    private DataState getDataConnectionState(DataServiceType ds, IPVersion ipv) {
         DataState ret = DataState.DISCONNECTED;
 
         State dsState = mDpt.getState(ds, ipv);

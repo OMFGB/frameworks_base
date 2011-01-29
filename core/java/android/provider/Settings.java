@@ -1942,7 +1942,14 @@ public final class Settings {
 	 */
 	public static final String STATUS_BAR_CLOCK = "status_bar_clock";
 
-	/*
+        /**
+         * Whether to always show battery status
+         * @hide
+         */
+        public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
+
+       
+        /**
          * Use the Notification Power Widget? (Who wouldn't!)
          *
          * @hide

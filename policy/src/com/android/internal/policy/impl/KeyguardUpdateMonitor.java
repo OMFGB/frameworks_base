@@ -346,17 +346,11 @@ public class KeyguardUpdateMonitor {
             return true;
         }
 
-        // change in battery level while plugged in
-        if (isPluggedIn && mBatteryLevel != batteryLevel) {
+        // change in battery level
+        if (mBatteryLevel != batteryLevel) {
             return true;
         }
 
-        if (!isPluggedIn) {
-            // not plugged in and below threshold
-            if (isBatteryLow(batteryLevel) && batteryLevel != mBatteryLevel) {
-                return true;
-            }
-        }
         return false;
     }
 

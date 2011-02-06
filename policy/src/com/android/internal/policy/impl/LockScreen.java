@@ -418,21 +418,19 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         if (mPluggedIn) {
             mChargingIcon =
                 getContext().getResources().getDrawable(R.drawable.ic_lock_idle_charging);
-        } else {
-            mChargingIcon =
-                getContext().getResources().getDrawable(R.drawable.ic_lock_idle_discharging);
-        }
-
-        if (mPluggedIn) {
-            if (mUpdateMonitor.isDeviceCharged()) {
+            if (mBatteryLevel >= 100) {
                 mCharging = getContext().getString(R.string.lockscreen_charged);
             } else {
                 mCharging = getContext().getString(R.string.lockscreen_plugged_in, mBatteryLevel);
             }
         } else {
             if (mBatteryLevel <= 20) {
+                mChargingIcon =
+                    getContext().getResources().getDrawable(R.drawable.ic_lock_idle_low_battery);
                 mCharging = getContext().getString(R.string.lockscreen_low_battery, mBatteryLevel);
             } else {
+                mChargingIcon =
+                    getContext().getResources().getDrawable(R.drawable.ic_lock_idle_discharging);
                 mCharging = getContext().getString(R.string.lockscreen_discharging, mBatteryLevel);
             }
         }

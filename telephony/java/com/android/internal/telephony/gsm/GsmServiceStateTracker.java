@@ -462,19 +462,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             Log.e(LOG_TAG, "mSIMRecords null while updateSpnDisplay was called.");
             return;
         }
-
-        try {
-            int rule = curSpnRule;
-            String pnn = null;
-
-            String spn = null;
+            int rule = mSIMRecords.getDisplayRule(ss.getOperatorNumeric());
+            String spn = phone.mSIMRecords.getServiceProviderName();
             String plmn = ss.getOperatorAlphaLong();
-
-            // SPN name should be displayed only when the UE is registered to a
-            // Network.
-            if (mSIMRecords != null && ss.getState() == ServiceState.STATE_IN_SERVICE) {
-                spn = mSIMRecords.getServiceProviderName();
-            }
 
             // For emergency calls only, pass the EmergencyCallsOnly string via
             // EXTRA_PLMN
@@ -505,10 +495,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             curSpnRule = rule;
             curSpn = spn;
             curPlmn = plmn;
-
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "updateSpnDisplay: Exception " + e);
-        }
     }
 
     /**
@@ -826,9 +812,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
                 ss.getRoaming() ? "true" : "false");
 
-            Log.i(LOG_TAG,"EONS: ServiceState changed,calling checkEonsAndUpdateSpnDisplay()");
-            checkEonsAndUpdateSpnDisplay();
-
             phone.notifyServiceStateChanged(ss);
         }
 
@@ -856,9 +839,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 updateSpnDisplay();
                 break;
             case SIMRecords.EVENT_EONS:
-                // TODO: Fix this
-                boolean needsSpnUpdate = true; // mSIMRecords
-                        //.fetchEonsName(ss.getOperatorNumeric(), cellLoc);
+                int lac = -1;
+                if (cellLoc != null) lac = cellLoc.getLac();
+                boolean needsSpnUpdate = phone.mSIMRecords.updateEons(ss.getOperatorNumeric(), lac);
                 if (needsSpnUpdate) {
                     updateSpnDisplay();
                 }
@@ -948,7 +931,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     /**
-
      * Set restricted state based on the OnRestrictedStateChanged notification
      * If any voice or packet restricted state changes, trigger a UI
      * notification and notify registrants when sim is ready.
@@ -1425,22 +1407,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         } else {
             // update restricted state notification
             notificationManager.notify(notificationId, mNotification);
-        }
-    }
-
-    void checkEonsAndUpdateSpnDisplay() {
-
-        //TODO: Simplify EONS!!.
-
-        if (mSIMRecords == null) {
-            updateSpnDisplay();
-            return;
-        }
-
-        // TODO: Fix this
-        boolean needsSpnDisplayUpdate = true; //mSIMRecords.checkAndFetchEonsName(ss.getOperatorNumeric(), cellLoc);
-        if (needsSpnDisplayUpdate == true) {
-            updateSpnDisplay();
         }
     }
 

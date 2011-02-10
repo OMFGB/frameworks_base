@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -639,6 +640,14 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             return;
         }
 
+        logv("onDataCallListChanged:");
+        logv("---dc state list---");
+        for (DataCallState d : dcStates) {
+            if (d != null && d.active != DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE)
+            logv(d.toString());
+        }
+        dumpDataCalls();
+
         boolean needDataConnectionUpdate = false;
         String dataConnectionUpdateReason = null;
         boolean isDataDormant = true; // will be set to false, if atleast one
@@ -1069,6 +1078,8 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
         }
 
         logv("onUpdateDataConnections: reason=" + reason);
+        dumpDataCalls();
+        dumpDataServiceTypes();
 
         /*
          * Phase 1:
@@ -1322,6 +1333,42 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
                 .append("/"+mDsst.mRuimRecords.getRUIMOperatorNumeric());
         sb.append("]");
         return sb.toString();
+    }
+
+    void dumpDataCalls() {
+        logv("---dc list---");
+        for (DataConnection dc: mDataConnectionList) {
+            if (dc.isInactive() == false) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("cid = " + dc.cid);
+                sb.append(", state = "+dc.getStateAsString());
+                sb.append(", ipv = "+dc.getIpVersion());
+                sb.append(", ipaddress = "+dc.getIpAddress());
+                sb.append(", gw="+dc.getGatewayAddress());
+                sb.append(", dns="+ Arrays.toString(dc.getDnsServers()));
+                logv(sb.toString());
+            }
+        }
+    }
+
+    void dumpDataServiceTypes() {
+        logv("---ds list---");
+        for (DataServiceType ds: DataServiceType.values()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("ds= " + ds);
+            sb.append(", enabled = "+mDpt.isServiceTypeEnabled(ds));
+            sb.append(", active = v4:")
+            .append(mDpt.getState(ds, IPVersion.IPV4));
+            if (mDpt.isServiceTypeActive(ds, IPVersion.IPV4)) {
+                sb.append("("+mDpt.getActiveDataConnection(ds, IPVersion.IPV4).cid+")");
+            }
+            sb.append(" v6:")
+            .append(mDpt.getState(ds, IPVersion.IPV6));
+            if (mDpt.isServiceTypeActive(ds, IPVersion.IPV6)) {
+                sb.append("("+mDpt.getActiveDataConnection(ds, IPVersion.IPV6).cid+")");
+            }
+            logv(sb.toString());
+        }
     }
 
     private boolean tryDisconnectDataCall(DataConnection dc, String reason) {

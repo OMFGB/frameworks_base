@@ -910,6 +910,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     boolean cffEnabled = (msg.arg2 == 1);
                     if (phone.mSIMRecords != null) {
                         phone.mSIMRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                        phone.setCallForwardingPreference(cffEnabled);
                     } else {
                         Log.w(LOG_TAG, "setVoiceCallForwardingFlag aborted. sim records is null.");
                     }
@@ -1236,6 +1237,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
             if (phone.mSIMRecords != null) {
+                phone.setCallForwardingPreference(cffEnabled);
                 phone.mSIMRecords.setVoiceCallForwardingFlag(1, cffEnabled);
             } else {
                 Log.w(LOG_TAG, "setVoiceCallForwardingFlag aborted. sim records is null.");
@@ -1265,6 +1267,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
                 // Set unconditional CFF in SIM to false
                 if (phone.mSIMRecords != null) {
+                    phone.setCallForwardingPreference(false);
                     phone.mSIMRecords.setVoiceCallForwardingFlag(1, false);
                 } else {
                     Log.w(LOG_TAG, "setVoiceCallForwardingFlag aborted. sim records is null.");

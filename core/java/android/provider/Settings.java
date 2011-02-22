@@ -1793,6 +1793,26 @@ public final class Settings {
         public static final String TORCH_STATE = "torch_state";
 
         /**
+         * Whether to show the CM battery percentage implementation instead
+         * of the stock battery icon
+         * 0: don't show / show stock icon instead
+         * 1: show cm battery / dont show stock icon
+         * default: 0
+         * @hide
+         */
+        public static final String STATUS_BAR_CM_BATTERY = "status_bar_cm_battery";
+
+	/*
+	 * Whether to show the clock in the status bar
+	 * of the stock battery icon
+	 * 0: don't show the clock
+	 * 1: show the clock
+	 * default: 1
+	 * @hide
+	 */
+	public status final String STATUS_BAR_CLOCK = "status_bar_clock";
+
+	/*
          * Use the Notification Power Widget? (Who wouldn't!)
          *
          * @hide

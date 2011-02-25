@@ -96,7 +96,9 @@ public class UiccCardApplication {
 
         mIccFh = createUiccFileHandler(as.app_type);
         mUiccApplicationRecords = createUiccApplicationRecords(as.app_type, ur, mContext, mCi);
-        queryFdnAvailable();
+        if (mAppState == UiccConstants.AppState.APPSTATE_READY) {
+            queryFdnAvailable();
+        }
     }
 
     void update (UiccCardStatusResponse.CardStatus.AppStatus as, UiccRecords ur, Context c, CommandsInterface ci) {

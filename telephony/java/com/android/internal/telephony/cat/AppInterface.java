@@ -50,6 +50,10 @@ public interface AppInterface {
     public static final String CHECK_SCREEN_IDLE_ACTION =
                                     "android.intent.action.stk.check_screen_idle";
 
+    //Intent's actions are broadcasted by Telephony once IccRefresh occurs.
+    public static final String CAT_ICC_STATUS_CHANGE =
+                                    "android.intent.action.stk.icc_status_change";
+
     /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.

@@ -38,6 +38,16 @@ ifeq ($(TARGET_SIMULATOR),true)
     LOCAL_LDLIBS += -lpthread
 endif
 
+ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),latte)
+	LOCAL_CFLAGS += -DLATTE_KEYPAD
+else ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),vision)
+	LOCAL_CFLAGS += -DVISION_KEYPAD
+endif
+
+ifeq ($(BOARD_NO_RGBX_8888),true)
+	LOCAL_CFLAGS += -DNO_RGBX_8888
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 

@@ -35,6 +35,7 @@ import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.IccVmFixedException;
 import com.android.internal.telephony.IccVmNotSupportedException;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.IccRefreshResponse;
 import com.android.internal.telephony.UiccApplicationRecords;
 import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UiccRecords;
@@ -143,7 +144,6 @@ public final class SIMRecords extends UiccApplicationRecords {
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26;
     private static final int EVENT_SET_MSISDN_DONE = 30;
-    private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
     private static final int EVENT_GET_ALL_OPL_RECORDS_DONE = 34;
@@ -191,7 +191,6 @@ public final class SIMRecords extends UiccApplicationRecords {
         recordsToLoad = 0;
 
         mCi.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
-        mCi.setOnIccRefresh(this, EVENT_SIM_REFRESH, null);
 
         // Start off by setting empty state
         resetRecords();
@@ -202,7 +201,6 @@ public final class SIMRecords extends UiccApplicationRecords {
         Log.d(LOG_TAG, "Disposing SIMRecords " + this);
         //Unregister for all events
         mCi.unregisterForOffOrNotAvailable( this);
-        mCi.unSetOnIccRefresh(this);
         resetRecords();
     }
 
@@ -1015,12 +1013,12 @@ public final class SIMRecords extends UiccApplicationRecords {
                     ((Message) ar.userObj).sendToTarget();
                 }
                 break;
-            case EVENT_SIM_REFRESH:
+            case EVENT_ICC_REFRESH:
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
-		if (DBG) log("Sim REFRESH with exception: " + ar.exception);
+                if (DBG) log("Sim REFRESH with exception: " + ar.exception);
                 if (ar.exception == null) {
-                    handleSimRefresh((int[])(ar.result));
+                    handleSimRefresh(ar);
                 }
                 break;
             case EVENT_GET_CFIS_DONE:
@@ -1206,27 +1204,25 @@ public final class SIMRecords extends UiccApplicationRecords {
         }
     }
 
-    private void handleSimRefresh(int[] result) {
-        if (result == null || result.length == 0) {
-	    if (DBG) log("handleSimRefresh without input");
+    private void handleSimRefresh(AsyncResult ar) {
+        IccRefreshResponse state = (IccRefreshResponse)ar.result;
+        if (state == null) {
+            if (DBG) log("handleSimRefresh received without input");
             return;
         }
 
-        switch ((result[0])) {
-            case CommandsInterface.SIM_REFRESH_FILE_UPDATED:
- 		if (DBG) log("handleSimRefresh with SIM_REFRESH_FILE_UPDATED");
-                // result[1] contains the EFID of the updated file.
-                int efid = result[1];
-                handleFileUpdate(efid);
+        switch (state.refreshResult) {
+            case SIM_FILE_UPDATE:
+                if (DBG) log("handleSimRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(state.efId);
                 break;
-            case CommandsInterface.SIM_REFRESH_INIT:
-                log("handleSimRefresh with SIM_REFRESH_INIT, Delay SIM IO until SIM_READY");
-                // need to reload all files (that we care about after
-                // SIM_READY)
+            case SIM_INIT:
+                if (DBG) log("handleSimRefresh with SIM_INIT, Delay SIM IO until SIM_READY");
+                // need to reload all files (that we care about after SIM_READY)
                 adnCache.reset();
                 break;
-            case CommandsInterface.SIM_REFRESH_RESET:
-		if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
+            case SIM_RESET:
+                if (DBG) log("handleSimRefresh with SIM_RESET");
                 mCi.setRadioPower(false, null);
                 /* Note: no need to call setRadioPower(true).  Assuming the desired
                 * radio power state is still ON (as tracked by ServiceStateTracker),
@@ -1238,7 +1234,7 @@ public final class SIMRecords extends UiccApplicationRecords {
                 break;
             default:
                 // unknown refresh operation
-		if (DBG) log("handleSimRefresh with unknown operation");
+                if (DBG) log("handleSimRefresh with unknown operation");
                 break;
         }
     }

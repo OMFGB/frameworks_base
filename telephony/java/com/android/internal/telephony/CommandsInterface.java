@@ -172,11 +172,6 @@ public interface CommandsInterface {
     static final int USSD_MODE_NOTIFY       = 0;
     static final int USSD_MODE_REQUEST      = 1;
 
-    // SIM Refresh results, passed up from RIL.
-    static final int SIM_REFRESH_FILE_UPDATED   = 0;  // Single file updated
-    static final int SIM_REFRESH_INIT           = 1;  // SIM initialized; reload all
-    static final int SIM_REFRESH_RESET          = 2;  // SIM reset; may be locked
-
     // GSM SMS fail cause for acknowledgeLastIncomingSMS. From TS 23.040, 9.2.3.22.
     static final int GSM_SMS_FAIL_CAUSE_MEMORY_CAPACITY_EXCEEDED    = 0xD3;
     static final int GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR           = 0xFF;
@@ -377,15 +372,14 @@ public interface CommandsInterface {
     void unSetOnIccSmsFull(Handler h);
 
     /**
-     * Sets the handler for SIM Refresh notifications.
-     * Unlike the register* methods, there's only one notification handler
+     * Registers handler for SIM Refresh notifications.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void setOnIccRefresh(Handler h, int what, Object obj);
-    void unSetOnIccRefresh(Handler h);
+    void registerForIccRefresh(Handler h, int what, Object obj);
+    void unregisterForIccRefresh(Handler h);
 
     /**
      * Sets the handler for RING notifications.

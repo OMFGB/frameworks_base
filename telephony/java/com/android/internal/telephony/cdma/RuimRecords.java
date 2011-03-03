@@ -25,6 +25,7 @@ import com.android.internal.telephony.AdnRecordCache;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccConstants;
+import com.android.internal.telephony.IccRefreshResponse;
 import com.android.internal.telephony.UiccApplicationRecords;
 import com.android.internal.telephony.UiccRecords;
 import com.android.internal.telephony.UiccConstants.AppType;
@@ -64,8 +65,6 @@ public final class RuimRecords extends UiccApplicationRecords {
     private static final int EVENT_SMS_ON_RUIM = 21;
     private static final int EVENT_GET_SMS_DONE = 22;
 
-    private static final int EVENT_RUIM_REFRESH = 31;
-
 
     public RuimRecords(UiccCardApplication parent, UiccRecords ur, Context c, CommandsInterface ci) {
         super(parent, c, ci, ur);
@@ -78,7 +77,6 @@ public final class RuimRecords extends UiccApplicationRecords {
         recordsToLoad = 0;
 
         // NOTE the EVENT_SMS_ON_RUIM is not registered
-        mCi.setOnIccRefresh(this, EVENT_RUIM_REFRESH, null);
 
         // Start off by setting empty state
         resetRecords();
@@ -89,7 +87,6 @@ public final class RuimRecords extends UiccApplicationRecords {
         Log.d(LOG_TAG, "Disposing RuimRecords " + this);
         //Unregister for all events
         mCi.unregisterForOffOrNotAvailable( this);
-        mCi.unSetOnIccRefresh(this);
         resetRecords();
     }
 
@@ -242,11 +239,11 @@ public final class RuimRecords extends UiccApplicationRecords {
                 Log.d(LOG_TAG, "Event EVENT_GET_SST_DONE Received");
             break;
 
-            case EVENT_RUIM_REFRESH:
+            case EVENT_ICC_REFRESH:
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
-                    handleRuimRefresh((int[])(ar.result));
+                    handleRuimRefresh(ar);
                 }
                 break;
 
@@ -318,26 +315,34 @@ public final class RuimRecords extends UiccApplicationRecords {
         Log.d(LOG_TAG, "RuimRecords:setVoiceMessageWaiting - NOP for CDMA");
     }
 
-    private void handleRuimRefresh(int[] result) {
-        if (result == null || result.length == 0) {
-            if (DBG) log("handleRuimRefresh without input");
+    private void handleRuimRefresh(AsyncResult ar) {
+        IccRefreshResponse state = (IccRefreshResponse)ar.result;
+        if (state == null) {
+            if (DBG) log("handleRuimRefresh received without input");
             return;
         }
 
-        switch ((result[0])) {
-            case CommandsInterface.SIM_REFRESH_FILE_UPDATED:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_FILE_UPDATED");
+        switch (state.refreshResult) {
+            case SIM_FILE_UPDATE:
+                if (DBG) log("handleRuimRefresh with SIM_FILE_UPDATED");
                 adnCache.reset();
                 fetchRuimRecords();
                 break;
-            case CommandsInterface.SIM_REFRESH_INIT:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_INIT");
+            case SIM_INIT:
+                if (DBG) log("handleRuimRefresh with SIM_INIT");
                 // need to reload all files (that we care about)
                 fetchRuimRecords();
                 break;
-            case CommandsInterface.SIM_REFRESH_RESET:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_RESET");
-                onIccRefreshReset();
+            case SIM_RESET:
+                if (DBG) log("handleRuimRefresh with SIM_RESET");
+                mCi.setRadioPower(false, null);
+                /* Note: no need to call setRadioPower(true).  Assuming the desired
+                * radio power state is still ON (as tracked by ServiceStateTracker),
+                * ServiceStateTracker will call setRadioPower when it receives the
+                * RADIO_STATE_CHANGED notification for the power off.  And if the
+                * desired power state has changed in the interim, we don't want to
+                * override it with an unconditional power on.
+                */
                 break;
             default:
                 // unknown refresh operation

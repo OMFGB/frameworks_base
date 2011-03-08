@@ -381,14 +381,24 @@ public final class CallManager {
             case OFFHOOK:
                 Phone fgPhone = getFgPhone();
                 /*
-                 * Enable IN_CALL if call is not from SipPhone. Foreground or
-                 * background call is in DIALING, ALERTING, ACTIVE, HOLDING or
-                 * DISCONNECTING state. This means an active foreground call
-                 * with/without a background call or an idle foreground with a
-                 * background held call.
+                 * While foreground call is in DIALING, ALERTING, ACTIVE and
+                 * DISCONNECTING state for SipPhone
                  */
-                if (!(fgPhone instanceof SipPhone)) {
-                   mode = AudioManager.MODE_IN_CALL;
+                if (fgPhone instanceof SipPhone) {
+                    if (getActiveFgCallState() != Call.State.IDLE
+                            && getActiveFgCallState() != Call.State.DISCONNECTED) {
+                        // enable IN_COMMUNICATION audio mode for sipPhone
+                        mode = AudioManager.MODE_IN_COMMUNICATION;
+                    }
+                } else {
+                    /*
+                     * Enable IN_CALL if Foreground or background call is in
+                     * DIALING, ALERTING, ACTIVE, HOLDING or DISCONNECTING
+                     * state. This means an active foreground call with/without
+                     * a background call or an idle foreground with a background
+                     * held call.
+                     */
+                    mode = AudioManager.MODE_IN_CALL;
                 }
                 break;
         }

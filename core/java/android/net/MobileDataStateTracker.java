@@ -203,6 +203,10 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                     // all the same radio/network underneath
                     mNetworkInfo.setIsAvailable(!unavailable);
 
+                    // Do not process intents if disabled
+                    if (mEnabled == false)
+                        return;
+
                     if (isApnTypeIncluded(apnTypeList) == false)
                         return; //not what we are looking for.
 

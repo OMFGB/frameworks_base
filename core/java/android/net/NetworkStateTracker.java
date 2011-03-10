@@ -177,11 +177,12 @@ public abstract class NetworkStateTracker extends Handler {
                             if (ipv == IPVersion.IPV4 && inetAddress instanceof Inet4Address) {
                                 Log.v(TAG, "adding ipv4 dns " + addrString + " through "
                                         + interfaceName);
+                                nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
                             } else if (ipv == IPVersion.IPV6 && inetAddress instanceof Inet6Address) {
                                 Log.v(TAG, "adding ipv6 dns " + addrString + " through "
                                         + interfaceName);
+                                nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
                             }
-                            nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
                         }
                     } catch (UnknownHostException e) {
                         Log.w(TAG, " DNS address " + addrString + " : Exception " + e);

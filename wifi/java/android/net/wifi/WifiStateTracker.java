@@ -23,6 +23,7 @@ import static android.net.wifi.WifiManager.WIFI_STATE_ENABLING;
 import static android.net.wifi.WifiManager.WIFI_STATE_UNKNOWN;
 
 import android.app.ActivityManagerNative;
+import android.app.AlarmManager;
 import android.net.NetworkInfo;
 import android.net.NetworkStateTracker;
 import android.net.DhcpInfo;
@@ -32,6 +33,7 @@ import android.net.NetworkInfo.DetailedState;
 import android.net.NetworkInfo.State;
 import android.os.Message;
 import android.os.Parcelable;
+import android.os.PowerManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.SystemProperties;
@@ -221,6 +223,14 @@ public class WifiStateTracker extends NetworkStateTracker {
     private boolean mUseStaticIp = false;
     private int mReconnectCount;
     private boolean mHasWifiLocks = false;
+
+    private AlarmManager mAlarmManager;
+    private PendingIntent mDhcpRenewalIntent;
+    private PowerManager.WakeLock mDhcpRenewWakeLock;
+    private static final String WAKELOCK_TAG = "*wifi*";
+
+    private static final int DHCP_RENEW = 0;
+    private static final String ACTION_DHCP_RENEW = "android.net.wifi.DHCP_RENEW";
 
     /* Tracks if any network in the configuration is disabled */
     private AtomicBoolean mIsAnyNetworkDisabled = new AtomicBoolean(false);

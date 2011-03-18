@@ -281,8 +281,9 @@ public abstract class ServiceStateTracker extends Handler {
      */
     protected void onSignalStrengthResult(AsyncResult ar, PhoneBase phone, boolean isGsm) {
         SignalStrength oldSignalStrength = mSignalStrength;
-        int gsmRssi = 99, lteRssi = 99;
-        int gsmBer = -1, cdmaDbm = -1, cdmaEcio = -1, evdoRssi = -1, evdoEcio = -1, evdoSnr = -1, lteRsrp = -1, lteRsrq = -1;
+        int INVALID = 0x7FFFFFFF;
+        int gsmRssi = 99, gsmBer = -1, cdmaDbm = -1, cdmaEcio = -1, evdoRssi = -1, evdoEcio = -1, evdoSnr = -1,
+             lteRssi = 99, lteRsrp = INVALID, lteRsrq = INVALID, lteSnr=INVALID, lteCqi=INVALID ;
 
         // This signal is used for both voice and data radio signal so parse
         // all fields
@@ -290,7 +291,7 @@ public abstract class ServiceStateTracker extends Handler {
         if (ar.exception == null) {
             int[] ints = (int[]) ar.result;
             // check for sizeof RIL_SignalStrength
-            if ((ints.length == 7) || (ints.length == 10)) {
+            if (ints.length == 12) {
                 gsmRssi = (ints[0] >= 0) ? ints[0] : 99;
                 gsmBer = ints[1];
                 cdmaDbm = (ints[2] > 0) ? -ints[2] : -120;
@@ -298,16 +299,16 @@ public abstract class ServiceStateTracker extends Handler {
                 evdoRssi = (ints[4] > 0) ? -ints[4] : -120;
                 evdoEcio = (ints[5] > 0) ? -ints[5] : -1;
                 evdoSnr = ((ints[6] > 0) && (ints[6] <= 8)) ? ints[6] : -1;
-            }
-            if (ints.length == 10) {
                 lteRssi = (ints[7] >= 0) ? ints[7] : 99;
-                lteRsrp = ((ints[8] >= 0) && (ints[8] <= 97)) ? ints[8] : -1;
-                lteRsrq = ((ints[9] >= 0) && (ints[9] <= 34)) ? ints[9] : -1;
+                lteRsrp = ((ints[8] >= 44) && (ints[8] <= 140)) ? -ints[8] : INVALID;
+                lteRsrq = ints[9]; //not supported
+                lteSnr = ((ints[10] >= -200) && (ints[10] <= 300)) ? ints[10] : INVALID;
+                lteCqi = ints[11]; //not supported
             }
         }
 
         mSignalStrength = new SignalStrength(gsmRssi, gsmBer, cdmaDbm, cdmaEcio, evdoRssi,
-                evdoEcio, evdoSnr, lteRssi, lteRsrp, lteRsrq, isGsm);
+                evdoEcio, evdoSnr, lteRssi, lteRsrp, lteRsrq, lteSnr, lteCqi, isGsm);
 
         if (!mSignalStrength.equals(oldSignalStrength)) {
             try {

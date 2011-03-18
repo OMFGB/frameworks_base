@@ -849,7 +849,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     private void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1, 99, -1, -1, false);
+        mSignalStrength = new SignalStrength();
+        mSignalStrength.setGsm(false);
     }
 
     /**

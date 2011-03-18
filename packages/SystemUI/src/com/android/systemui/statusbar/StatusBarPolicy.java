@@ -974,6 +974,7 @@ public class StatusBarPolicy {
         }
     }
 
+
     private PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
         @Override
         public void onSignalStrengthsChanged(SignalStrength signalStrength) {
@@ -1215,20 +1216,30 @@ public class StatusBarPolicy {
     }
 
     private int getLteLevel() {
-        // TBD - comply with standards
-        // TS 36.214 Physical Layer Section 5.1.3
-        // TS 36.331 RRC
-        int rssi = mSignalStrength.getLteRssi();
-        int rsrp = mSignalStrength.getLteRsrp();
-        int iconLevel = -1;
 
-        if (rssi <= 2 || rssi == 99) iconLevel = 0;
-        else if (rssi >= 12) iconLevel = 4;
-        else if (rssi >= 8)  iconLevel = 3;
-        else if (rssi >= 5)  iconLevel = 2;
-        else iconLevel = 1;
+        /*
+         * TS 36.214 Physical Layer Section 5.1.3
+         * TS 36.331 RRC
+         * RSSI = received signal + noise
+         * RSRP = reference signal dBm
+         * RSRQ = quality of signal dB= Number of Resource blocksxRSRP/RSSI
+         * SNR = gain=signal/noise ratio = -10log P1/P2 dB
+         * CQI = channel quality = ?
+         */
+        int rssi, rsrp, snr;
+        int rssiIconLevel = 0, rsrpIconLevel = -1, snrIconLevel = -1;
 
-        return iconLevel;
+        rssi = mSignalStrength.getLteRssi();
+        /* Valid values are (0-63, 99) as defined in TS 36.331 */
+        Slog.d(TAG,"getLTELevel -rssi:"+ rssi);
+        if (rssi > 63) rssiIconLevel = 0;
+        else if (rssi >= 12) rssiIconLevel = 4;
+        else if (rssi >= 8)  rssiIconLevel = 3;
+        else if (rssi >= 5) rssiIconLevel = 2;
+        else if ( rssi >= 0 ) rssiIconLevel = 1;
+
+        return rssiIconLevel;
+
     }
 
     private int getCdmaLevel() {
@@ -1275,6 +1286,7 @@ public class StatusBarPolicy {
     }
 
     private final void updateDataNetType(int net) {
+        Slog.d(TAG,"Data network type changed to:" + net );
         switch (net) {
         case TelephonyManager.NETWORK_TYPE_EDGE:
             mDataIconList = sDataNetType_e[mInetCondition];

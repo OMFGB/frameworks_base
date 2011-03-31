@@ -956,6 +956,7 @@ public class WifiStateTracker extends NetworkStateTracker {
                 mDhcpTarget.getLooper().quit();
 
                 mContext.removeStickyBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+                mContext.removeStickyBroadcast(new Intent(WifiManager.NO_MORE_WIFI_LOCKS));
                 if (ActivityManagerNative.isSystemReady()) {
                     intent = new Intent(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION);
                     intent.putExtra(WifiManager.EXTRA_SUPPLICANT_CONNECTED, false);
@@ -1349,7 +1350,7 @@ public class WifiStateTracker extends NetworkStateTracker {
                  * connected and if it needs to be brought down they can issue
                  * the teardown command.
                  */
-                sendNetworkStateChangeBroadcast(mWifiInfo.getBSSID());
+                sendNoMoreWifiLocksBroadcast(mWifiInfo.getBSSID());
                 break;
 
         }
@@ -1593,6 +1594,16 @@ public class WifiStateTracker extends NetworkStateTracker {
             intent.putExtra(WifiManager.EXTRA_BSSID, bssid);
         mContext.sendStickyBroadcast(intent);
     }
+
+    private void sendNoMoreWifiLocksBroadcast(String bssid) {
+        Intent intent = new Intent(WifiManager.NO_MORE_WIFI_LOCKS);
+        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
+                | Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        intent.putExtra(WifiManager.EXTRA_NETWORK_INFO, mNetworkInfo);
+        if (bssid != null)
+            intent.putExtra(WifiManager.EXTRA_BSSID, bssid);
+        mContext.sendStickyBroadcast(intent);
+    } 
 
     /**
      * Disable Wi-Fi connectivity by stopping the driver.

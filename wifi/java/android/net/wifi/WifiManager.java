@@ -236,6 +236,11 @@ public class WifiManager {
     @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
     public static final String NETWORK_STATE_CHANGED_ACTION = "android.net.wifi.STATE_CHANGE";
     /**
+     * Broadcast intent action indicating no more wifi locks 
+     * @hide 
+     */ 
+    public static final String NO_MORE_WIFI_LOCKS = "android.net.wifi.NO_MORE_WIFI_LOCKS";
+    /**
      * The lookup key for a {@link android.net.NetworkInfo} object associated with the
      * Wi-Fi network. Retrieve with
      * {@link android.content.Intent#getParcelableExtra(String)}.

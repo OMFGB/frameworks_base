@@ -121,7 +121,7 @@ import java.util.List;
  * WindowManagerPolicy implementation for the Android phone UI.  This
  * introduces a new method suffix, Lp, for an internal lock of the
  * PhoneWindowManager.  This is used to protect some internal state, and
- * can be acquired with either thw Lw and Li lock held, so has the restrictions
+ * can be acquired with either thw Lw and Li lock held, so has the restrictionsandroid_frameworks_base/blob/master/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
  * of both of those when held.
  */
 public class PhoneWindowManager implements WindowManagerPolicy {
@@ -291,6 +291,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     // Behavior of ENDCALL Button.  (See Settings.System.END_BUTTON_BEHAVIOR.)
     int mEndcallBehavior;
 
+    boolean mVolBtnMusicControls;
+    boolean mIsLongPress;
+
     // Behavior of POWER button while in-call and screen on.
     // (See Settings.Secure.INCALL_POWER_BUTTON_BEHAVIOR.)
     int mIncallPowerBehavior;
@@ -327,6 +330,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.Secure.DEFAULT_INPUT_METHOD), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     "fancy_rotation_anim"), false, this);
+	    resolver.registerContentObserver(Settings.System.getUriFor(
+		    Settings.System.ENABLE_VOL_MUSIC_CONTROLS), false, this);
             updateSettings();
         }
 
@@ -491,6 +496,34 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
     };
 
+    Runnable mVolumeUpLongPress = new Runnable() {
+	public void run() {
+	    mIsLongPress = true;
+	    sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+	};
+    };
+
+    Runnable mVolumeDownLongPress = new Runnable() {
+	public void run() {
+	    mIsLongPress = true;
+	    sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
+	};
+    };
+
+    private void sendMediaButtonEvent(int code) {
+        long eventtime = SystemClock.uptimeMillis();
+
+        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null);
+        KeyEvent downEvent = new KeyEvent(eventtime, eventtime, KeyEvent.ACTION_DOWN, code, 0);
+        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
+        mContext.sendOrderedBroadcast(downIntent, null);
+
+        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null);
+        KeyEvent upEvent = new KeyEvent(eventtime, eventtime, KeyEvent.ACTION_UP, code, 0);
+        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
+        mContext.sendOrderedBroadcast(upIntent, null);
+    }  
+
     void showGlobalActionsDialog() {
         if (mGlobalActions == null) {
             mGlobalActions = new GlobalActions(mContext);
@@ -647,6 +680,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     "fancy_rotation_anim", 0) != 0 ? 0x80 : 0;
             int accelerometerDefault = Settings.System.getInt(resolver,
                     Settings.System.ACCELEROMETER_ROTATION, DEFAULT_ACCELEROMETER_ROTATION);
+	    mVolBtnMusicControls = (Settings.System.getInt(resolver,
+		    Settings.System.ENABLE_VOL_MUSIC_CONTROLS, 0) == 1);
             if (mAccelerometerDefault != accelerometerDefault) {
                 mAccelerometerDefault = accelerometerDefault;
                 updateOrientationListenerLp();
@@ -1772,6 +1807,22 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mBroadcastWakeLock.release();
         }
     }
+   
+    void handleVolumeLongPress(int keycode) {
+	Runnable btnHandler;
+	
+	if (keycode == KeyEvent.KEYCODE_VOLUME_UP)
+	    btnHandler = mVolumeUpLongPress;
+	else
+	    btnHandler = mVolumeDownLongPress;
+
+	mHandler.postDelayed(btnHandler, ViewConfiguration.getLongPressTimeout());
+    }
+
+    void handleVolumeLongPressAbort() {
+	mHandler.removeCallbacks(mVolumeUpLongPress);
+	mHandler.removeCallbacks(mVolumeDownLongPress);
+    }
  
     /** {@inheritDoc} */
     @Override
@@ -1833,6 +1884,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_VOLUME_UP: {
+		if(mVolBtnMusicControls && !down)
+		{
+		    handleVolumeLongPressAbort();
+		    if (!mIsLongPress && (result & ACTION_PASS_TO_USER) == 0)
+			handleVolumeKey(AudioManager.STREAM_MUSIC, keyCode);
+		}
                 if (down) {
                     ITelephony telephonyService = getTelephonyService();
                     if (telephonyService != null) {
@@ -1869,9 +1926,16 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     }
 
                     if (isMusicActive() && (result & ACTION_PASS_TO_USER) == 0) {
+			// Care for long-press actions to skip tracks
+			if(mVolBtnMusicControls) {
+			    // initialize long press flag to false for vol events
+			    mIsLongPress = false;
+			    handleVolumeLongPress(keyCode);
+			} else {
                         // If music is playing but we decided not to pass the key to the
                         // application, handle the volume change here.
                         handleVolumeKey(AudioManager.STREAM_MUSIC, keyCode);
+			}
                         break;
                     }
                 }

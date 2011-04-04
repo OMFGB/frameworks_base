@@ -516,11 +516,12 @@ class PowerManagerService extends IPowerManager.Stub
                 final float windowScale = getFloat(WINDOW_ANIMATION_SCALE, 1.0f);
                 final float transitionScale = getFloat(TRANSITION_ANIMATION_SCALE, 1.0f);
                 mAnimationSetting = 0;
-                if (windowScale > 0.5f && mElectronBeamAnimationOff) {
+
+                if (windowScale > 0.1f && mElectronBeamAnimationOff) {
                     mAnimationSetting |= ANIM_SETTING_OFF;
                 }
-                if (transitionScale > 0.5f && mElectronBeamAnimationOn) {
-                    mAnimationSetting |= ANIM_SETTING_ON;
+                if (transitionScale > 0.1f && mElectronBeanAnimationOn) {
+                    mAnimationSetting |= ANIM_SETTING_ON;	
                 }
             }
         }

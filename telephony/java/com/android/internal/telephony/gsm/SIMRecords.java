@@ -1223,14 +1223,19 @@ public final class SIMRecords extends UiccApplicationRecords {
                 break;
             case SIM_RESET:
                 if (DBG) log("handleSimRefresh with SIM_RESET");
-                mCi.setRadioPower(false, null);
-                /* Note: no need to call setRadioPower(true).  Assuming the desired
-                * radio power state is still ON (as tracked by ServiceStateTracker),
-                * ServiceStateTracker will call setRadioPower when it receives the
-                * RADIO_STATE_CHANGED notification for the power off.  And if the
-                * desired power state has changed in the interim, we don't want to
-                * override it with an unconditional power on.
-                */
+                boolean skipRadioPowerOff = mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
+
+                if (!skipRadioPowerOff) {
+                    mCi.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                     * radio power state is still ON (as tracked by ServiceStateTracker),
+                     * ServiceStateTracker will call setRadioPower when it receives the
+                     * RADIO_STATE_CHANGED notification for the power off.  And if the
+                     * desired power state has changed in the interim, we don't want to
+                     * override it with an unconditional power on.
+                     */
+                }
                 break;
             default:
                 // unknown refresh operation

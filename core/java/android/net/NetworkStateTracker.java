@@ -167,26 +167,13 @@ public abstract class NetworkStateTracker extends Handler {
             }
 
             if (mDefaultGatewayAddr != 0) {
-                NetworkUtils.addHostRoute(mInterfaceName, mDefaultGatewayAddr);
                 NetworkUtils.setDefaultRoute(mInterfaceName, mDefaultGatewayAddr);
             } else if (mCachedGatewayAddr != 0) {
                 /*
                  * We don't have a default gateway set, so check if we have one cached due to
                  * a previous suspension.  If we do, then restore that one
                  */
-                if (DBG) {
-                    Log.d(TAG, "addDefaultRoute: no default gateway, attempting to use cached gateway");
-                }
-                int r1 = NetworkUtils.addHostRoute(mInterfaceName, mCachedGatewayAddr);
-                int r2 = NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
-                if (r1 < 0 || r2 < 0) {
-                    // something went wrong... restart the network
-                    if (DBG) {
-                        Log.d(TAG, "addDefaultRoute: something went terribly wrong... restart the network");
-                    }
-                    teardown();
-                    reconnect();
-                }
+                NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
             }
 
             /*
@@ -456,7 +443,4 @@ public abstract class NetworkStateTracker extends Handler {
     public void interpretScanResultsAvailable() {
     }
 
-    public String getInterfaceName() {
-        return mInterfaceName;
-    }
 }

@@ -33,8 +33,8 @@ import android.util.Slog;
 public class StorageNotification extends StorageEventListener {
     private static final String TAG = "StorageNotification";
 
-    private static final boolean POP_UMS_ACTIVITY_ON_CONNECT = true;
-
+    private static final boolean POP_UMS_ACTIVITY_ON_CONNECT = false;
+    private static final boolean USB_NOTIFICATION_VISIBLE = false;
     /**
      * Binder context for this service
      */
@@ -277,7 +277,7 @@ public class StorageNotification extends StorageEventListener {
      */
     private synchronized void setUsbStorageNotification(int titleId, int messageId, int icon,
             boolean sound, boolean visible, PendingIntent pi) {
-
+	visible = visible && USB_NOTIFICATION_VISIBLE;
         if (!visible && mUsbStorageNotification == null) {
             return;
         }

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -3175,8 +3176,24 @@ public final class Settings {
          *                            1 = CDMA Cell Broadcast SMS enabled
          * @hide
          */
-        public static final String CDMA_CELL_BROADCAST_SMS =
-                "cdma_cell_broadcast_sms";
+        public static final String CDMA_CELL_BROADCAST_SMS = "cdma_cell_broadcast_sms";
+
+        /**
+         * Amber Alert Notification Configuration for CMAS Broadcast SMS
+         *                            0 = Amber Alerts enabled
+         *                            1 = Amber Alerts disabled
+         * {@hide}
+         */
+        public static final String AMBER_ALERT_CONFIG = "amber_alert_config";
+
+        /**
+         * Emergency Alert (Imminent threat) Notification configuration for CMAS Broadcast SMS
+         *                            0 = All emergency alerts on
+         *                            1 = Extreme alerts only
+         *                            2 = Presidential alerts only
+         *{@hide}
+         */
+        public static final String EMERGENCY_ALERT_CONFIG = "emergency_alert_config";
 
         /**
          * The cdma subscription 0 = Subscription from RUIM, when available

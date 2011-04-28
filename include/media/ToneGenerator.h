@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,6 +148,7 @@ public:
         TONE_CDMA_ABBR_ALERT,
         TONE_CDMA_SIGNAL_OFF,
         //CDMA end
+        TONE_CMAS,
         NUM_TONES,
         NUM_SUP_TONES = LAST_SUP_TONE-FIRST_SUP_TONE+1
     };

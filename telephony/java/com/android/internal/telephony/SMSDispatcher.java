@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,6 +140,9 @@ public abstract class SMSDispatcher extends Handler {
     static protected RadioTechnologyFamily mImsSmsEncoding = RadioTechnologyFamily.RADIO_TECH_UNKNOWN;
     static protected Registrant mSendRetryRegistrant;
     static protected Phone mPhone;
+
+    /** New broadcast SMS */
+    static final protected int EVENT_NEW_BROADCAST_SMS = 13;
 
     protected Context mContext;
     protected ContentResolver mResolver;
@@ -431,6 +435,10 @@ public abstract class SMSDispatcher extends Handler {
                 mCm.reportSmsMemoryStatus(mStorageAvailable,
                         obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
             }
+            break;
+
+        case EVENT_NEW_BROADCAST_SMS:
+            handleBroadcastSms((AsyncResult)msg.obj);
             break;
 
         case EVENT_ICC_CHANGED:
@@ -1055,6 +1063,8 @@ public abstract class SMSDispatcher extends Handler {
             } else if (intent.getAction().equals(Intent.ACTION_DEVICE_STORAGE_NOT_FULL)) {
                 mStorageAvailable = true;
                 mCm.reportSmsMemoryStatus(true, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
+            } else if (intent.getAction().equals(Intents.CB_SMS_RECEIVED_ACTION)) {
+                // Ignore this intent. Apps will process it.
             } else {
                 // Assume the intent is one of the SMS receive intents that
                 // was sent as an ordered broadcast.  Check result and ACK.
@@ -1125,4 +1135,15 @@ public abstract class SMSDispatcher extends Handler {
 
     }
 
+    protected abstract void handleBroadcastSms(AsyncResult ar);
+
+    protected void dispatchBroadcastPdus(byte[][] pdus) {
+        Intent intent = new Intent(Intents.CB_SMS_RECEIVED_ACTION);
+        intent.putExtra("pdus", pdus);
+
+        if (Config.LOGD)
+            Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
+
+        dispatch(intent, "android.permission.RECEIVE_SMS");
+    }
 }

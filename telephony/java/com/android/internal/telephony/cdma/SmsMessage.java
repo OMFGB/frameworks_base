@@ -507,6 +507,15 @@ public class SmsMessage extends SmsMessageBase {
     }
 
     /**
+     * Returns service category of the message.
+     * @return service category
+     * @hide
+    */
+    public int getServiceCategory() {
+        return mEnvelope.serviceCategory;
+    }
+
+    /**
      * Decodes pdu to an empty SMS object.
      * In the CDMA case the pdu is just an internal byte stream representation
      * of the SMS Java-object.
@@ -714,7 +723,7 @@ public class SmsMessage extends SmsMessageBase {
             }
             return;
         }
-        mBearerData = BearerData.decode(mEnvelope.bearerData);
+        mBearerData = BearerData.decode(mEnvelope.bearerData, mEnvelope.isCmas());
         if (Log.isLoggable(LOGGABLE_TAG, Log.VERBOSE)) {
             Log.d(LOG_TAG, "MT raw BearerData = '" +
                       HexDump.toHexString(mEnvelope.bearerData) + "'");

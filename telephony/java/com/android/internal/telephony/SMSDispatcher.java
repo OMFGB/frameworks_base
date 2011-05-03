@@ -1137,13 +1137,14 @@ public abstract class SMSDispatcher extends Handler {
 
     protected abstract void handleBroadcastSms(AsyncResult ar);
 
-    protected void dispatchBroadcastPdus(byte[][] pdus) {
-        Intent intent = new Intent(Intents.CB_SMS_RECEIVED_ACTION);
-        intent.putExtra("pdus", pdus);
+    protected void dispatchBroadcastPdus(String intent, byte[][] pdus) {
+        Intent broadcastIntent = new Intent(intent);
+        broadcastIntent.putExtra("pdus", pdus);
 
         if (Config.LOGD)
-            Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
+            Log.d(TAG, "Dispatching " + pdus.length + " pdus");
 
-        dispatch(intent, "android.permission.RECEIVE_SMS");
+        dispatch(broadcastIntent, "android.permission.RECEIVE_SMS");
     }
+
 }

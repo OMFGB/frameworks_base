@@ -200,6 +200,11 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                     // The message was sent to a port, so concoct a URI for it.
                     dispatchPortAddressedPdus(pdus, smsHeader.portAddrs.destPort);
                 }
+            } else if (sms.getMessageType() == SmsEnvelope.MESSAGE_TYPE_BROADCAST &&
+                       sms.getServiceCategory() >= SmsEnvelope.EMERGENCY_MESSAGE_ID_START &&
+                       sms.getServiceCategory() <= SmsEnvelope.EMERGENCY_MESSAGE_ID_END) {
+                //This is cmas message
+                dispatchBroadcastPdus(Intents.EMERGENCY_CDMA_MESSAGE_RECEIVED_ACTION, pdus);
             } else {
                 // Normal short and non-port-addressed message, dispatch it.
                 dispatchPdus(pdus);

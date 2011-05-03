@@ -61,6 +61,7 @@ import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.RegStateResponse;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.DataProfileOmh;
 
 import java.io.ByteArrayInputStream;
@@ -3906,6 +3907,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_CDMA_SET_BROADCAST_CONFIG, response);
+
+        rr.mp.writeInt(configs.length);
+        for(int i = 0; i < configs.length; i++) {
+            rr.mp.writeInt(configs[i].getServiceCategory());
+            rr.mp.writeInt(configs[i].getLanguage());
+            rr.mp.writeInt(configs[i].isSelected() ? 1 : 0);
+        }
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                    + " with " + configs.length + "configs : ");
+            for (int i = 0; i < configs.length; i++) {
+                riljLog(configs[i].toString());
+            }
+        }
+
+        send(rr);
+    }
     public void setCdmaBroadcastActivation(boolean activate, Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_CDMA_BROADCAST_ACTIVATION, response);
 

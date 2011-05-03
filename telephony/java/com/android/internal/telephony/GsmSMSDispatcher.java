@@ -592,7 +592,7 @@ final class GsmSMSDispatcher extends SMSDispatcher {
                 pdus[0] = receivedPdu;
             }
 
-            dispatchBroadcastPdus(pdus);
+            dispatchBroadcastPdus(Intents.CB_SMS_RECEIVED_ACTION, pdus);
 
             // Remove messages that are out of scope to prevent the map from
             // growing indefinitely, containing incomplete messages that were

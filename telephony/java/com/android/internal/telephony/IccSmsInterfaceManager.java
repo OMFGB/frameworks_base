@@ -27,6 +27,7 @@ import android.os.Message;
 import android.os.ServiceManager;
 import android.util.Log;
 
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.util.HexDump;
 
@@ -54,6 +55,11 @@ public class IccSmsInterfaceManager extends ISms.Stub {
     private List<SmsRawData> mSms;
     private HashMap<Integer, HashSet<String>> mCellBroadcastSubscriptions =
             new HashMap<Integer, HashSet<String>>();
+    private HashMap<Integer, HashSet<String>> mCdmaBroadcastSubscriptions =
+        new HashMap<Integer, HashSet<String>>();
+
+    private static final int TYPE_3GPP = 1;
+    private static final int TYPE_3GPP2 = 2;
 
     private static final int EVENT_LOAD_DONE = 1;
     private static final int EVENT_UPDATE_DONE = 2;
@@ -457,26 +463,29 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         return data;
     }
 
-    public boolean enableCellBroadcast(int messageIdentifier) {
-        if (DBG) log("enableCellBroadcast");
-
+    private boolean enableBroadcast(int type, int messageIdentifier) {
+        if (DBG) log("enableBroadcast " + ((type == TYPE_3GPP) ? "3gpp " : "3gpp2 ") +
+                "message_id " + messageIdentifier);
         Context context = mPhone.getContext();
 
         context.enforceCallingPermission(
                 "android.permission.RECEIVE_SMS",
-                "Enabling cell broadcast SMS");
+                "Enabling broadcast SMS");
+
+        HashMap<Integer, HashSet<String>> subscriptions;
+        subscriptions = (type == TYPE_3GPP) ? mCellBroadcastSubscriptions : mCdmaBroadcastSubscriptions;
 
         String client = context.getPackageManager().getNameForUid(
                 Binder.getCallingUid());
-        HashSet<String> clients = mCellBroadcastSubscriptions.get(messageIdentifier);
+        HashSet<String> clients = subscriptions.get(messageIdentifier);
 
         if (clients == null) {
             // This is a new message identifier
             clients = new HashSet<String>();
-            mCellBroadcastSubscriptions.put(messageIdentifier, clients);
+            subscriptions.put(messageIdentifier, clients);
 
-            if (!updateCellBroadcastConfig()) {
-                mCellBroadcastSubscriptions.remove(messageIdentifier);
+            if (!updateBroadcastConfig(type)) {
+                subscriptions.remove(messageIdentifier);
                 return false;
             }
         }
@@ -484,38 +493,56 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         clients.add(client);
 
         if (DBG)
-            log("Added cell broadcast subscription for MID " + messageIdentifier
+            log("Added broadcast subscription for MID " + messageIdentifier
                     + " from client " + client);
 
         return true;
+
     }
 
-    public boolean disableCellBroadcast(int messageIdentifier) {
-        if (DBG) log("disableCellBroadcast");
+    public boolean enableCellBroadcast(int messageIdentifier) {
+        return enableBroadcast(TYPE_3GPP, messageIdentifier);
+    }
 
+    private boolean disableBroadcast(int type, int messageIdentifier) {
+        if (DBG) log("disableBroadcast " + ((type == TYPE_3GPP) ? "3gpp " : "3gpp2 ") + "message_id " + messageIdentifier);
         Context context = mPhone.getContext();
 
         context.enforceCallingPermission(
                 "android.permission.RECEIVE_SMS",
-                "Disabling cell broadcast SMS");
+                "Disabling broadcast SMS");
+
+        HashMap<Integer, HashSet<String>> subscriptions;
+        subscriptions = (type == TYPE_3GPP) ? mCellBroadcastSubscriptions : mCdmaBroadcastSubscriptions;
 
         String client = context.getPackageManager().getNameForUid(
                 Binder.getCallingUid());
-        HashSet<String> clients = mCellBroadcastSubscriptions.get(messageIdentifier);
-
+        HashSet<String> clients = subscriptions.get(messageIdentifier);
         if (clients != null && clients.remove(client)) {
             if (DBG)
                 log("Removed cell broadcast subscription for MID " + messageIdentifier
                         + " from client " + client);
 
             if (clients.isEmpty()) {
-                mCellBroadcastSubscriptions.remove(messageIdentifier);
-                updateCellBroadcastConfig();
+                subscriptions.remove(messageIdentifier);
+                updateBroadcastConfig(type);
             }
             return true;
         }
 
         return false;
+
+    }
+    public boolean disableCellBroadcast(int messageIdentifier) {
+        return disableBroadcast(TYPE_3GPP, messageIdentifier);
+    }
+
+    public boolean enableCdmaBroadcast(int messageIdentifier) {
+        return enableBroadcast(TYPE_3GPP2, messageIdentifier);
+    }
+
+    public boolean disableCdmaBroadcast(int messageIdentifier) {
+        return disableBroadcast(TYPE_3GPP2, messageIdentifier);
     }
 
     private boolean updateCellBroadcastConfig() {
@@ -536,6 +563,34 @@ public class IccSmsInterfaceManager extends ISms.Stub {
             return setCellBroadcastActivation(false);
         }
     }
+
+    private boolean updateCdmaBroadcastConfig() {
+        Set<Integer> messageIdentifiers = mCdmaBroadcastSubscriptions.keySet();
+
+        if (messageIdentifiers.size() > 0) {
+            CdmaSmsBroadcastConfigInfo[] configs =
+                    new CdmaSmsBroadcastConfigInfo[messageIdentifiers.size()];
+            int i = 0;
+
+            for (int messageIdentifier : messageIdentifiers) {
+                configs[i++] = new CdmaSmsBroadcastConfigInfo(messageIdentifier, 1, true);
+            }
+
+            return setCdmaBroadcastConfig(configs) && setCdmaBroadcastActivation(true);
+        } else {
+            return setCdmaBroadcastActivation(false);
+        }
+    }
+
+    private boolean updateBroadcastConfig(int type) {
+        if (type == TYPE_3GPP) {
+            return updateCellBroadcastConfig();
+        } else if (type == TYPE_3GPP2) {
+            return updateCdmaBroadcastConfig();
+        } else {
+            return false;
+        }
+   }
 
     private boolean setCellBroadcastConfig(SmsBroadcastConfigInfo[] configs) {
         if (DBG)
@@ -571,6 +626,46 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                 mLock.wait();
             } catch (InterruptedException e) {
                 log("interrupted while trying to set cell broadcast activation");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs) {
+        if (DBG)
+            log("Calling setCdmaBroadcastConfig with " + configs.length + " configurations");
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_CONFIG_DONE);
+
+            mSuccess = false;
+            mCm.setCdmaBroadcastConfig(configs, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cdma broadcast config");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean setCdmaBroadcastActivation(boolean activate) {
+        if (DBG)
+            log("Calling setCdmaBroadcastActivation(" + activate + ")");
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_ACTIVATION_DONE);
+
+            mSuccess = false;
+            mCm.setCdmaBroadcastActivation(activate, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cdma broadcast activation");
             }
         }
 

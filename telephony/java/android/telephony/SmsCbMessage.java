@@ -31,7 +31,7 @@ import java.io.UnsupportedEncodingException;
  *
  * {@hide}
  */
-public class SmsCbMessage implements Parcelable {
+public class SmsCbMessage implements EmergencyMessage {
 
     /**
      * Cell wide immediate geographical scope

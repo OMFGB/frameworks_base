@@ -1337,8 +1337,8 @@ public class Resources {
                     keyboardHidden, mConfiguration.navigation, width, height,
                     mConfiguration.screenLayout, mConfiguration.uiMode, sSdkVersion);
 
-            drawableCacheClear(mDrawableCache, configChanges);
-            drawableCacheClear(mColorDrawableCache, configChanges);
+            clearDrawableCache(mDrawableCache, configChanges);
+            clearDrawableCache(mColorDrawableCache, configChanges);
 
             mColorStateListCache.clear();
 
@@ -1352,7 +1352,7 @@ public class Resources {
         }
     }
 
-    private void drawableCacheClear(
+    private void clearDrawableCache(
             LongSparseArray<WeakReference<ConstantState>> cache,
             int configChanges) {
         /*
@@ -1394,13 +1394,6 @@ public class Resources {
                                 + ")");
                     }
                 }
-            }
-            mColorStateListCache.clear();
-            flushLayoutCache();
-        }
-        synchronized (mSync) {
-            if (mPluralRule != null) {
-                mPluralRule = PluralRules.ruleForLocale(config.locale);
             }
         }
     }
@@ -1814,7 +1807,7 @@ public class Resources {
                 } else {
                     synchronized (mTmpValue) {
                         //Log.i(TAG, "Saving cached drawable @ #" +
-                        //        Integer.toHexString(key.intValue())
+                        //        Long.toHexString(key)
                         //        + " in " + this + ": " + cs);
                         if (isColorDrawable) {
                             mColorDrawableCache.put(key, new WeakReference<Drawable.ConstantState>(cs));
@@ -1838,9 +1831,9 @@ public class Resources {
                 Drawable.ConstantState entry = wr.get();
                 if (entry != null) {
                     //Log.i(TAG, "Returning cached drawable @ #" +
-                    //        Integer.toHexString(((Integer)key).intValue())
+                    //        Long.toHexString(key)
                     //        + " in " + this + ": " + entry);
-                    return entry.newDrawable();
+                    return entry.newDrawable(this);
                 }
                 else {  // our entry has been purged
                     drawableCache.delete(key);
@@ -1922,7 +1915,7 @@ public class Resources {
             } else {
                 synchronized (mTmpValue) {
                     //Log.i(TAG, "Saving cached color state list @ #" +
-                    //        Integer.toHexString(key.intValue())
+                    //        Long.toHexString(key)
                     //        + " in " + this + ": " + csl);
                     mColorStateListCache.put(
                         key, new WeakReference<ColorStateList>(csl));
@@ -1940,7 +1933,7 @@ public class Resources {
                 ColorStateList entry = wr.get();
                 if (entry != null) {
                     //Log.i(TAG, "Returning cached color state list @ #" +
-                    //        Integer.toHexString(((Integer)key).intValue())
+                    //        Long.toHexString(key)
                     //        + " in " + this + ": " + entry);
                     return entry;
                 }
@@ -2067,3 +2060,4 @@ public class Resources {
         mCompatibilityInfo = CompatibilityInfo.DEFAULT_COMPATIBILITY_INFO;
     }
 }
+

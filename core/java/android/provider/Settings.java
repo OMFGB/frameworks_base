@@ -1810,7 +1810,7 @@ public final class Settings {
 	 * default: 1
 	 * @hide
 	 */
-	public status final String STATUS_BAR_CLOCK = "status_bar_clock";
+	public static final String STATUS_BAR_CLOCK = "status_bar_clock";
 
 	/*
          * Use the Notification Power Widget? (Who wouldn't!)

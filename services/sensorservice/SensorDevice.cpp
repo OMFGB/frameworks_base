@@ -30,6 +30,10 @@
 
 #include "SensorDevice.h"
 
+#ifdef USE_LGE_ALS_DUMMY
+#include <fcntl.h>
+#endif
+
 namespace android {
 // ---------------------------------------------------------------------------
 class BatteryService : public Singleton<BatteryService> {
@@ -97,6 +101,27 @@ ANDROID_SINGLETON_STATIC_INSTANCE(BatteryService)
 
 ANDROID_SINGLETON_STATIC_INSTANCE(SensorDevice)
 
+#ifdef USE_LGE_ALS_DUMMY
+static ssize_t addDummyLGESensor(sensor_t const **list, ssize_t count) {
+    struct sensor_t dummy_light =     {
+                  name            : "Dummy LGE-Star light sensor",
+                  vendor          : "CyanogenMod",
+                  version         : 1,
+                  handle          : SENSOR_TYPE_LIGHT,
+                  type            : SENSOR_TYPE_LIGHT,
+                  maxRange        : 20,
+                  resolution      : 0.1,
+                  power           : 20,
+    };
+    void * new_list = malloc((count+1)*sizeof(sensor_t));
+    new_list = memcpy(new_list, *list, count*sizeof(sensor_t));
+    ((sensor_t *)new_list)[count] = dummy_light;
+    *list = (sensor_t const *)new_list;
+    count++;
+    return count;
+}
+#endif
+
 SensorDevice::SensorDevice()
     :  mSensorDevice(0),
        mOldSensorsEnabled(0),
@@ -111,6 +136,11 @@ SensorDevice::SensorDevice()
 
     if (mSensorModule) {
 #ifdef ENABLE_SENSORS_COMPAT
+#ifdef SENSORS_NO_OPEN_CHECK
+        sensors_control_open(&mSensorModule->common, &mSensorControlDevice) ;
+        sensors_data_open(&mSensorModule->common, &mSensorDataDevice) ;
+        mOldSensorsCompatMode = true;
+#else
         if (!sensors_control_open(&mSensorModule->common, &mSensorControlDevice)) {
             if (sensors_data_open(&mSensorModule->common, &mSensorDataDevice)) {
                 LOGE("couldn't open data device in backwards-compat mode for module %s (%s)",
@@ -123,6 +153,7 @@ SensorDevice::SensorDevice()
             LOGE("couldn't open control device in backwards-compat mode for module %s (%s)",
                     SENSORS_HARDWARE_MODULE_ID, strerror(-err));
         }
+#endif
 #else
         err = sensors_open(&mSensorModule->common, &mSensorDevice);
         LOGE_IF(err, "couldn't open device for module %s (%s)",
@@ -133,13 +164,23 @@ SensorDevice::SensorDevice()
         if (mSensorDevice || mOldSensorsCompatMode) {
             sensor_t const* list;
             ssize_t count = mSensorModule->get_sensors_list(mSensorModule, &list);
+
+#ifdef USE_LGE_ALS_DUMMY
+            count = addDummyLGESensor(&list, count);
+#endif
+
+            if (mOldSensorsCompatMode) {
+                mOldSensorsList = list;
+                mOldSensorsCount = count;
+                mSensorDataDevice->data_open(mSensorDataDevice,
+                            mSensorControlDevice->open_data_source(mSensorControlDevice));
+            }
+
             mActivationCount.setCapacity(count);
             Info model;
             for (size_t i=0 ; i<size_t(count) ; i++) {
                 mActivationCount.add(list[i].handle, model);
                 if (mOldSensorsCompatMode) {
-                    mSensorDataDevice->data_open(mSensorDataDevice,
-                            mSensorControlDevice->open_data_source(mSensorControlDevice));
                     mSensorControlDevice->activate(mSensorControlDevice, list[i].handle, 0);
                 } else {
                     mSensorDevice->activate(mSensorDevice, list[i].handle, 0);
@@ -170,6 +211,10 @@ void SensorDevice::dump(String8& result, char* buffer, size_t SIZE)
 ssize_t SensorDevice::getSensorList(sensor_t const** list) {
     if (!mSensorModule) return NO_INIT;
     ssize_t count = mSensorModule->get_sensors_list(mSensorModule, list);
+
+#ifdef USE_LGE_ALS_DUMMY
+    return addDummyLGESensor(list, count);
+#endif
     return count;
 }
 
@@ -189,24 +234,35 @@ ssize_t SensorDevice::poll(sensors_event_t* buffer, size_t count) {
         while (pollsDone < (size_t)mOldSensorsEnabled && pollsDone < count) {
             sensors_data_t oldBuffer;
             long result =  mSensorDataDevice->poll(mSensorDataDevice, &oldBuffer);
+            int sensorType = -1;
+ 
             if (result == 0x7FFFFFFF) {
-                return pollsDone;
+                continue;
+            } else {
+                /* the old data_poll is supposed to return a handle,
+                 * which has to be mapped to the type. */
+                for (size_t i=0 ; i<size_t(mOldSensorsCount) && sensorType < 0 ; i++) {
+                    if (mOldSensorsList[i].handle == result) {
+                        sensorType = mOldSensorsList[i].type;
+                        LOGV("mapped sensor type to %d",sensorType);
+                    }
+                }
             }
-            if (!oldBuffer.time) {
-                LOGV("Useless output at round %u from %d",pollsDone,oldBuffer.sensor);
+            if ( sensorType <= 0 ||
+                 sensorType > SENSOR_TYPE_ROTATION_VECTOR) {
+                LOGV("Useless output at round %u from %d",pollsDone, oldBuffer.sensor);
                 count--;
                 continue;
             }
             buffer[pollsDone].version = sizeof(struct sensors_event_t);
             buffer[pollsDone].timestamp = oldBuffer.time;
+            buffer[pollsDone].type = sensorType;
             buffer[pollsDone].sensor = result;
-            buffer[pollsDone].type = oldBuffer.sensor;
             /* This part is a union. Regardless of the sensor type,
              * we only need to copy a sensors_vec_t and a float */
             buffer[pollsDone].acceleration = oldBuffer.vector;
             buffer[pollsDone].temperature = oldBuffer.temperature;
             LOGV("Adding results for sensor %d", buffer[pollsDone].sensor);
-
             /* The ALS and PS sensors only report values on change,
              * instead of a data "stream" like the others. So don't wait
              * for the number of requested samples to fill, and deliver
@@ -221,9 +277,9 @@ ssize_t SensorDevice::poll(sensors_event_t* buffer, size_t count) {
                     buffer[pollsDone].distance = 1;
                 }
 #endif
-		return pollsDone+1;
+                return pollsDone+1;
             } else if (sensorType == SENSOR_TYPE_LIGHT) {
-		return pollsDone+1;
+                return pollsDone+1;
             }
             pollsDone++;
         }
@@ -239,6 +295,32 @@ status_t SensorDevice::activate(void* ident, int handle, int enabled)
     status_t err(NO_ERROR);
     bool actuateHardware = false;
 
+#ifdef USE_LGE_ALS_DUMMY
+
+    if (handle == SENSOR_TYPE_LIGHT) {
+        int nwr, ret, fd;
+        char value[2];
+
+
+        fd = open("/sys/devices/platform/star_aat2870.0/lsensor_onoff", O_RDWR);
+        if(fd < 0)
+            return -ENODEV;
+
+        nwr = sprintf(value, "%s\n", enabled ? "1" : "0");
+        write(fd, value, nwr);
+        close(fd);
+        fd = open("/sys/devices/platform/star_aat2870.0/alc", O_RDWR);
+        if(fd < 0)
+            return -ENODEV;
+
+        nwr = sprintf(value, "%s\n", enabled ? "2" : "0");
+        write(fd, value, nwr);
+        close(fd);
+
+        return 0;
+
+    }
+#endif
     Info& info( mActivationCount.editValueFor(handle) );
     if (enabled) {
         Mutex::Autolock _l(mLock);
@@ -333,4 +415,3 @@ status_t SensorDevice::setDelay(void* ident, int handle, int64_t ns)
 
 // ---------------------------------------------------------------------------
 }; // namespace android
-

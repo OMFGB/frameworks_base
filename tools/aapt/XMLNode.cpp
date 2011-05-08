@@ -502,8 +502,7 @@ void printXMLBlock(ResXMLTree* block)
             namespaces.pop();
         } else if (code == ResXMLTree::TEXT) {
             size_t len;
-            printf("%sC: \"%s\"\n", prefix.string(), ResTable::normalizeForOutput(
-                        String8(block->getText(&len)).string()).string());
+            printf("%sC: \"%s\"\n", prefix.string(), String8(block->getText(&len)).string());
         }
     }
 

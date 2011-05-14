@@ -2009,19 +2009,6 @@ public final class Settings {
 	public static final String USE_ROTARY_LOCKSCREEN = "use_rotary_lockscreen";
 
 	/**
-	* Always shows Battery level on lock screen regardless of charging
-	* state
-	* @hide
-	*/
-	public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
-
-	/**
-	* Setting to enable and disable the volume button music controls
-	* @hide
-	*/
-	public static final String ENABLE_VOL_MUSIC_CONTROLS = "enable_vol_music_controls";
-
-	/**
 	* @hide
 	*/
 	public static final String BATTERY_OPTION = "battery_option";

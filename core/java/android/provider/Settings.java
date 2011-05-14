@@ -1948,6 +1948,29 @@ public final class Settings {
          */
         public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
 
+	/**
+	 * Whether to enable music controls on the volume controls
+	 * @hide
+	 */
+	public static final String ENABLE_VOL_MUSIC_CONTROLS = "enable_vol_music_controls";
+
+	/**
+	 * Whether to wake the screen with trackpad
+	 * @hide
+	 */
+	public static final String TRACKPAD_WAKE_SCREEN = "trackpad_wake_screen";
+
+	/**
+	 * Whether to enable trackpad unlock
+	 * @hide
+	 */
+	public static final String TRACKPAD_UNLOCK_SCREEN = "trackpad_unlock_screen";
+
+	/**
+	 * Whether to enable menu unlock
+	 * @hide
+	 */
+	public static final String MENU_UNLOCK_SCREEN = "menu_unlock_screen";
        
         /**
          * Use the Notification Power Widget? (Who wouldn't!)

@@ -1971,6 +1971,60 @@ public final class Settings {
 	 * @hide
 	 */
 	public static final String MENU_UNLOCK_SCREEN = "menu_unlock_screen";
+
+	/**
+	 * Screen setting for launcher mods
+	 * @hide
+	 */
+	public static final String SCREEN_SETTINGS = "NUM_SCREENS";
+
+	/**
+	 * Launcher 2 Package
+	 * @hide
+	 */
+	public static final String LAUNCHER_2_PACKAGE = "com.android.launcher";
+
+	/**
+	 * Carrier caption option
+	 * @hide
+	 */
+	public static final String CARRIER_CAP = "carrier_caption";
+
+	/**
+	 * Electron beam animation
+	 * @hide
+	 */
+	public static final String USE_SCREENON_ANIM = "use_screenon_anim";
+	
+	/**
+	 * Electron beam animation
+	 * @hide
+	 */
+	public static final String USE_SCREENOFF_ANIM = "use_screenoff_anim"; 
+
+	/**
+	* Use rotary lockscreen instead of tab unlock screen
+	* @hide
+	*/
+	public static final String USE_ROTARY_LOCKSCREEN = "use_rotary_lockscreen";
+
+	/**
+	* Always shows Battery level on lock screen regardless of charging
+	* state
+	* @hide
+	*/
+	public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
+
+	/**
+	* Setting to enable and disable the volume button music controls
+	* @hide
+	*/
+	public static final String ENABLE_VOL_MUSIC_CONTROLS = "enable_vol_music_controls";
+
+	/**
+	* @hide
+	*/
+	public static final String BATTERY_OPTION = "battery_option";
        
         /**
          * Use the Notification Power Widget? (Who wouldn't!)

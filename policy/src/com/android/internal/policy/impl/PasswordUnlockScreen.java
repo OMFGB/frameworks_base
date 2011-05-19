@@ -264,4 +264,7 @@ public class PasswordUnlockScreen extends LinearLayout implements KeyguardScreen
 
     }
 
+    public void onMusicChanged() { 
+
+    }
 }

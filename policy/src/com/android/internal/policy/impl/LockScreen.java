@@ -85,8 +85,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private TextView mStatus2;
     private TextView mScreenLocked;
     private TextView mEmergencyCallText;
-    private TextView mHideMusicControlsButton;
-    private TextView mDisplayMusicControlsButton;
+    private ImageView mHideMusicControlsButton;
+    private ImageView mDisplayMusicControlsButton;
     private ImageButton mPlayIcon;
     private ImageButton mPauseIcon;
     private ImageButton mRewindIcon;
@@ -252,8 +252,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mSelector.setHoldAfterTrigger(true, false);
         mSelector.setLeftHintText(R.string.lockscreen_unlock_label);
 
-        mHideMusicControlsButton = (TextView) findViewById(R.id.hide_music_controls_button);
-        mDisplayMusicControlsButton = (TextView) findViewById(R.id.display_music_controls_button);
+        mHideMusicControlsButton = (ImageView) findViewById(R.id.hide_music_controls_button);
+        mDisplayMusicControlsButton = (ImageView) findViewById(R.id.display_music_controls_button);
 
         mPlayIcon = (ImageButton) findViewById(R.id.musicControlPlay);
         mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);

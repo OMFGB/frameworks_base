@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2006,2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.android.internal.util.HierarchicalStateMachine;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.util.EventLog;
 
@@ -322,6 +323,10 @@ public abstract class DataConnection extends HierarchicalStateMachine {
     private SetupResult onSetupConnectionCompleted(AsyncResult ar) {
         SetupResult result;
         ConnectionParams cp = (ConnectionParams) ar.userObj;
+        final int MAX_RETRY_COUNT = 5;
+        // Retry delay to read the DNS/gateway properties, if they are
+        // not yet set to the proper values.
+        final int READ_DATA_PROPERTIES_RETRY_MILLIS = 20;
 
         if (ar.exception != null) {
             if (DBG) log("DataConnection Init failed " + ar.exception);
@@ -369,9 +374,20 @@ public abstract class DataConnection extends HierarchicalStateMachine {
                 if (response.length > 2) {
                     ipAddress = response[2];
                     String prefix = "net." + interfaceName + ".";
-                    gatewayAddress = SystemProperties.get(prefix + "gw");
-                    dnsServers[0] = SystemProperties.get(prefix + "dns1");
-                    dnsServers[1] = SystemProperties.get(prefix + "dns2");
+                    for (int retryCount = 0; retryCount < MAX_RETRY_COUNT; retryCount++) {
+                        gatewayAddress = SystemProperties.get(prefix + "gw");
+                        dnsServers[0] = SystemProperties.get(prefix + "dns1");
+                        dnsServers[1] = SystemProperties.get(prefix + "dns2");
+
+                        if (!gatewayAddress.equals("")
+                                && !(dnsServers[0].equals("") && dnsServers[1].equals(""))) {
+                            break;
+                        }
+                        log("Invalid Gateway/DNS address!!!!!!!!!!!!!!"
+                                + " Retry after a delay (Retry Count:" + retryCount + ")");
+                        SystemClock.sleep(READ_DATA_PROPERTIES_RETRY_MILLIS);
+                    }
+
                     if (DBG) {
                         log("interface=" + interfaceName + " ipAddress=" + ipAddress
                             + " gateway=" + gatewayAddress + " DNS1=" + dnsServers[0]

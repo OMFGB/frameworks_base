@@ -516,6 +516,42 @@ public class SmsMessage extends SmsMessageBase {
     }
 
     /**
+     * Returns severity of the emergency message.
+     * @return severity
+     * @hide
+    */
+    public android.telephony.EmergencyMessage.Severity getSeverity() {
+        return mBearerData.userData.severity;
+    }
+
+    /**
+     * Returns urgency of the emergency message.
+     * @return urgency
+     * @hide
+    */
+    public android.telephony.EmergencyMessage.Urgency getUrgency() {
+        return mBearerData.userData.urgency;
+    }
+
+    /**
+     * Returns certainty of the emergency message.
+     * @return certainty
+     * @hide
+    */
+    public android.telephony.EmergencyMessage.Certainty getCertainty() {
+        return mBearerData.userData.certainty;
+    }
+
+    /**
+     * Returns language of the emergency message.
+     * @return language
+     * @hide
+    */
+    public int getLanguage() {
+        return mBearerData.userData.language;
+    }
+
+    /**
      * Decodes pdu to an empty SMS object.
      * In the CDMA case the pdu is just an internal byte stream representation
      * of the SMS Java-object.

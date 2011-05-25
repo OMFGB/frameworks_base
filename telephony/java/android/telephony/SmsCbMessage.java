@@ -31,7 +31,7 @@ import java.io.UnsupportedEncodingException;
  *
  * {@hide}
  */
-public class SmsCbMessage implements EmergencyMessage {
+public class SmsCbMessage {
 
     /**
      * Cell wide immediate geographical scope
@@ -383,4 +383,5 @@ public class SmsCbMessage implements EmergencyMessage {
             return new SmsCbMessage[size];
         }
     };
+
 }

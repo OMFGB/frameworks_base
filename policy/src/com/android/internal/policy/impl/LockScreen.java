@@ -58,6 +58,9 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.Map;
 
+import android.util.Slog;
+import android.content.Intent;
+
 /**
  * The screen within {@link LockPatternKeyguardView} that shows general
  * information about the device depending on its state, and how to get
@@ -315,6 +318,22 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 mCallback.pokeWakelock();
                 sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
                 mWasMusicActive = false;
+            }
+        });
+
+	//TODO: Launch Music app on long press.
+        mHideMusicControlsButton.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+		Slog.d(TAG, "Long press triggered");
+                                return true;           
+            }
+        });
+
+        //TODO: Launch Music app on long press.
+        mDisplayMusicControlsButton.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+                Slog.d(TAG, "Long press activated");
+                                return true;           
             }
         });
 

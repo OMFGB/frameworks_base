@@ -32,24 +32,25 @@ public abstract class PowerButton {
     public static final int STATE_INTERMEDIATE = 5;
     public static final int STATE_UNKNOWN = 6;
 
-    public static final String BUTTON_WIFI = "wifi";
-    public static final String BUTTON_GPS = "gps";
-    public static final String BUTTON_BLUETOOTH = "bluetooth";
-    public static final String BUTTON_BRIGHTNESS = "brightness";
-    public static final String BUTTON_SOUND = "sound";
-    public static final String BUTTON_SYNC = "sync";
-    public static final String BUTTON_WIFIAP = "wifiap";
-    public static final String BUTTON_SCREENTIMEOUT = "screentimeout";
-    public static final String BUTTON_MOBILEDATA = "mobiledata";
-    public static final String BUTTON_LOCKSCREEN = "lockscreen";
-    public static final String BUTTON_NETWORKMODE = "networkmode";
-    public static final String BUTTON_AUTOROTATE = "autorotate";
-    public static final String BUTTON_AIRPLANE = "airplane";
-    public static final String BUTTON_FLASHLIGHT = "flashlight";
-    public static final String BUTTON_SLEEP = "sleep";
-    public static final String BUTTON_MEDIA_PLAY_PAUSE = "media_play_pause";
-    public static final String BUTTON_MEDIA_PREVIOUS = "media_previous";
-    public static final String BUTTON_MEDIA_NEXT = "media_next";
+    public static final String BUTTON_WIFI = "toggleWifi";
+    public static final String BUTTON_GPS = "toggleGPS";
+    public static final String BUTTON_BLUETOOTH = "toggleBluetooth";
+    public static final String BUTTON_BRIGHTNESS = "toggleBrightness";
+    public static final String BUTTON_SOUND = "toggleSound";
+    public static final String BUTTON_SYNC = "toggleSync";
+    public static final String BUTTON_WIFIAP = "toggleWifiAp";
+    public static final String BUTTON_SCREENTIMEOUT = "toggleScreenTimeout";
+    public static final String BUTTON_MOBILEDATA = "toggleMobileData";
+    public static final String BUTTON_LOCKSCREEN = "toggleLockScreen";
+    public static final String BUTTON_NETWORKMODE = "toggleNetworkMode";
+    public static final String BUTTON_AUTOROTATE = "toggleAutoRotate";
+    public static final String BUTTON_AIRPLANE = "toggleAirplane";
+    public static final String BUTTON_FLASHLIGHT = "toggleFlashlight";
+    public static final String BUTTON_SLEEP = "toggleSleepMode";
+    public static final String BUTTON_MEDIA_PLAY_PAUSE = "toggleMediaPlayPause";
+    public static final String BUTTON_MEDIA_PREVIOUS = "toggleMediaPrevious";
+    public static final String BUTTON_MEDIA_NEXT = "toggleMediaNext";
+    public static final String BUTTON_WIMAX = "toggleWimax";
     public static final String BUTTON_UNKNOWN = "unknown";
 
     private static final Mode MASK_MODE = Mode.SCREEN;
@@ -75,6 +76,7 @@ public abstract class PowerButton {
         BUTTONS.put(BUTTON_MEDIA_PLAY_PAUSE, MediaPlayPauseButton.class);
         BUTTONS.put(BUTTON_MEDIA_PREVIOUS, MediaPreviousButton.class);
         BUTTONS.put(BUTTON_MEDIA_NEXT, MediaNextButton.class);
+        BUTTONS.put(BUTTON_WIMAX, WimaxButton.class);
     }
     // this is a list of our currently loaded buttons
     private static final HashMap<String, PowerButton> BUTTONS_LOADED = new HashMap<String, PowerButton>();
@@ -86,6 +88,9 @@ public abstract class PowerButton {
 
     // a static onclicklistener that can be set to register a callback when ANY button is clicked
     private static View.OnClickListener GLOBAL_ON_CLICK_LISTENER = null;
+
+    // a static onlongclicklistener that can be set to register a callback when ANY button is long clicked
+    private static View.OnLongClickListener GLOBAL_ON_LONG_CLICK_LISTENER = null;
 
     // we use this to ensure we update our views on the UI thread
     private Handler mViewUpdateHandler = new Handler() {
@@ -127,6 +132,7 @@ public abstract class PowerButton {
 
     protected abstract void updateState();
     protected abstract void toggleState();
+    protected abstract boolean handleLongClick();
 
     protected void update() {
         updateState();
@@ -156,6 +162,7 @@ public abstract class PowerButton {
         if(mView != null) {
             mView.setTag(mType);
             mView.setOnClickListener(mClickListener);
+            mView.setOnLongClickListener(mLongClickListener);
         }
     }
 
@@ -189,6 +196,24 @@ public abstract class PowerButton {
             if(GLOBAL_ON_CLICK_LISTENER != null) {
                 GLOBAL_ON_CLICK_LISTENER.onClick(v);
             }
+        }
+    };
+
+    private View.OnLongClickListener mLongClickListener = new View.OnLongClickListener() {
+        public boolean onLongClick(View v) {
+            boolean result = false;
+            String type = (String)v.getTag();
+            for (Map.Entry<String, PowerButton> entry : BUTTONS_LOADED.entrySet()) {
+                if(entry.getKey().endsWith(type)) {
+                    result = entry.getValue().handleLongClick();
+                    break;
+                }
+            }
+
+            if(result && GLOBAL_ON_LONG_CLICK_LISTENER != null) {
+                GLOBAL_ON_LONG_CLICK_LISTENER.onLongClick(v);
+            }
+            return result;
         }
     };
 
@@ -319,6 +344,10 @@ public abstract class PowerButton {
 
     public static void setGlobalOnClickListener(View.OnClickListener listener) {
         GLOBAL_ON_CLICK_LISTENER = listener;
+    }
+
+    public static void setGlobalOnLongClickListener(View.OnLongClickListener listener) {
+        GLOBAL_ON_LONG_CLICK_LISTENER = listener;
     }
 
     protected static PowerButton getLoadedButton(String key) {

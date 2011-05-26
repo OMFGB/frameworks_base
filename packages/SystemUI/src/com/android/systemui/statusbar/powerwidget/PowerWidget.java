@@ -16,6 +16,8 @@
 
 package com.android.systemui.statusbar.powerwidget;
 
+import com.android.systemui.statusbar.StatusBarService;
+
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -40,6 +42,8 @@ import com.android.systemui.R;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import android.util.Slog;
 
 public class PowerWidget extends FrameLayout {
     private static final String TAG = "PowerWidget";
@@ -173,6 +177,10 @@ public class PowerWidget extends FrameLayout {
         PowerButton.setGlobalOnClickListener(listener);
     }
 
+    public void setGlobalButtonOnLongClickListener(View.OnLongClickListener listener) {
+        PowerButton.setGlobalOnLongClickListener(listener);
+    }
+
     private void setupBroadcastReceiver() {
         if(mBroadcastReceiver == null) {
             mBroadcastReceiver = new WidgetBroadcastReceiver();
@@ -185,13 +193,18 @@ public class PowerWidget extends FrameLayout {
     }
 
     public void updateVisibility() {
+	Slog.d(TAG, "Updating Widget Visibility");
         // now check if we need to display the widget still
         boolean displayPowerWidget = Settings.System.getInt(mContext.getContentResolver(),
                    Settings.System.EXPANDED_VIEW_WIDGET, 1) == 1;
         if(!displayPowerWidget) {
             setVisibility(View.GONE);
+        StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
+        StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
         } else {
             setVisibility(View.VISIBLE);
+        StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
+        StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
         }
     }
 

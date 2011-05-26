@@ -80,6 +80,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 
+import com.android.systemui.R;
+
+import com.android.systemui.statusbar.StatusBarPolicy;
 
 
 
@@ -339,7 +342,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mOngoingTitle.setVisibility(View.GONE);
         mLatestTitle.setVisibility(View.GONE);
 
-	 mTogglesNotVisibleButton.setVisibility(View.GONE);
+	mTogglesNotVisibleButton.setVisibility(View.GONE);
         mTogglesVisibleButton.setVisibility(View.VISIBLE);
 
         mPowerWidget = (PowerWidget)expanded.findViewById(R.id.exp_power_stat);
@@ -352,6 +355,12 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                         }
                     }
                 });
+        mPowerWidget.setGlobalButtonOnLongClickListener(new View.OnLongClickListener() {
+                   public boolean onLongClick(View v) {
+                       animateCollapse();
+                       return true;
+                   }
+               });
 
         mAreTogglesVisible = (Settings.System.getInt(
                         context.getContentResolver(),
@@ -553,7 +562,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         }
     }
 
-    View[] makeNotificationView(final StatusBarNotification notification, ViewGroup parent) {
+    View[] makeNotificationView(StatusBarNotification notification, ViewGroup parent) {
         Notification n = notification.notification;
         RemoteViews remoteViews = n.contentView;
         if (remoteViews == null) {
@@ -562,18 +571,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
         // create the row view
         LayoutInflater inflater = (LayoutInflater)getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        LatestItemContainer row = (LatestItemContainer) inflater.inflate(R.layout.status_bar_latest_event, parent, false);
-        if ((n.flags & Notification.FLAG_ONGOING_EVENT) == 0 && (n.flags & Notification.FLAG_NO_CLEAR) == 0) {
-            row.setOnSwipeCallback(new Runnable() {
-                public void run() {
-                    try {
-                        mBarService.onNotificationClear(notification.pkg, notification.tag, notification.id);
-                    } catch (RemoteException e) {
-                        // Skip it, don't crash.
-                    }
-                }
-            });
-        }
+        View row = inflater.inflate(R.layout.status_bar_latest_event, parent, false);
 
         // bind the click event to the content area
         ViewGroup content = (ViewGroup)row.findViewById(R.id.content);
@@ -751,7 +749,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mExpandedVisible = true;
         visibilityChanged(true);
 
-        mPowerWidget.updateWidget();
+	mPowerWidget.updateWidget();
 
         updateExpandedViewPos(EXPANDED_LEAVE_ALONE);
         mExpandedParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
@@ -1348,7 +1346,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
     void updateExpandedViewPos(int expandedPosition) {
         if (SPEW) {
             Slog.d(TAG, "updateExpandedViewPos before expandedPosition=" + expandedPosition
-                    + " mTrackingParams.y="
+                    + " mTrackingParams.y=" 
                     + ((mTrackingParams == null) ? "???" : mTrackingParams.y)
                     + " mTrackingPosition=" + mTrackingPosition);
         }
@@ -1519,6 +1517,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mPowerWidget.updateVisibility();        
         }
     };
+
     private View.OnClickListener mClearButtonListener = new View.OnClickListener() {
         public void onClick(View v) {
             try {
@@ -1536,7 +1535,8 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             if (Intent.ACTION_CLOSE_SYSTEM_DIALOGS.equals(action)
                     || Intent.ACTION_SCREEN_OFF.equals(action)) {
                 animateCollapse();
-            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+            }
+            else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
                 updateResources();
             }
         }

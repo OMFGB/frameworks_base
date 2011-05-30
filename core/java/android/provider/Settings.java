@@ -1991,6 +1991,13 @@ public final class Settings {
 	public static final String LAUNCHER_2_PACKAGE = "com.android.launcher";
 
 	/**
+	 * Sets Launcher to continuously loop from one end of the 
+	 * workspace to the other.
+	 * @hide
+	 */
+	public static final String LAUNCHER_ENDLESS_LOOP = "launcher_endless_loop";
+
+	/**
 	 * Carrier caption option
 	 * @hide
 	 */

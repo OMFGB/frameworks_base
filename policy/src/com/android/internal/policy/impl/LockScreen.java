@@ -21,6 +21,8 @@ import com.android.internal.telephony.IccCard;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.internal.widget.SlidingTab;
 
+import android.app.Activity;
+
 import android.media.AudioManager;
 
 import android.content.ActivityNotFoundException;
@@ -95,6 +97,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private ImageButton mRewindIcon;
     private ImageButton mForwardIcon;
     private ImageButton mAlbumArt;
+    private ImageButton mLockSMS;
     private Button mEmergencyCallButton;
 
     private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -263,6 +266,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
         mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
 
+        mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
 
         mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
         mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
@@ -288,6 +292,16 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 mCallback.takeEmergencyCallAction();
             }
         });
+
+	mLockSMS.setOnClickListener(new View.OnClickListener() {
+	    public void onClick(View v) {
+                Intent i = new Intent();
+                Uri uri = Uri.parse("smsto:xxxxxxxx"); 
+                Intent intent = new Intent(Intent.ACTION_SENDTO, uri); 
+		intent.putExtra("sms_body", ""); 
+                getContext().startActivity(intent);
+	    }
+	});
 
         mPlayIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -324,7 +338,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	//TODO: Launch Music app on long press.
         mHideMusicControlsButton.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
-		Slog.d(TAG, "Long press triggered");
+                Intent musicIntent = new Intent(Intent.ACTION_VIEW);
+                musicIntent.setClassName("com.android.music","com.android.music.MediaPlaybackActivity");
+                musicIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(musicIntent);
+                mCallback.goToUnlockScreen();
                                 return true;           
             }
         });
@@ -332,7 +350,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         //TODO: Launch Music app on long press.
         mDisplayMusicControlsButton.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
-                Slog.d(TAG, "Long press activated");
+                Intent musicIntent = new Intent(Intent.ACTION_VIEW);
+                musicIntent.setClassName("com.android.music","com.android.music.MediaPlaybackActivity");
+                musicIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(musicIntent);
+                mCallback.goToUnlockScreen();
                                 return true;           
             }
         });

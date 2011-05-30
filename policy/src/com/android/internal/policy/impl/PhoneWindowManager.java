@@ -35,6 +35,7 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.LocalPowerManager;
@@ -206,7 +207,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     WindowState mStatusBar = null;
     final ArrayList<WindowState> mStatusBarPanels = new ArrayList<WindowState>();
     WindowState mKeyguard = null;
-    KeyguardViewMediator mKeyguardMediator;
+    KeyguardViewMediator mKeyguardMediator = null;
     GlobalActions mGlobalActions;
     volatile boolean mPowerKeyHandled;
     RecentApplicationsDialog mRecentAppsDialog;
@@ -228,8 +229,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     int mCurrentAppOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
     static final int DEFAULT_ACCELEROMETER_ROTATION = 0;
     int mAccelerometerDefault = DEFAULT_ACCELEROMETER_ROTATION;
-    boolean mHasSoftInput = false;
-    
+    boolean mHasSoftInput = false;  
     int mPointerLocationMode = 0;
     PointerLocationView mPointerLocationView = null;
     InputChannel mPointerLocationInputChannel;
@@ -291,6 +291,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     // Behavior of ENDCALL Button.  (See Settings.System.END_BUTTON_BEHAVIOR.)
     int mEndcallBehavior;
     boolean mTrackpadWakeScreen;
+    boolean mVolumeWakeScreen;
     boolean mVolBtnMusicControls;
     boolean mIsLongPress;
 
@@ -332,6 +333,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     "fancy_rotation_anim"), false, this);
 	    resolver.registerContentObserver(Settings.System.getUriFor(
 		    Settings.System.TRACKPAD_WAKE_SCREEN), false, this);
+	    resolver.registerContentObserver(Settings.System.getUriFor(
+		    Settings.System.VOLUME_WAKE_SCREEN), false, this);
 	    resolver.registerContentObserver(Settings.System.getUriFor(
 		    Settings.System.ENABLE_VOL_MUSIC_CONTROLS), false, this);
             updateSettings();
@@ -512,7 +515,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 	};
     };
 
-    private void sendMediaButtonEvent(int code) {
+    protected void sendMediaButtonEvent(int code) {
         long eventtime = SystemClock.uptimeMillis();
 
         Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null);
@@ -680,12 +683,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.Secure.INCALL_POWER_BUTTON_BEHAVIOR_DEFAULT);
             mFancyRotationAnimation = Settings.System.getInt(resolver,
                     "fancy_rotation_anim", 0) != 0 ? 0x80 : 0;
-            int accelerometerDefault = Settings.System.getInt(resolver,
-                    Settings.System.ACCELEROMETER_ROTATION, DEFAULT_ACCELEROMETER_ROTATION);
 	    mTrackpadWakeScreen = (Settings.System.getInt(resolver,
-		    Settings.System.TRACKPAD_WAKE_SCREEN, 0) == 1);
+		    Settings.System.TRACKPAD_WAKE_SCREEN, 1) == 1);
+	    mVolumeWakeScreen = (Settings.System.getInt(resolver,
+		    Settings.System.VOLUME_WAKE_SCREEN, 0) == 1);
 	    mVolBtnMusicControls = (Settings.System.getInt(resolver,
 		    Settings.System.ENABLE_VOL_MUSIC_CONTROLS, 0) == 1);
+	    int accelerometerDefault = Settings.System.getInt(resolver,
+                    Settings.System.ACCELEROMETER_ROTATION, DEFAULT_ACCELEROMETER_ROTATION);
             if (mAccelerometerDefault != accelerometerDefault) {
                 mAccelerometerDefault = accelerometerDefault;
                 updateOrientationListenerLp();
@@ -1871,9 +1876,22 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             // to wake the device but don't pass the key to the application.
             result = 0;
 
+	boolean isBtnMouse = (keyCode == BTN_MOUSE);
+	if (isBtnMouse) {
+	    result &= ~ACTION_PASS_TO_USER;
+	}
+
             final boolean isWakeKey = (policyFlags
                     & (WindowManagerPolicy.FLAG_WAKE | WindowManagerPolicy.FLAG_WAKE_DROPPED)) != 0
-	    || ((keyCode == BTN_MOUSE) && mTrackpadWakeScreen);
+                    || (isBtnMouse && mTrackpadWakeScreen)
+                    || ((keyCode == KeyEvent.KEYCODE_VOLUME_UP) && mVolumeWakeScreen)
+                    || ((keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) && mVolumeWakeScreen);
+
+            // make sure keyevent get's handled as power key on volume-wake
+            if(!isScreenOn && mVolumeWakeScreen && isWakeKey && ((keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                    || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)))
+                keyCode=KeyEvent.KEYCODE_POWER;
+
             if (down && isWakeKey) {
                 if (keyguardActive) {
                     // If the keyguard is showing, let it decide what to do with the wake key.

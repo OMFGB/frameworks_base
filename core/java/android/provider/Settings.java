@@ -1960,6 +1960,12 @@ public final class Settings {
 	 */
 	public static final String TRACKPAD_WAKE_SCREEN = "trackpad_wake_screen";
 
+        /** 
+	 * Volume button screen wake setting (from CM)
+	 * @hide
+	 */
+	public static final String VOLUME_WAKE_SCREEN = "volume_wake_screen";
+
 	/**
 	 * Whether to enable trackpad unlock
 	 * @hide

@@ -154,6 +154,17 @@
         android:layout_marginBottom="60dip"
         />
 
+	<ImageButton 
+	    android:id="@+id/smsShortcutButton"
+            android:src="@drawable/lock_sms_button"
+            android:layout_alignParentBottom="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_alignParentLeft="true"
+            android:padding="15dp"
+	    />
+
         <ImageView android:id="@+id/hide_music_controls_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

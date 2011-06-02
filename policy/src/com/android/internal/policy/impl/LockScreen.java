@@ -98,6 +98,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private ImageButton mForwardIcon;
     private ImageButton mAlbumArt;
     private ImageButton mLockSMS;
+    private ImageButton mLockPhone;
     private Button mEmergencyCallButton;
 
     private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -267,6 +268,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
 
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
+	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
 
         mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
         mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
@@ -293,13 +295,25 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
             }
         });
 
+        mLockPhone.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent i = new Intent();
+                Intent intent = new Intent(Intent.ACTION_DIAL); 
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+                mCallback.goToUnlockScreen();
+	    }
+	});
+
 	mLockSMS.setOnClickListener(new View.OnClickListener() {
 	    public void onClick(View v) {
                 Intent i = new Intent();
-                Uri uri = Uri.parse("smsto:xxxxxxxx"); 
+                Uri uri = Uri.parse("smsto:8675309"); 
                 Intent intent = new Intent(Intent.ACTION_SENDTO, uri); 
-		intent.putExtra("sms_body", ""); 
-                getContext().startActivity(intent);
+		intent.putExtra("sms_body", "Jenny are you there?"); 
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	        getContext().startActivity(intent);
+                mCallback.goToUnlockScreen();
 	    }
 	});
 

@@ -48,6 +48,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemProperties;
+import android.os.Vibrator;
 import android.provider.Settings;
 import android.content.SharedPreferences;
 
@@ -303,6 +304,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
 	        mCallback.pokeWakelock();
+		Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+                long[] pattern = {
+                                0, 100
+		};
+		vibe.vibrate(pattern, -1);
                 Intent i = new Intent();
                 Intent intent = new Intent(Intent.ACTION_DIAL); 
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -315,6 +321,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	mLockSMS.setOnLongClickListener(new View.OnLongClickListener() {
 	    public boolean onLongClick(View v) {
 		mCallback.pokeWakelock();
+		Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+                long[] pattern = {
+                                0, 100
+		};
+		vibe.vibrate(pattern, -1);
                 Intent i = new Intent();
                 Intent mmsIntent = new Intent(Intent.ACTION_VIEW);
 		mmsIntent.setClassName("com.android.mms","com.android.mms.ui.ConversationList");

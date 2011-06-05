@@ -143,6 +143,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private boolean mMenuUnlockScreen = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.MENU_UNLOCK_SCREEN, 0) == 1);
 
+    private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
+	    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
+
     /**
      * The status of this lock screen.
      */
@@ -282,6 +285,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	mAlbumArt.setVisibility(View.GONE);
         mDisplayMusicControlsButton.setVisibility(View.GONE);
         mHideMusicControlsButton.setVisibility(View.GONE);
+	mLockSMS.setVisibility(View.GONE);
+	mLockPhone.setVisibility(View.GONE);
 
 
         mEmergencyCallText = (TextView) findViewById(R.id.emergencyCallText);
@@ -295,25 +300,28 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
             }
         });
 
-        mLockPhone.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
+        mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+	        mCallback.pokeWakelock();
                 Intent i = new Intent();
                 Intent intent = new Intent(Intent.ACTION_DIAL); 
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 getContext().startActivity(intent);
                 mCallback.goToUnlockScreen();
+		return true;
 	    }
 	});
 
-	mLockSMS.setOnClickListener(new View.OnClickListener() {
-	    public void onClick(View v) {
+	mLockSMS.setOnLongClickListener(new View.OnLongClickListener() {
+	    public boolean onLongClick(View v) {
+		mCallback.pokeWakelock();
                 Intent i = new Intent();
-                Uri uri = Uri.parse("smsto:8675309"); 
-                Intent intent = new Intent(Intent.ACTION_SENDTO, uri); 
-		intent.putExtra("sms_body", "Jenny are you there?"); 
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-	        getContext().startActivity(intent);
+                Intent mmsIntent = new Intent(Intent.ACTION_VIEW);
+		mmsIntent.setClassName("com.android.mms","com.android.mms.ui.ConversationList");
+                mmsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	        getContext().startActivity(mmsIntent);
                 mCallback.goToUnlockScreen();
+		return true;
 	    }
 	});
 
@@ -372,6 +380,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                                 return true;           
             }
         });
+
+	if(!mLockscreenShortcuts) {
+	    mLockPhone.setVisibility(View.GONE);
+	    mLockSMS.setVisibility(View.GONE);
+	} else {
+	    mLockPhone.setVisibility(View.VISIBLE);
+	    mLockSMS.setVisibility(View.VISIBLE);
+	}
 
         mHideMusicControlsButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {

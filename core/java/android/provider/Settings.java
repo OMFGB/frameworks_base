@@ -1956,6 +1956,12 @@ public final class Settings {
          * @hide
          */
         public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
+ 
+        /**
+	 * Whether lockscreen shortcuts should be shown on lockscreen
+	 * @hide
+	 */
+	public static final String LOCKSCREEN_SHORTCUTS = "lockscreen_shortcuts";
 
 	/**
 	 * Whether to enable music controls on the volume controls

@@ -231,6 +231,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         m3gppApplication = null;
         mUiccManager = null;
         mSIMRecords = null;
+        phone.getContext().unregisterReceiver(mIntentReceiver);
     }
 
     protected void finalize() {

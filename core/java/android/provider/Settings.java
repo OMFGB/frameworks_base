@@ -1707,6 +1707,7 @@ public final class Settings {
          */
         public static final String DATE_FORMAT = "date_format";
 
+
         /**
          * Whether the setup wizard has been run before (on first boot), or if
          * it still needs to be run.
@@ -1742,6 +1743,19 @@ public final class Settings {
          * disabled by the application.
          */
         public static final String ACCELEROMETER_ROTATION = "accelerometer_rotation";
+
+         /**
+         * Control the type of rotation which can be performed using the accelerometer
+         * if ACCELEROMETER_ROTATION is enabled.
+         * Value is a bitwise combination of
+         * 1 = 90 degrees (left)
+         * 2 = 180 degrees (inverted)
+         * 4 = 270 degrees (right)
+         * Normal portrait (0 degrees) is always enabled
+         * Default is 5 (90 & 270 degrees), like stock Android
+         * @hide
+         */
+        public static final String ACCELEROMETER_ROTATION_MODE = "accelerometer_rotation_mode";
 
         /**
          * Whether the audible DTMF tones are played by the dialer when dialing. The value is
@@ -2216,6 +2230,7 @@ public final class Settings {
             TIME_12_24,
             DATE_FORMAT,
             ACCELEROMETER_ROTATION,
+            ACCELEROMETER_ROTATION_MODE,
             DTMF_TONE_WHEN_DIALING,
             DTMF_TONE_TYPE_WHEN_DIALING,
             EMERGENCY_TONE,

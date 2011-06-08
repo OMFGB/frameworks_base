@@ -331,8 +331,34 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mNoNotificationsTitle = (TextView)expanded.findViewById(R.id.noNotificationsTitle);
         mTogglesNotVisibleButton = (ImageView)expanded.findViewById(R.id.toggles_not_visible_button);
         mTogglesNotVisibleButton.setOnClickListener(mTogglesNotVisibleButtonListener);
+	mTogglesNotVisibleButton.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+                Slog.d(TAG, "LongClick");
+                Intent i = new Intent();
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setClassName("com.t3hh4xx0r.god_mode","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                animateCollapse();
+                return true;
+            }
+        });
+
         mTogglesVisibleButton = (ImageView)expanded.findViewById(R.id.toggles_visible_button);
         mTogglesVisibleButton.setOnClickListener(mTogglesVisibleButtonListener);
+	mTogglesVisibleButton.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+                Slog.d(TAG, "LongClick");
+                Intent i = new Intent();
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setClassName("com.t3hh4xx0r.god_mode","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                animateCollapse();
+                return true;
+            }
+        });
+
         mClearButton = (TextView)expanded.findViewById(R.id.clear_all_button);
         mClearButton.setOnClickListener(mClearButtonListener);
         mScrollView = (ScrollView)expanded.findViewById(R.id.scroll);

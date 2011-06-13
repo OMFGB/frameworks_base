@@ -91,6 +91,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private TextView mStatus2;
     private TextView mScreenLocked;
     private TextView mEmergencyCallText;
+    private String mCarrierCap;
     private ImageView mHideMusicControlsButton;
     private ImageView mDisplayMusicControlsButton;
     private ImageButton mPlayIcon;
@@ -847,11 +848,13 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
         switch (status) {
             case Normal:
-                // text
-                mCarrier.setText(
-                        getCarrierString(
-                                mUpdateMonitor.getTelephonyPlmn(),
-                                mUpdateMonitor.getTelephonySpn()));
+            	mCarrierCap = Settings.System.getString(getContext().getContentResolver(), Settings.System.CARRIER_CAP);
+            	if (mCarrierCap != null){
+            		mCarrier.setText(mCarrierCap);
+            	} else {
+            		mCarrierCap = getContext().getString(R.string.lockscreen_carrier_default);
+            		mCarrier.setText(mCarrierCap);
+            	}
 
                 // Empty now, but used for sliding tab feedback
                 mScreenLocked.setText("");

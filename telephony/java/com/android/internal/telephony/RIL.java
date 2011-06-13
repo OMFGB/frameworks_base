@@ -25,6 +25,7 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_UMTS;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
+import android.provider.Settings.SettingNotFoundException;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -1472,6 +1473,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if(mInitialRadioStateChange) {
             synchronized (mStateMonitor) {
                 if (!mState.isOn()) {
+                    mNetworkMode = getPreferredNetworkMode();
                     RILRequest rrPnt = RILRequest.obtain(
                                    RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, null);
 
@@ -3779,6 +3781,19 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         riljLogv("[UNSL]< " + responseToString(response) + " " + retToString(response, ret));
     }
 
+    private int getPreferredNetworkMode() {
+        int nwMode;
+
+        try {
+            nwMode = android.provider.Settings.Secure.getInt(
+                    mContext.getContentResolver(),
+                    android.provider.Settings.Secure.PREFERRED_NETWORK_MODE);
+        } catch (SettingNotFoundException snfe) {
+            riljLog("getPreferredNetworkMode: Could not find PREFERRED_NETWORK_MODE!!");
+            nwMode = RILConstants.PREFERRED_NETWORK_MODE;
+        }
+        return nwMode;
+    }
 
     // ***** Methods for CDMA support
     public void

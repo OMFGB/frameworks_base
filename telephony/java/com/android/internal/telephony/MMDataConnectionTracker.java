@@ -1024,10 +1024,10 @@ public class MMDataConnectionTracker extends DataConnectionTracker {
             if (getRadioTechnology().isGsm()
                     || getRadioTechnology() == RadioTechnology.RADIO_TECH_EHRPD) {
                 EventLog.writeEvent(EventLogTags.PDP_NETWORK_DROP,
-                        id, getRadioTechnology());
+                        id, getRadioTechnology().toString());
             } else {
                 EventLog.writeEvent(EventLogTags.CDMA_DATA_DROP,
-                        id, getRadioTechnology());
+                        id, getRadioTechnology().toString());
             }
         }
     }

@@ -500,8 +500,4 @@ public abstract class NetworkStateTracker extends Handler {
      */
     public void interpretScanResultsAvailable() {
     }
-
-    public String getInterfaceName() {
-        return mInterfaceName;
-    }
 }

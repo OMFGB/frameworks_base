@@ -228,7 +228,7 @@ public class ConnectivityManager
     private IConnectivityManager mService;
 
     static public boolean isNetworkTypeValid(int networkType) {
-        return networkType >= 0 && networkType <= MAX_NETWORK_TYPE;
+        return TYPE_WIMAX == networkType || (networkType >= 0 && networkType <= MAX_NETWORK_TYPE);
     }
 
     public void setNetworkPreference(int preference) {

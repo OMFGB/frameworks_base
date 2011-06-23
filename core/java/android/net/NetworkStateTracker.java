@@ -51,6 +51,7 @@ public abstract class NetworkStateTracker extends Handler {
     protected NetworkInfo mNetworkInfo;
     protected Context mContext;
     protected Handler mTarget;
+    protected String interfaceName;
     private boolean mTeardownRequested;
 
     private int mCachedGatewayAddr = 0;
@@ -513,5 +514,9 @@ public abstract class NetworkStateTracker extends Handler {
      * processing, and from a safe thread.
      */
     public void interpretScanResultsAvailable() {
+    }
+
+    public String getInterfaceName() {
+	return interfaceName;
     }
 }

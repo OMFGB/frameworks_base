@@ -186,11 +186,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         SimLocked(true),
 
         /**
-         * The sim card is faulty.
-         */
-        SimIOError(true),
-
-        /**
          * The ICC card is 'SIM network subset locked'.
          */
         NetworkSubsetLocked(true),
@@ -889,8 +884,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 return Status.Normal;
             case UNKNOWN:
                 return Status.SimMissing;
-            case CARD_IO_ERROR:
-                return Status.SimIOError;
             case SIM_NETWORK_SUBSET_LOCKED:
                 return Status.NetworkSubsetLocked;
             case SIM_CORPORATE_LOCKED:
@@ -1005,16 +998,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 mScreenLocked.setVisibility(View.VISIBLE);
                 mSelector.setVisibility(View.GONE); // cannot unlock
                 mEmergencyCallText.setVisibility(View.VISIBLE);
-                mEmergencyCallButton.setVisibility(View.VISIBLE);
-                break;
-            case SimIOError:
-                // text
-                mCarrier.setText(R.string.lockscreen_sim_error_message_short);
-                mScreenLocked.setText(R.string.lockscreen_instructions_when_pattern_disabled);
-
-                // layout
-                mScreenLocked.setVisibility(View.INVISIBLE);
-                mSelector.setVisibility(View.VISIBLE);
                 mEmergencyCallButton.setVisibility(View.VISIBLE);
                 break;
             case NetworkSubsetLocked:

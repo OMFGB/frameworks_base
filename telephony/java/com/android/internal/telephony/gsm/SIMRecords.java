@@ -533,8 +533,8 @@ public final class SIMRecords extends UiccApplicationRecords {
                 Log.d(LOG_TAG, "IMSI: " + mImsi.substring(0, 6) + "xxxxxxx");
 
                 if (((mncLength == UNKNOWN) || (mncLength == 2)) &&
-                        ((imsi != null) && (imsi.length() >= 6))) {
-                    String mccmncCode = imsi.substring(0, 6);
+                        ((mImsi != null) && (mImsi.length() >= 6))) {
+                    String mccmncCode = mImsi.substring(0, 6);
                     for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                         if (mccmnc.equals(mccmncCode)) {
                             mncLength = 3;
@@ -780,8 +780,8 @@ public final class SIMRecords extends UiccApplicationRecords {
                     }
                 } finally {
                     if (((mncLength == UNINITIALIZED) || (mncLength == UNKNOWN) ||
-                            (mncLength == 2)) && ((imsi != null) && (imsi.length() >= 6))) {
-                        String mccmncCode = imsi.substring(0, 6);
+                            (mncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
+                        String mccmncCode = mImsi.substring(0, 6);
                         for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                             if (mccmnc.equals(mccmncCode)) {
                                 mncLength = 3;

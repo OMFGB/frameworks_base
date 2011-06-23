@@ -1595,25 +1595,7 @@ public class StatusBarPolicy {
             mService.setIcon("cdma_eri", R.drawable.stat_sys_roaming_cdma_0, 0);
         }
 
-<<<<<<< HEAD
-        switch (iconMode) {
-            case EriInfo.ROAMING_ICON_MODE_NORMAL:
-                if (iconIndex >= iconList.length) {
-                    Slog.e(TAG, "unknown iconIndex " + iconIndex + ", skipping ERI icon update");
-                    return;
-                }
-                mService.setIcon("cdma_eri", iconList[iconIndex], 0);
-                mService.setIconVisibility("cdma_eri", true);
-                break;
-            case EriInfo.ROAMING_ICON_MODE_FLASH:
-                mService.setIcon("cdma_eri", R.drawable.stat_sys_roaming_cdma_flash, 0);
-                mService.setIconVisibility("cdma_eri", true);
-                break;
-
-        }
-=======
         mService.setIconVisibility("cdma_eri", true);
->>>>>>> 23d501b... Telephony: Signal Strength and Data icon UI changes
         mService.setIcon("phone_signal", mPhoneSignalIconId, 0);
         return;
     }

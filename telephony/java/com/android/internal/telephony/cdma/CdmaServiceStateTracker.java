@@ -378,7 +378,8 @@ final class CdmaServiceStateTracker extends ServiceStateTracker {
             ar = (AsyncResult) msg.obj;
 
             if (ar.exception == null) {
-                String states[] = (String[])ar.result;
+                RegStateResponse r = (RegStateResponse)ar.result;
+		String states[] = r.getRecord(0);
                 int baseStationId = -1;
                 int baseStationLatitude = CdmaCellLocation.INVALID_LAT_LONG;
                 int baseStationLongitude = CdmaCellLocation.INVALID_LAT_LONG;

@@ -1180,7 +1180,11 @@ public class StatusBarPolicy {
             switch (radio) {
                 case LTE:
                     /* LTE data tech */
-                    iconLevel = getLteLevel();
+                    /* HTC does magic in their signal reporting.
+                     * Using GSM lvl while on 4G for signal strength.
+                     * slayher
+                     */
+                    iconLevel = getGsmLevel();
                     break;
                 case GSM:
                     /* 3GPP GSM data tech */
@@ -1228,6 +1232,62 @@ public class StatusBarPolicy {
          */
         int rssi, rsrp, snr;
         int rssiIconLevel = 0, rsrpIconLevel = -1, snrIconLevel = -1;
+
+        rsrp = mSignalStrength.getLteRsrp();
+
+        /*
+         *  The current Reference Signal Receive Power Range: -44 to -140 dBm
+         *  RSRP >= -85 dBm => 4 bars
+         * -95 dBm <= RSRP < -85 dBm => 3bars
+         * -105 dBm <= RSRP < -95 dBm => 2
+         * -115 dBm <= RSRP < -105 dBm => 1
+         *  RSRP < -115 dBm/No Service Antenna Icon Only
+         *  RSRP ref: TS 33.331 - 6.3.5 range 0-97
+         */
+        if (rsrp > -44) rsrpIconLevel = -1;
+        else if (rsrp >= -85) rsrpIconLevel = 4;
+        else if (rsrp >= -95) rsrpIconLevel = 3;
+        else if (rsrp >= -105) rsrpIconLevel = 2;
+        else if (rsrp >= -115) rsrpIconLevel = 1;
+        else if (rsrp >= -140)rsrpIconLevel = 0;
+
+
+        snr = mSignalStrength.getLteSnr();
+        /*
+         * Values are -200 dB to +300 (= SNR *10dB )
+         * RS_SNR >= 13.0 dB =>4 bars
+         * 4.5 dB <= RS_SNR < 13.0 dB => 3 bars
+         * 1.0 dB <= RS_SNR < 4.5 dB => 2 bars
+         * -3.0 dB <= RS_SNR < 1.0 dB 1 bar
+         * RS_SNR < -3.0 dB/No Service Antenna Icon Only
+         */
+        if (snr > 300) snrIconLevel = -1;
+        else if (snr >= 130) snrIconLevel = 4;
+        else if (snr >= 45) snrIconLevel = 3;
+        else if (snr >= 10) snrIconLevel = 2;
+        else if (snr >= -30) snrIconLevel = 1;
+        else if (snr >= -200)snrIconLevel = 0;
+
+        Slog.d(TAG,"getLTELevel - rsrp:"+ rsrp + " snr:"+ snr);
+
+        /* Choose a measurement type to use for notification */
+        if ( snrIconLevel != -1 && rsrpIconLevel != -1){
+            /*
+             * The number of bars displayed shall be the smaller of the bars
+             * associated with LTE RSRP and the bars associated with the LTE
+             * RS_SNR
+             */
+            return (rsrpIconLevel < snrIconLevel ? rsrpIconLevel : snrIconLevel);
+        }
+
+        if (snrIconLevel != -1 )
+        {
+            return snrIconLevel;
+        }
+
+        if (rsrpIconLevel != -1 ) {
+            return rsrpIconLevel;
+        }
 
         rssi = mSignalStrength.getLteRssi();
         /* Valid values are (0-63, 99) as defined in TS 36.331 */

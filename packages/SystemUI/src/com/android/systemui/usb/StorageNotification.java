@@ -30,6 +30,8 @@ import android.os.storage.StorageManager;
 import android.provider.Settings;
 import android.util.Slog;
 
+import com.android.systemui.R;
+
 public class StorageNotification extends StorageEventListener {
     private static final String TAG = "StorageNotification";
 
@@ -60,6 +62,7 @@ public class StorageNotification extends StorageEventListener {
      */
     private Notification   mMediaStorageNotification;
     private boolean        mUmsAvailable;
+    private boolean        mShowUmsNotification;
     private StorageManager mStorageManager;
 
     private Handler        mAsyncEventHandler;
@@ -75,6 +78,13 @@ public class StorageNotification extends StorageEventListener {
         HandlerThread thr = new HandlerThread("SystemUI StorageNotification");
         thr.start();
         mAsyncEventHandler = new Handler(thr.getLooper());
+
+        try {
+            mShowUmsNotification = mContext.getResources().getBoolean(
+                    R.bool.config_show_ums_notification);
+        } catch (Exception e) {
+            mShowUmsNotification = true;
+        }
 
         onUsbMassStorageConnectionChanged(connected);
     }
@@ -277,6 +287,10 @@ public class StorageNotification extends StorageEventListener {
      */
     private synchronized void setUsbStorageNotification(int titleId, int messageId, int icon,
             boolean sound, boolean visible, PendingIntent pi) {
+
+        if (!mShowUmsNotification) {
+            visible = false;
+        }
 
         if (!visible && mUsbStorageNotification == null) {
             return;

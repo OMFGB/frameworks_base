@@ -131,6 +131,8 @@ static void dbopen(JNIEnv* env, jobject object, jstring pathString, jint flags)
     sqlite3_stmt * statement = NULL;
     char const * path8 = env->GetStringUTFChars(pathString, NULL);
     int sqliteFlags;
+    // Error code handling for SQLite exec
+    char* zErrMsg = NULL;
 
     // register the logging func on sqlite. needs to be done BEFORE any sqlite3 func is called.
     registerLoggingFunc(path8);

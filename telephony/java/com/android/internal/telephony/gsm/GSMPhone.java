@@ -986,10 +986,18 @@ public class GSMPhone extends PhoneBase {
 
         // get the message
         Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
-        if (LOCAL_DEBUG)
-            Log.d(LOG_TAG, "wrapping and sending message to connect automatically");
 
-        mCM.setNetworkSelectionModeAutomatic(msg);
+        // Mode is automatic already, dont send request to RIL
+        if (!mSST.ss.getIsManualSelection()) {
+            Log.d(LOG_TAG, "Posting EVENT_SET_NETWORK_AUTOMATIC_COMPLETE internally ");
+            AsyncResult.forMessage(msg, null, null);
+            msg.sendToTarget();
+        } else {
+            mCM.setNetworkSelectionModeAutomatic(msg);
+            if (LOCAL_DEBUG)
+                Log.d(LOG_TAG, "wrapping and sending message to connect automatically");
+
+        }
     }
 
     public void
@@ -1498,6 +1506,9 @@ public class GSMPhone extends PhoneBase {
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
         editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
+
+        Log.d(LOG_TAG, "Writing NETWORK_SELECTION_KEY " + nsm.operatorNumeric);
+        Log.d(LOG_TAG, "Writing NETWORK_SELECTION_NAME_KEY " + nsm.operatorAlphaLong);
 
         // commit and log the result.
         if (! editor.commit()) {

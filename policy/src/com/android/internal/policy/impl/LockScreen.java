@@ -162,6 +162,10 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_HC_LOCKSCREEN);
     private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);
+    
+
+    private boolean mShouldShowMusicControls = (Settings.System.getInt(mContext.getContentResolver(),
+    	    Settings.System.LOCKSCREEN_MUSIC_ON, 1) == 1);
 
     /**
      * The status of this lock screen.
@@ -433,7 +437,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mHideMusicControlsButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mCallback.pokeWakelock();
-                mAreMusicControlsVisible = false;
+                mAreMusicControlsVisible = false || mShouldShowMusicControls;
                 mDisplayMusicControlsButton.setVisibility(View.VISIBLE);
                 mHideMusicControlsButton.setVisibility(View.GONE);
                     mPauseIcon.setVisibility(View.GONE);
@@ -449,9 +453,10 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mDisplayMusicControlsButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mCallback.pokeWakelock();
-                mAreMusicControlsVisible = true;
+                mAreMusicControlsVisible = true || mShouldShowMusicControls;
 		
 		if (mIsMusicActive) {
+			
                 mDisplayMusicControlsButton.setVisibility(View.GONE);
                 mHideMusicControlsButton.setVisibility(View.VISIBLE);
                     mPauseIcon.setVisibility(View.VISIBLE);
@@ -468,6 +473,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                         mAlbumArt.setImageURI(uri); 
                     }
 		}
+		
+		// 
 		if (mWasMusicActive) {
                 mDisplayMusicControlsButton.setVisibility(View.GONE);
                 mHideMusicControlsButton.setVisibility(View.VISIBLE);

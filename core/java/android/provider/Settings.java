@@ -2030,6 +2030,7 @@ public final class Settings {
 	 */
 	public static final String USE_SCREENOFF_ANIM = "use_screenoff_anim"; 
 
+	public static final String LOCKSCREEN_MUSIC_ON = "lockscreen_music_controls";
 	
 	public static final String LOCKSCREEN_TYPE = "lockscreen_type";
 	

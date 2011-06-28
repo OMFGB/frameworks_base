@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+  <selector xmlns:android="http://schemas.android.com/apk/res/android">
+        
+        <item android:state_pressed="true"
+          android:drawable="@drawable/lock_ic_media_pause" /> <!-- pressed -->
+    <item android:state_focused="true"
+          android:drawable="@drawable/lock_ic_media_next" /> <!-- focused -->
+    
+     <item 
+     android:color="#FFFFFF" 
+     android:drawable="@drawable/lock_ic_media_play"/> <!-- default -->
+     
+     
+      
+     
+
+     
+ </selector>
+
+    

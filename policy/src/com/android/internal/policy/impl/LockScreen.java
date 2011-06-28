@@ -297,13 +297,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         
         // end selector setup
         
-        mHideMusicControlsButton = (ImageView) findViewById(R.id.hide_music_controls_button);
-        mDisplayMusicControlsButton = (ImageView) findViewById(R.id.display_music_controls_button);
 
-        mPlayIcon = (ImageButton) findViewById(R.id.musicControlPlay);
-        mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);
-        mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
-        mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
 
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
 	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
@@ -370,6 +364,104 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	    }
 	});
 
+
+	if(!mLockscreenShortcuts) {
+	    mLockPhone.setVisibility(View.GONE);
+	    mLockSMS.setVisibility(View.GONE);
+	} else {
+	    mLockPhone.setVisibility(View.VISIBLE);
+	    mLockSMS.setVisibility(View.VISIBLE);
+	}
+
+	SetUpMusicControls();
+
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        mUpdateMonitor.registerInfoCallback(this);
+        mUpdateMonitor.registerSimStateCallback(this);
+
+        mAudioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+        mSilentMode = isSilentMode();
+
+        mSelector.setLeftTabResources(
+                R.drawable.ic_jog_dial_unlock,
+                R.drawable.jog_tab_target_green,
+                R.drawable.jog_tab_bar_left_unlock,
+                R.drawable.jog_tab_left_unlock);
+
+        updateRightTabResources();
+
+
+        resetStatusInfo(updateMonitor);
+    }
+    
+    private void SetUpMusicControls(){
+    	
+        mHideMusicControlsButton = (ImageView) findViewById(R.id.hide_music_controls_button);
+        mDisplayMusicControlsButton = (ImageView) findViewById(R.id.display_music_controls_button);
+
+        mPlayIcon = (ImageButton) findViewById(R.id.musicControlPlay);
+        mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);
+        mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
+        mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
+    	
+    	mHideMusicControlsButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                mCallback.pokeWakelock();
+                mAreMusicControlsVisible = false;
+                mDisplayMusicControlsButton.setVisibility(View.VISIBLE);
+                mHideMusicControlsButton.setVisibility(View.GONE);
+                    mPauseIcon.setVisibility(View.GONE);
+                    mPlayIcon.setVisibility(View.GONE);
+                    mRewindIcon.setVisibility(View.GONE);
+                    mForwardIcon.setVisibility(View.GONE);
+                    mNowPlayingAlbum.setVisibility(View.GONE);
+                    mNowPlayingArtist.setVisibility(View.GONE);
+                    mAlbumArt.setVisibility(View.GONE);
+            }
+        });
+
+        mDisplayMusicControlsButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                mCallback.pokeWakelock();
+                mAreMusicControlsVisible = true;
+		
+		if (mIsMusicActive) {
+			
+                mDisplayMusicControlsButton.setVisibility(View.GONE);
+                mHideMusicControlsButton.setVisibility(View.VISIBLE);
+                    mPauseIcon.setVisibility(View.VISIBLE);
+                    mPlayIcon.setVisibility(View.GONE);
+                    mRewindIcon.setVisibility(View.VISIBLE);
+                    mForwardIcon.setVisibility(View.VISIBLE);
+                    mNowPlayingAlbum.setVisibility(View.VISIBLE);
+                    mNowPlayingArtist.setVisibility(View.VISIBLE);
+                    mAlbumArt.setVisibility(View.VISIBLE);
+                    // Set album art
+                    Uri uri = getArtworkUri(getContext(), KeyguardViewMediator.SongId(),
+                    KeyguardViewMediator.AlbumId());
+                    if (uri != null) {
+                        mAlbumArt.setImageURI(uri); 
+                    }
+		}
+		
+		// 
+		if (mWasMusicActive) {
+                mDisplayMusicControlsButton.setVisibility(View.GONE);
+                mHideMusicControlsButton.setVisibility(View.VISIBLE);
+                    mPauseIcon.setVisibility(View.GONE);
+                    mPlayIcon.setVisibility(View.VISIBLE);
+                    mRewindIcon.setVisibility(View.GONE);
+                    mForwardIcon.setVisibility(View.GONE);
+                    mNowPlayingAlbum.setVisibility(View.GONE);
+                    mNowPlayingArtist.setVisibility(View.GONE);
+                    mAlbumArt.setVisibility(View.GONE);
+                }
+            }
+        });
+    	
+
         mPlayIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mCallback.pokeWakelock();
@@ -425,89 +517,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                                 return true;           
             }
         });
-
-	if(!mLockscreenShortcuts) {
-	    mLockPhone.setVisibility(View.GONE);
-	    mLockSMS.setVisibility(View.GONE);
-	} else {
-	    mLockPhone.setVisibility(View.VISIBLE);
-	    mLockSMS.setVisibility(View.VISIBLE);
-	}
-
-        mHideMusicControlsButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mCallback.pokeWakelock();
-                mAreMusicControlsVisible = false || mShouldShowMusicControls;
-                mDisplayMusicControlsButton.setVisibility(View.VISIBLE);
-                mHideMusicControlsButton.setVisibility(View.GONE);
-                    mPauseIcon.setVisibility(View.GONE);
-                    mPlayIcon.setVisibility(View.GONE);
-                    mRewindIcon.setVisibility(View.GONE);
-                    mForwardIcon.setVisibility(View.GONE);
-                    mNowPlayingAlbum.setVisibility(View.GONE);
-                    mNowPlayingArtist.setVisibility(View.GONE);
-                    mAlbumArt.setVisibility(View.GONE);
-            }
-        });
-
-        mDisplayMusicControlsButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mCallback.pokeWakelock();
-                mAreMusicControlsVisible = true || mShouldShowMusicControls;
-		
-		if (mIsMusicActive) {
-			
-                mDisplayMusicControlsButton.setVisibility(View.GONE);
-                mHideMusicControlsButton.setVisibility(View.VISIBLE);
-                    mPauseIcon.setVisibility(View.VISIBLE);
-                    mPlayIcon.setVisibility(View.GONE);
-                    mRewindIcon.setVisibility(View.VISIBLE);
-                    mForwardIcon.setVisibility(View.VISIBLE);
-                    mNowPlayingAlbum.setVisibility(View.VISIBLE);
-                    mNowPlayingArtist.setVisibility(View.VISIBLE);
-                    mAlbumArt.setVisibility(View.VISIBLE);
-                    // Set album art
-                    Uri uri = getArtworkUri(getContext(), KeyguardViewMediator.SongId(),
-                    KeyguardViewMediator.AlbumId());
-                    if (uri != null) {
-                        mAlbumArt.setImageURI(uri); 
-                    }
-		}
-		
-		// 
-		if (mWasMusicActive) {
-                mDisplayMusicControlsButton.setVisibility(View.GONE);
-                mHideMusicControlsButton.setVisibility(View.VISIBLE);
-                    mPauseIcon.setVisibility(View.GONE);
-                    mPlayIcon.setVisibility(View.VISIBLE);
-                    mRewindIcon.setVisibility(View.GONE);
-                    mForwardIcon.setVisibility(View.GONE);
-                    mNowPlayingAlbum.setVisibility(View.GONE);
-                    mNowPlayingArtist.setVisibility(View.GONE);
-                    mAlbumArt.setVisibility(View.GONE);
-                }
-            }
-        });
-
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        mUpdateMonitor.registerInfoCallback(this);
-        mUpdateMonitor.registerSimStateCallback(this);
-
-        mAudioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-        mSilentMode = isSilentMode();
-
-        mSelector.setLeftTabResources(
-                R.drawable.ic_jog_dial_unlock,
-                R.drawable.jog_tab_target_green,
-                R.drawable.jog_tab_bar_left_unlock,
-                R.drawable.jog_tab_left_unlock);
-
-        updateRightTabResources();
-
-
-        resetStatusInfo(updateMonitor);
+    	
     }
 
     private boolean isSilentMode() {
@@ -794,7 +804,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         String nowPlayingAlbum = KeyguardViewMediator.NowPlayingAlbum();
         mNowPlayingAlbum.setText(nowPlayingAlbum);
 
-        if ((mIsMusicActive)) {
+        if ((mIsMusicActive )) {
 	Log.d(TAG, "IsMusicActive");
 		if ((mAreMusicControlsVisible)) {
 		    mDisplayMusicControlsButton.setVisibility(View.GONE);
@@ -813,7 +823,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 	mAlbumArt.setImageURI(uri); 
 		    } 
 		} else {
-                    mDisplayMusicControlsButton.setVisibility(View.VISIBLE);
+                    if(mShouldShowMusicControls)mDisplayMusicControlsButton.setVisibility(View.VISIBLE);
+                    else mDisplayMusicControlsButton.setVisibility(View.GONE);
+                    
                     mHideMusicControlsButton.setVisibility(View.GONE);
                     mPauseIcon.setVisibility(View.GONE);
                     mPlayIcon.setVisibility(View.GONE);

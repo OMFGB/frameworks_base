@@ -302,18 +302,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
 	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
 
-        mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
-        mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
-        mNowPlayingArtist.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingArtist.setTextColor(0xffffffff);
-
-        mNowPlayingAlbum = (TextView) findViewById(R.id.musicNowPlayingAlbum);
-        mNowPlayingAlbum.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingAlbum.setTextColor(0xffffffff);
-
-	mAlbumArt.setVisibility(View.GONE);
-        mDisplayMusicControlsButton.setVisibility(View.GONE);
-        mHideMusicControlsButton.setVisibility(View.GONE);
 	mLockSMS.setVisibility(View.GONE);
 	mLockPhone.setVisibility(View.GONE);
 
@@ -374,6 +362,19 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	}
 
 	SetUpMusicControls();
+
+        mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
+        mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
+        mNowPlayingArtist.setSelected(true); // set focus to TextView to allow scrolling
+        mNowPlayingArtist.setTextColor(0xffffffff);
+
+        mNowPlayingAlbum = (TextView) findViewById(R.id.musicNowPlayingAlbum);
+        mNowPlayingAlbum.setSelected(true); // set focus to TextView to allow scrolling
+        mNowPlayingAlbum.setTextColor(0xffffffff);
+
+	mAlbumArt.setVisibility(View.GONE);
+        mDisplayMusicControlsButton.setVisibility(View.GONE);
+        mHideMusicControlsButton.setVisibility(View.GONE);
 
         setFocusable(true);
         setFocusableInTouchMode(true);

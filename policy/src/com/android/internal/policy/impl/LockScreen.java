@@ -299,12 +299,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         
 
 
-        mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
-	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
-
-	mLockSMS.setVisibility(View.GONE);
-	mLockPhone.setVisibility(View.GONE);
-
 
         mEmergencyCallText = (TextView) findViewById(R.id.emergencyCallText);
         mEmergencyCallButton = (Button) findViewById(R.id.emergencyCallButton);
@@ -317,7 +311,46 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
             }
         });
 
-        mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
+    
+	SetUpShortCuts();
+	SetUpMusicControls();
+
+       
+
+	
+
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        mUpdateMonitor.registerInfoCallback(this);
+        mUpdateMonitor.registerSimStateCallback(this);
+
+        mAudioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+        mSilentMode = isSilentMode();
+
+        mSelector.setLeftTabResources(
+                R.drawable.ic_jog_dial_unlock,
+                R.drawable.jog_tab_target_green,
+                R.drawable.jog_tab_bar_left_unlock,
+                R.drawable.jog_tab_left_unlock);
+
+        updateRightTabResources();
+
+
+        resetStatusInfo(updateMonitor);
+    }
+    
+    private void SetUpShortCuts() {
+    	//
+
+
+        mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
+	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
+
+	mLockSMS.setVisibility(View.GONE);
+	mLockPhone.setVisibility(View.GONE);
+    	////
+    	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
 	        mCallback.pokeWakelock();
 		Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
@@ -351,53 +384,17 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		return true;
 	    }
 	});
-
-
-	if(!mLockscreenShortcuts) {
-	    mLockPhone.setVisibility(View.GONE);
-	    mLockSMS.setVisibility(View.GONE);
-	} else {
-	    mLockPhone.setVisibility(View.VISIBLE);
-	    mLockSMS.setVisibility(View.VISIBLE);
+		// TODO Auto-generated method stub
+    	if(!mLockscreenShortcuts) {
+    	    mLockPhone.setVisibility(View.GONE);
+    	    mLockSMS.setVisibility(View.GONE);
+    	} else {
+    	    mLockPhone.setVisibility(View.VISIBLE);
+    	    mLockSMS.setVisibility(View.VISIBLE);
+    	}
 	}
 
-	SetUpMusicControls();
-
-        mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
-        mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
-        mNowPlayingArtist.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingArtist.setTextColor(0xffffffff);
-
-        mNowPlayingAlbum = (TextView) findViewById(R.id.musicNowPlayingAlbum);
-        mNowPlayingAlbum.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingAlbum.setTextColor(0xffffffff);
-
-	mAlbumArt.setVisibility(View.GONE);
-        mDisplayMusicControlsButton.setVisibility(View.GONE);
-        mHideMusicControlsButton.setVisibility(View.GONE);
-
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        mUpdateMonitor.registerInfoCallback(this);
-        mUpdateMonitor.registerSimStateCallback(this);
-
-        mAudioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-        mSilentMode = isSilentMode();
-
-        mSelector.setLeftTabResources(
-                R.drawable.ic_jog_dial_unlock,
-                R.drawable.jog_tab_target_green,
-                R.drawable.jog_tab_bar_left_unlock,
-                R.drawable.jog_tab_left_unlock);
-
-        updateRightTabResources();
-
-
-        resetStatusInfo(updateMonitor);
-    }
-    
-    private void SetUpMusicControls(){
+	private void SetUpMusicControls(){
     	
         mHideMusicControlsButton = (ImageView) findViewById(R.id.hide_music_controls_button);
         mDisplayMusicControlsButton = (ImageView) findViewById(R.id.display_music_controls_button);
@@ -406,6 +403,15 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);
         mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
         mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
+        mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
+        
+        mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
+        mNowPlayingArtist.setSelected(true); // set focus to TextView to allow scrolling
+        mNowPlayingArtist.setTextColor(0xffffffff);
+
+        mNowPlayingAlbum = (TextView) findViewById(R.id.musicNowPlayingAlbum);
+        mNowPlayingAlbum.setSelected(true); // set focus to TextView to allow scrolling
+        mNowPlayingAlbum.setTextColor(0xffffffff);
     	
     	mHideMusicControlsButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -518,6 +524,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                                 return true;           
             }
         });
+        
+        mAlbumArt.setVisibility(View.GONE);
+        mDisplayMusicControlsButton.setVisibility(View.GONE);
+        mHideMusicControlsButton.setVisibility(View.GONE);
+        
     	
     }
 

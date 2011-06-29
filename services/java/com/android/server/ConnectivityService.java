@@ -32,6 +32,7 @@ import android.net.NetworkInfo;
 import android.net.NetworkStateTracker;
 import android.net.NetworkUtils;
 import android.net.wifi.WifiStateTracker;
+import android.net.wimax.WimaxHelper;
 import android.net.wimax.WimaxManagerConstants;
 import android.os.Binder;
 import android.os.Handler;
@@ -270,12 +271,21 @@ public class ConnectivityService extends IConnectivityManager.Stub {
     private ConnectivityService(Context context) {
         if (DBG) Slog.v(TAG, "ConnectivityService starting up");
 
-        // setup our unique device name
-        String id = Settings.Secure.getString(context.getContentResolver(),
-                Settings.Secure.ANDROID_ID);
-        if (id != null && id.length() > 0) {
-            String name = new String("android_").concat(id);
-            SystemProperties.set("net.hostname", name);
+        // try to get our custom device name
+        String hostname = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.DEVICE_HOSTNAME);
+        if (hostname != null && hostname.length() > 0) {
+            SystemProperties.set("net.hostname", hostname);
+            Slog.i(TAG, "hostname has been set: " + hostname);
+        } else {
+            // otherwise setup our unique device name
+            String id = Settings.Secure.getString(context.getContentResolver(),
+                    Settings.Secure.ANDROID_ID);
+            if (id != null && id.length() > 0) {
+                String name = new String("android-").concat(id);
+                SystemProperties.set("net.hostname", name);
+                Slog.i(TAG, "hostname has been set: " + name);
+            }
         }
 
         mContext = context;
@@ -431,8 +441,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
         Class wimaxStateTrackerClass = null;
         Class wimaxServiceClass = null;
         Class wimaxManagerClass;
-        String wimaxJarLocation;
-        String wimaxLibLocation;
         String wimaxManagerClassName;
         String wimaxServiceClassName;
         String wimaxStateTrackerClassName;
@@ -444,10 +452,6 @@ public class ConnectivityService extends IConnectivityManager.Stub {
 
         if (isWimaxEnabled) {
             try {
-                wimaxJarLocation = mContext.getResources().getString(
-                        com.android.internal.R.string.config_wimaxServiceJarLocation);
-                wimaxLibLocation = mContext.getResources().getString(
-                        com.android.internal.R.string.config_wimaxNativeLibLocation);
                 wimaxManagerClassName = mContext.getResources().getString(
                         com.android.internal.R.string.config_wimaxManagerClassname);
                 wimaxServiceClassName = mContext.getResources().getString(
@@ -455,9 +459,7 @@ public class ConnectivityService extends IConnectivityManager.Stub {
                 wimaxStateTrackerClassName = mContext.getResources().getString(
                         com.android.internal.R.string.config_wimaxStateTrackerClassname);
 
-                wimaxClassLoader =  new DexClassLoader(wimaxJarLocation,
-                        new ContextWrapper(mContext).getCacheDir().getAbsolutePath(),
-                        wimaxLibLocation,ClassLoader.getSystemClassLoader());
+                wimaxClassLoader = WimaxHelper.getWimaxClassLoader(mContext);
 
                 try {
                     wimaxManagerClass = wimaxClassLoader.loadClass(wimaxManagerClassName);

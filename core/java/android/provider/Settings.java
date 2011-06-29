@@ -2055,11 +2055,25 @@ public final class Settings {
 	 */
 	public static final String USE_SCREENOFF_ANIM = "use_screenoff_anim"; 
 
+	public static final String LOCKSCREEN_MUSIC_ON = "lockscreen_music_controls";
+	
+	public static final String LOCKSCREEN_TYPE = "lockscreen_type";
+	
 	/**
-	* Use rotary lockscreen instead of tab unlock screen
+	* Use rotary lockscreen 
 	* @hide
 	*/
-	public static final String USE_ROTARY_LOCKSCREEN = "use_rotary_lockscreen";
+	public static final int USE_ROTARY_LOCKSCREEN = 2;
+	/**
+	* Use hc lockscreen n
+	* @hide
+	*/
+	public static final int USE_HC_LOCKSCREEN = 3;
+	/**
+	* Use tab lockscreen 
+	* @hide
+	*/
+	public static final int USE_TAB_LOCKSCREEN = 1;
 
 	/**
 	* @hide
@@ -2695,6 +2709,12 @@ public final class Settings {
          * @hide
          */
         public static final String ADB_NOTIFY = "adb_notify";
+
+        /**
+         * The host name for this device.
+         * @hide
+         */
+        public static final String DEVICE_HOSTNAME = "device_hostname";
 
         /**
          * Setting to allow mock locations and location provider status to be injected into the

@@ -1982,6 +1982,12 @@ public final class Settings {
          */
         public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
  
+	/**
+	 * Whether or not to allow orientation changes in the lockscreen.
+	 */
+
+        public static final String LOCKSCREEN_ORIENTATION = "lockscreen_orientation";
+
         /**
 	 * Whether lockscreen shortcuts should be shown on lockscreen
 	 * @hide

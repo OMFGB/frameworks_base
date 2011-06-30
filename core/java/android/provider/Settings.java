@@ -2034,6 +2034,8 @@ public final class Settings {
 	
 	public static final String LOCKSCREEN_TYPE = "lockscreen_type";
 	
+	public static final String LOCKSCREEN_ORIENTATION = "lockscreen_orientation";
+	
 	/**
 	* Use rotary lockscreen 
 	* @hide

@@ -156,17 +156,22 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.LOCKSCREEN_SHORTCUTS, 1) == 1);
     
+    private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
+    	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);
     private boolean mUseRotary  = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_ROTARY_LOCKSCREEN);
     private boolean mUseCircular  = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_HC_LOCKSCREEN);
-    private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
-    	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);
-    
 
+    
+    // Default to show
     private boolean mShouldShowMusicControls = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_MUSIC_ON, 1) == 1);
 
+    // Default to portrait
+    private boolean mLockScreenOrientationLand = (Settings.System.getInt(mContext.getContentResolver(),
+    	    Settings.System.LOCKSCREEN_ORIENTATION, 0) == 1);
+    
     /**
      * The status of this lock screen.
      */
@@ -261,9 +266,12 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                     + " res orient=" + context.getResources().getConfiguration().orientation);
         }
 
+        Log.v(TAG, "Force landscape orientation = " + Boolean.toString(mLockScreenOrientationLand));
+            
         final LayoutInflater inflater = LayoutInflater.from(context);
         if (DBG) Log.v(TAG, "Creation orientation = " + mCreationOrientation);
-        if (mCreationOrientation != Configuration.ORIENTATION_LANDSCAPE) {
+        
+        if ((mCreationOrientation == Configuration.ORIENTATION_PORTRAIT) && mLockScreenOrientationLand) {
             inflater.inflate(R.layout.keyguard_screen_widgets_unlock, this, true);
         } else {
             inflater.inflate(R.layout.keyguard_screen_widgets_unlock_land, this, true);
@@ -342,6 +350,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     
     private void SetUpShortCuts() {
     	//
+    	
 
 
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
@@ -349,6 +358,19 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
 	mLockSMS.setVisibility(View.GONE);
 	mLockPhone.setVisibility(View.GONE);
+	//
+	
+	/*int commompadding = 15;
+	*mLockPhone.setPadding(commompadding, commompadding, commompadding, commompadding);
+	*mLockSMS.setPadding(commompadding, commompadding, commompadding, commompadding);
+	* 
+	* //Now set the top,bottom padding depending on the lockscreen type
+	* 
+	* 
+	*mLockPhone.setPadding(commompadding, commompadding, commompadding*3, commompadding);
+	*mLockSMS.setPadding(commompadding, commompadding, commompadding*3, commompadding);
+	*
+	*/
     	////
     	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {

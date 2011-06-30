@@ -2011,6 +2011,12 @@ public final class Settings {
 	 */
 	public static final String LAUNCHER_2_PACKAGE = "com.android.launcher";
 
+        /**
+         * Sets Wallpaper image to move with the homescreens. 
+         * @hide
+         */
+        public static final String WALLPAPER_LOOP = "wallpaper_loop";
+
 	/**
 	 * Sets Launcher to continuously loop from one end of the 
 	 * workspace to the other.

@@ -1592,9 +1592,6 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
              } else if (ACTION_TMOBILE_THEME_CHANGED.equals(action)) {
                  // Normally it will restart on its own, but sometimes it doesn't.  Other times it's slow. 
                  // This will help it restart reliably and faster.
-                 PendingIntent restartIntent = PendingIntent.getService(mContext, 0, new Intent(mContext, StatusBarService.class), 0);
-                 AlarmManager alarmMgr = (AlarmManager) getSystemService(ALARM_SERVICE);
-                 alarmMgr.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, restartIntent);
                  android.os.Process.killProcess(android.os.Process.myPid());
             }
         }

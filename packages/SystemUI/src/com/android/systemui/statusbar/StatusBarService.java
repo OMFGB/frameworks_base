@@ -26,6 +26,7 @@ import com.android.internal.statusbar.StatusBarNotification;
 import com.android.systemui.R;
 
 import android.app.ActivityManagerNative;
+import android.app.AlarmManager;
 import android.app.Dialog;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -35,6 +36,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.IntentFilter.MalformedMimeTypeException;
 import android.content.pm.PackageManager;
 import android.content.res.CustomTheme;
 import android.content.res.Resources;
@@ -88,6 +90,9 @@ import com.android.systemui.statusbar.StatusBarPolicy;
 
 public class StatusBarService extends Service implements CommandQueue.Callbacks {
     static final String TAG = "StatusBarService";
+     private static final String DATA_TYPE_TMOBILE_STYLE = "vnd.tmobile.cursor.item/style";
+     private static final String DATA_TYPE_TMOBILE_THEME = "vnd.tmobile.cursor.item/theme";
+     private static final String ACTION_TMOBILE_THEME_CHANGED = "com.tmobile.intent.action.THEME_CHANGED";
     static final boolean SPEW_ICONS = false;
     static final boolean SPEW = false;
 
@@ -233,6 +238,15 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(mBroadcastReceiver, filter);
+
+         try {
+             IntentFilter tMoFilter = new IntentFilter(ACTION_TMOBILE_THEME_CHANGED);
+             tMoFilter.addDataType(DATA_TYPE_TMOBILE_THEME);
+             tMoFilter.addDataType(DATA_TYPE_TMOBILE_STYLE);
+             registerReceiver(mBroadcastReceiver, tMoFilter);
+         } catch (MalformedMimeTypeException e) {
+             Slog.e(TAG, "Could not set T-Mo mime types", e);
+         }
 
         // Connect in to the status bar manager service
         StatusBarIconList iconList = new StatusBarIconList();
@@ -1575,6 +1589,13 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             }
             else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
                 updateResources();
+             } else if (ACTION_TMOBILE_THEME_CHANGED.equals(action)) {
+                 // Normally it will restart on its own, but sometimes it doesn't.  Other times it's slow. 
+                 // This will help it restart reliably and faster.
+                 PendingIntent restartIntent = PendingIntent.getService(mContext, 0, new Intent(mContext, StatusBarService.class), 0);
+                 AlarmManager alarmMgr = (AlarmManager) getSystemService(ALARM_SERVICE);
+                 alarmMgr.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, restartIntent);
+                 android.os.Process.killProcess(android.os.Process.myPid());
             }
         }
     };

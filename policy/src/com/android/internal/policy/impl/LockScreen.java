@@ -1282,7 +1282,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     void updateConfiguration() {
         Configuration newConfig = getResources().getConfiguration();
-        if (newConfig.orientation != mCreationOrientation) {
+        
+        Log.d(TAG, "Update configuration is: " + newConfig.toString());
+        boolean b = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.LOCKSCREEN_ORIENTATION, 0) == 1);
+        if(b)newConfig.orientation = Configuration.ORIENTATION_LANDSCAPE;
+        Log.d(TAG, "Update configuration is now: " + newConfig.toString());
+        
+        
+        if (newConfig.orientation != mCreationOrientation ) {
             mCallback.recreateMe(newConfig);
         } else if (newConfig.hardKeyboardHidden != mKeyboardHidden) {
             mKeyboardHidden = newConfig.hardKeyboardHidden;

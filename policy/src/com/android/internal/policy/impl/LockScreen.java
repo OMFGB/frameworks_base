@@ -170,7 +170,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     // Default to portrait
     private boolean mLockScreenOrientationLand = (Settings.System.getInt(mContext.getContentResolver(),
-    	    Settings.System.LOCKSCREEN_ORIENTATION, 0) == 1);
+    	    Settings.System.LOCKSCREEN_ORIENTATION, Configuration.ORIENTATION_PORTRAIT) == Configuration.ORIENTATION_LANDSCAPE);
     
     /**
      * The status of this lock screen.
@@ -271,7 +271,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         final LayoutInflater inflater = LayoutInflater.from(context);
         if (DBG) Log.v(TAG, "Creation orientation = " + mCreationOrientation);
         
-        if ((mCreationOrientation == Configuration.ORIENTATION_PORTRAIT) && mLockScreenOrientationLand) {
+        if (mCreationOrientation == Configuration.ORIENTATION_PORTRAIT) {
             inflater.inflate(R.layout.keyguard_screen_widgets_unlock, this, true);
         } else {
             inflater.inflate(R.layout.keyguard_screen_widgets_unlock_land, this, true);
@@ -1176,9 +1176,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         Configuration newConfig = getResources().getConfiguration();
         
         Log.d(TAG, "Update configuration is: " + newConfig.toString());
-        boolean b = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.LOCKSCREEN_ORIENTATION, 0) == 1);
-        if(b)newConfig.orientation = Configuration.ORIENTATION_LANDSCAPE;
-        Log.d(TAG, "Update configuration is now: " + newConfig.toString());
+        if(mLockScreenOrientationLand){
+        	newConfig.orientation = Configuration.ORIENTATION_LANDSCAPE;
+        	Log.d(TAG, "Update configuration is now: " + newConfig.toString());
+        }
+        
         
         
         if (newConfig.orientation != mCreationOrientation ) {

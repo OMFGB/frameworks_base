@@ -1011,7 +1011,7 @@ public final class Settings {
         public static void getConfiguration(ContentResolver cr, Configuration outConfig) {
             outConfig.fontScale = Settings.System.getFloat(
                 cr, FONT_SCALE, outConfig.fontScale);
-            if (!(outConfig.fontScale > 0)) {
+            if (outConfig.fontScale < 0) {
                 outConfig.fontScale = 1;
             }
         }
@@ -1957,6 +1957,12 @@ public final class Settings {
          */
         public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
  
+	/**
+	 * Whether or not to allow orientation changes in the lockscreen.
+	 */
+
+        public static final String LOCKSCREEN_ORIENTATION = "lockscreen_orientation";
+
         /**
 	 * Whether lockscreen shortcuts should be shown on lockscreen
 	 * @hide
@@ -2004,6 +2010,12 @@ public final class Settings {
 	 * @hide
 	 */
 	public static final String LAUNCHER_2_PACKAGE = "com.android.launcher";
+
+        /**
+         * Sets Wallpaper image to move with the homescreens. 
+         * @hide
+         */
+        public static final String WALLPAPER_LOOP = "wallpaper_loop";
 
 	/**
 	 * Sets Launcher to continuously loop from one end of the 

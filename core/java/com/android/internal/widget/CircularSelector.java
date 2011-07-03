@@ -43,10 +43,10 @@ public class CircularSelector extends View {
 	
 	
 	private String TAG = "CircularSelector";
-	private static final boolean DBG = true;
-	private static final boolean IDBG = true;
-	private static final boolean TDBG = true;
-    private static final boolean VISUAL_DEBUG = true;
+	private static final boolean DBG = false;
+	private static final boolean IDBG = false;
+	private static final boolean TDBG = false;
+    private static final boolean VISUAL_DEBUG = false;
 	
     
     // ***********Rotation constants and variables

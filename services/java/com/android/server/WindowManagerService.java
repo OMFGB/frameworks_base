@@ -141,7 +141,7 @@ import java.util.List;
 /** {@hide} */
 public class WindowManagerService extends IWindowManager.Stub
         implements Watchdog.Monitor {
-    static final String TAG = "WindowManager";
+    static final String TAG = "WindowManagerService";
     static final boolean DEBUG = false;
     static final boolean DEBUG_FOCUS = false;
     static final boolean DEBUG_ANIM = false;

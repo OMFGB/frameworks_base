@@ -154,7 +154,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	    Settings.System.MENU_UNLOCK_SCREEN, 0) == 1);
 
     private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
-	    Settings.System.LOCKSCREEN_SHORTCUTS, 1) == 1);
+	    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
     
     private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);

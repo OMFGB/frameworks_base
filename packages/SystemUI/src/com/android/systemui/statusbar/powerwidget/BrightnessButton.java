@@ -40,7 +40,8 @@ public class BrightnessButton extends PowerButton {
     private static final int CM_MODE_AUTO_MIN_DEF_MAX = 0;
     private static final int CM_MODE_AUTO_MIN_LOW_MID_HIGH_MAX = 1;
     private static final int CM_MODE_AUTO_LOW_MAX = 2;
-    private static final int CM_MODE_MIN_MAX = 3;
+    private static final int CM_MODE_LOW_MAX = 3;
+    private static final int CM_MODE_MIN_MAX = 4;
 
     private static final List<Uri> OBSERVED_URIS = new ArrayList<Uri>();
     static {
@@ -153,7 +154,7 @@ public class BrightnessButton extends PowerButton {
         } else if (brightness < DEFAULT_BACKLIGHT) {
             if (currentMode == CM_MODE_AUTO_MIN_DEF_MAX) {
                 return DEFAULT_BACKLIGHT;
-            } else if (currentMode == CM_MODE_AUTO_LOW_MAX || currentMode == CM_MODE_MIN_MAX) {
+            } else if (currentMode == CM_MODE_AUTO_LOW_MAX || currentMode == CM_MODE_MIN_MAX || currentMode == CM_MODE_LOW_MAX) {
                 return MAX_BACKLIGHT;
             } else {
                 return MID_BACKLIGHT;
@@ -172,9 +173,9 @@ public class BrightnessButton extends PowerButton {
             }
         } else if (brightness < MAX_BACKLIGHT) {
             return MAX_BACKLIGHT;
-        } else if (isAutomaticModeSupported(context) && currentMode != CM_MODE_MIN_MAX) {
+        } else if (isAutomaticModeSupported(context) && currentMode != CM_MODE_MIN_MAX && currentMode != CM_MODE_LOW_MAX) {
             return AUTO_BACKLIGHT;
-        } else if (currentMode == CM_MODE_AUTO_LOW_MAX) {
+        } else if (currentMode == CM_MODE_AUTO_LOW_MAX || currentMode == CM_MODE_LOW_MAX) {
             return LOW_BACKLIGHT;
         } else {
             return getMinBacklight(context);

@@ -56,7 +56,7 @@ public class NetworkModeButton extends PowerButton{
             if (NETWORK_MODE == Phone.NT_MODE_CDMA) {
                 mIcon = R.drawable.stat_3g_on;
             } else {
-                mIcon = R.drawable.stat_2g3g_on;
+                mIcon = R.drawable.stat_4g3g_on;
             }
             break;
         case STATE_INTERMEDIATE:
@@ -69,7 +69,7 @@ public class NetworkModeButton extends PowerButton{
                 if (INTENDED_NETWORK_MODE == Phone.NT_MODE_CDMA) {
                     mIcon = R.drawable.stat_3g_on;
                 } else {
-                    mIcon = R.drawable.stat_2g3g_on;
+                    mIcon = R.drawable.stat_4g3g_on;
                 }
             } else {
                 mIcon = R.drawable.stat_2g3g_off;

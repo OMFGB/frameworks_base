@@ -1224,7 +1224,8 @@ public class StatusBarPolicy {
         int iconLevel = mSignalStrength.getGsmSignalStrength();
 
         // Fix the level if it is out of bounds.
-        if (iconLevel < 0) iconLevel = 0;
+        // 99 means the signal strength is unknown.
+        if (iconLevel < 0 || iconLevel == 99) iconLevel = 0;
         else if (iconLevel > 4) iconLevel = 4;
 
         return iconLevel;

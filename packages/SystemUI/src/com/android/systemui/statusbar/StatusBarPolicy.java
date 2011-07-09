@@ -1184,7 +1184,7 @@ public class StatusBarPolicy {
                      * Using GSM lvl while on 4G for signal strength.
                      * slayher
                      */
-                    iconLevel = getGsmLevel();
+                    iconLevel = getGsmLevelForLTE();
                     break;
                 case GSM:
                     /* 3GPP GSM data tech */
@@ -1215,6 +1215,17 @@ public class StatusBarPolicy {
         else if (asu >= 8)  iconLevel = 3;
         else if (asu >= 5)  iconLevel = 2;
         else iconLevel = 1;
+
+        return iconLevel;
+    }
+
+    private int getGsmLevelForLTE() {
+        // The level returned is the amount of bars to show.
+        int iconLevel = mSignalStrength.getGsmSignalStrength();
+
+        // Fix the level if it is out of bounds.
+        if (iconLevel < 0) iconLevel = 0;
+        else if (iconLevel > 4) iconLevel = 4;
 
         return iconLevel;
     }

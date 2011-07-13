@@ -1989,13 +1989,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         sendScreenState(true);
    }
 
-<<<<<<< HEAD
-    private void setRadioStateFromRILInt(int state) {
-        RadioState newState;
-=======
     protected RadioState getRadioStateFromInt(int stateInt) {
         RadioState state;
->>>>>>> 7657b94... Add SamsungRIL which overrides RIL. Samsung does a lot of nasty stuff in libril.so that prevents usage of the built libril.so.
 
         /* RIL_RadioState ril.h */
         switch(state) {
@@ -2014,13 +2009,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 throw new RuntimeException(
                             "Unrecognized RIL_RadioState: " +state);
         }
-<<<<<<< HEAD
-=======
         return state;
     }
 
     protected void switchToRadioState(RadioState newState) {
->>>>>>> 7657b94... Add SamsungRIL which overrides RIL. Samsung does a lot of nasty stuff in libril.so that prevents usage of the built libril.so.
 
         if (mInitialRadioStateChange) {
             if (newState.isOn()) {

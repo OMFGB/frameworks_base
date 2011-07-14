@@ -69,6 +69,8 @@ public class CircularSelector extends View {
 	   Bitmap mPortraitCircle;
 	   Bitmap mLandscapeCircle;
 	   Bitmap mLockIcon;
+	   Bitmap mLockIconBackGround;
+	   
 	   private int mLockX, mLockY;
 	   private boolean mIsTouchInCircle = false;
 	   
@@ -104,6 +106,18 @@ public class CircularSelector extends View {
 	
 	//**************** Overridden super methods
 	
+	// ************** Interfacees
+	
+	
+	
+	// ************* Initilization function
+	
+	private void initializeUI(){
+		mPortraitCircle = getBitmapFor(R.drawable.lock_ic_circle_port);
+		mLandscapeCircle =  getBitmapFor(R.drawable.lock_ic_land_phosphrous);
+      	mLockIcon = getBitmapFor(R.drawable.lock_ic_lock_move);
+		mLockIconBackGround = getBitmapFor(R.drawable.lock_ic_lock_bg);
+	}
 	@Override 
 	public boolean onTouchEvent(MotionEvent event){
 		super.onTouchEvent(event);
@@ -218,29 +232,33 @@ public class CircularSelector extends View {
           
           
           if(isVertical()){
-        	  canvas.drawBitmap(this.mPortraitCircle,  0, 0, mPaint);
+        	  canvas.drawBitmap(mPortraitCircle,  0, height-mPortraitCircle.getHeight(), mPaint);
+        	  canvas.drawBitmap(mLockIconBackGround,  (width-mLockIconBackGround.getWidth())/2, (height-mLockIconBackGround.getHeight()), mPaint);
+        	  
           }
           else{
         	  
-        	  canvas.drawBitmap(this.mLandscapeCircle, (width-mLandscapeCircle.getWidth())/2, (height-mLandscapeCircle.getHeight())/2, mPaint);
+        	  canvas.drawBitmap(mLandscapeCircle, (width-mLandscapeCircle.getWidth())/2, (height-mLandscapeCircle.getHeight())/2, mPaint);
+        	  canvas.drawBitmap(mLockIconBackGround,  (width-mLockIconBackGround.getWidth())/2, (height-mLockIconBackGround.getHeight())/2, mPaint);
           }
+          
+          
           
           if(mIsTouchInCircle){	
 
-          	mLockIcon = getBitmapFor(R.drawable.lock_ic_lock_move);
         	  
         	  
         		  canvas.drawBitmap(mLockIcon,  mLockX-(mLockIcon.getWidth()/2), mLockY - mLockIcon.getHeight()/2, mPaint);
         	
           }
           else{
-        	  mLockIcon = getBitmapFor(R.drawable.lock_ic_lock_bg);
+        	  
         	  if(isVertical()){
-	        	  // Fallback case where the lock is always drawn in the center on the bottom of the view
-	        	   canvas.drawBitmap(mLockIcon,  (width/2)-(mLockIcon.getWidth()/2), height-mLockIcon.getHeight(), mPaint);
+	        	  // Vertical Fallback case where the lock is always drawn in the center on the bottom of the view
+	        	   canvas.drawBitmap(mLockIcon,  (width-mLockIcon.getWidth())/2, (height-mLockIcon.getHeight()), mPaint);
 	     	  }else{
-	    		// TODO  
-	     		 canvas.drawBitmap(mLockIcon,  (width - mLockIcon.getWidth())/2, (height -mLockIcon.getHeight())/2, mPaint);
+	     		// Horizontal Fallback case where the lock is always drawn in the center  view
+	     		 canvas.drawBitmap(mLockIcon,  (width - mLockIcon.getWidth())/2, (height - mLockIcon.getHeight())/2, mPaint);
 	    	  }
         	  
           }
@@ -280,14 +298,6 @@ public class CircularSelector extends View {
   
     
     // ************* Initilization function
-    
-    private void initializeUI(){
-    	mPortraitCircle = getBitmapFor(R.drawable.lock_ic_circle_port);
-    	mLandscapeCircle =  getBitmapFor(R.drawable.lock_ic_land_phosphrous);
-    	mLockIcon = getBitmapFor(R.drawable.lock_ic_lock_bg);
-    }
-    
-    
     
     // ***********
     /**

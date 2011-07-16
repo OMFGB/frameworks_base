@@ -350,7 +350,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                 Slog.d(TAG, "LongClick");
                 Intent i = new Intent();
                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setClassName("com.t3hh4xx0r.god_mode","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
+                intent.setClassName("com.t3hh4xx0r","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
                 animateCollapse();
@@ -365,7 +365,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                 Slog.d(TAG, "LongClick");
                 Intent i = new Intent();
                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setClassName("com.t3hh4xx0r.god_mode","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
+                intent.setClassName("com.t3hh4xx0r","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
                 animateCollapse();

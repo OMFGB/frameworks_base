@@ -420,21 +420,11 @@ public abstract class DataConnection extends HierarchicalStateMachine {
 //            }
             if (response.length >= 2) {
                 cid = Integer.parseInt(response[0]);
+                interfaceName = "ppp0";
                 if (response.length > 2) {
-                    // Samsung CDMA devices do not export gateway/ip to the framework correctly
-                    // if using FroYo RIL blobs, we can extract it from system properties
-                    String prefix;
-                    if (mIsSamsungCdma) {
-                        interfaceName = "ppp0";
-                        prefix = "net." + interfaceName + ".";
-                        ipAddress = SystemProperties.get(prefix + "local-ip");
-                        gatewayAddress = SystemProperties.get(prefix + "remote-ip");
-                    } else {
-                        interfaceName = response[1];
-                        prefix = "net." + interfaceName + ".";
-                        ipAddress = response[2];
-                        gatewayAddress = SystemProperties.get(prefix + "gw");
-                    }
+                    String prefix = "net." + interfaceName + ".";
+                    ipAddress = SystemProperties.get(prefix + "local-ip");
+                    gatewayAddress = SystemProperties.get(prefix + "remote-ip");
                     dnsServers[0] = SystemProperties.get(prefix + "dns1");
                     dnsServers[1] = SystemProperties.get(prefix + "dns2");
                     if (DBG) {

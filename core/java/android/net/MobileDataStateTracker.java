@@ -248,14 +248,7 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                                 if (mInterfaceName == null) {
                                     Log.d(TAG, "CONNECTED event did not supply interface name.");
                                 }
-
-                                // Samsung CDMA devices do not export gateway to the framework correctly
-                                // if using FroYo RIL blobs, we can extract it from system properties
-                                if (SystemProperties.get("ro.ril.samsung_cdma").equals("true"))
-                                    mDefaultGatewayAddr = getIpFromString(SystemProperties.get("net.ppp0.remote-ip"));
-                                else
-                                    mDefaultGatewayAddr = intent.getIntExtra(Phone.DATA_GATEWAY_KEY, 0);
-
+                                mDefaultGatewayAddr = getIpFromString(SystemProperties.get("net.ppp0.remote-ip"));
                                 if (mDefaultGatewayAddr == 0) {
                                     Log.d(TAG, "CONNECTED event did not supply a default gateway.");
                                 }

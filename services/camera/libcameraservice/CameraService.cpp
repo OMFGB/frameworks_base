@@ -62,6 +62,7 @@ static void setLogLevel(int level) {
 
 // ----------------------------------------------------------------------------
 
+#ifdef BOARD_USE_FROYO_LIBCAMERA
 struct camera_size_type {
     int width;
     int height;
@@ -71,6 +72,7 @@ static const camera_size_type preview_sizes[] = {
     { 1280, 720 }, // 720P
     { 768, 432 },
 };
+#endif
 
 static int getCallingPid() {
     return IPCThreadState::self()->getCallingPid();
@@ -79,6 +81,23 @@ static int getCallingPid() {
 static int getCallingUid() {
     return IPCThreadState::self()->getCallingUid();
 }
+
+#if defined(BOARD_USE_FROYO_LIBCAMERA) || defined(BOARD_HAVE_HTC_FFC)
+#define HTC_SWITCH_CAMERA_FILE_PATH "/sys/android_camera2/htcwc"
+static void htcCameraSwitch(int cameraId)
+{
+    char buffer[16];
+    int fd;
+
+    if (access(HTC_SWITCH_CAMERA_FILE_PATH, W_OK) == 0) {
+        snprintf(buffer, sizeof(buffer), "%d", cameraId);
+
+        fd = open(HTC_SWITCH_CAMERA_FILE_PATH, O_WRONLY);
+        write(fd, buffer, strlen(buffer));
+        close(fd);
+    }
+}
+#endif
 
 // ----------------------------------------------------------------------------
 
@@ -119,13 +138,35 @@ int32_t CameraService::getNumberOfCameras() {
     return mNumberOfCameras;
 }
 
+#if defined(BOARD_USE_FROYO_LIBCAMERA) || defined(BOARD_HAVE_HTC_FFC)
+#ifndef FIRST_CAMERA_FACING
+#define FIRST_CAMERA_FACING CAMERA_FACING_BACK
+#endif
+#ifndef FIRST_CAMERA_ORIENTATION
+#define FIRST_CAMERA_ORIENTATION 90
+#endif
+static const CameraInfo sCameraInfo[] = {
+    {
+        FIRST_CAMERA_FACING,
+        FIRST_CAMERA_ORIENTATION,  /* orientation */
+    },
+    {
+        CAMERA_FACING_FRONT,
+        270, /* orientation */
+    }
+};
+#endif
+
 status_t CameraService::getCameraInfo(int cameraId,
                                       struct CameraInfo* cameraInfo) {
     if (cameraId < 0 || cameraId >= mNumberOfCameras) {
         return BAD_VALUE;
     }
-
+#if defined(BOARD_USE_FROYO_LIBCAMERA) || defined(BOARD_HAVE_HTC_FFC)
+    memcpy(cameraInfo, &sCameraInfo[cameraId], sizeof(CameraInfo));
+#else
     HAL_getCameraInfo(cameraId, cameraInfo);
+#endif
     return OK;
 }
 
@@ -164,13 +205,35 @@ sp<ICamera> CameraService::connect(
         return NULL;
     }
 
+#if defined(BOARD_USE_FROYO_LIBCAMERA) || defined(BOARD_HAVE_HTC_FFC)
+    htcCameraSwitch(cameraId);
+#endif
+
     sp<CameraHardwareInterface> hardware = HAL_openCameraHardware(cameraId);
     if (hardware == NULL) {
         LOGE("Fail to open camera hardware (id=%d)", cameraId);
         return NULL;
     }
+
+#if defined(BOARD_USE_REVERSE_FFC)
+    if (cameraId == 1) {
+        /* Change default parameters for the front camera */
+        CameraParameters params(hardware->getParameters());
+        params.set("front-camera-mode", "reverse"); // default is "mirror"
+        hardware->setParameters(params);
+    }
+#endif
+
     CameraInfo info;
     HAL_getCameraInfo(cameraId, &info);
+
+    /* If the FFC claims standard back-facing orientation,
+     * treat it as such. This avoid all the mirroring and rotation
+     * hooks */
+    if (info.facing == CAMERA_FACING_FRONT && info.orientation == 90) {
+        info.facing = CAMERA_FACING_BACK;
+    }
+
     client = new Client(this, cameraClient, hardware, cameraId, info.facing,
                         callingPid);
     mClient[cameraId] = client;
@@ -584,12 +647,14 @@ status_t CameraService::Client::registerPreviewBuffers() {
     CameraParameters params(mHardware->getParameters());
     params.getPreviewSize(&w, &h);
 
+#ifdef BOARD_USE_FROYO_LIBCAMERA
     //for 720p recording , preview can be 800X448
     if(w ==  preview_sizes[0].width && h== preview_sizes[0].height){
         LOGD("registerpreviewbufs :changing dimensions to 768X432 for 720p recording.");
         w = preview_sizes[1].width;
         h = preview_sizes[1].height;
     }
+#endif
 
     // FIXME: don't use a hardcoded format here.
     ISurface::BufferHeap buffers(w, h, w, h,
@@ -610,12 +675,14 @@ status_t CameraService::Client::setOverlay() {
     CameraParameters params(mHardware->getParameters());
     params.getPreviewSize(&w, &h);
 
+#ifdef BOARD_USE_FROYO_LIBCAMERA
     //for 720p recording , preview can be 800X448
     if(w == preview_sizes[0].width && h==preview_sizes[0].height){
         LOGD("Changing overlay dimensions to 768X432 for 720p recording.");
         w = preview_sizes[1].width;
         h = preview_sizes[1].height;
     }
+#endif
 
     if (w != mOverlayW || h != mOverlayH || mOrientationChanged) {
         // Force the destruction of any previous overlay
@@ -1424,37 +1491,12 @@ status_t CameraService::dump(int fd, const Vector<String16>& args) {
 }
 
 #ifdef BOARD_USE_FROYO_LIBCAMERA
-static const CameraInfo sCameraInfo[] = {
-    {
-        CAMERA_FACING_BACK,
-        90,  /* orientation */
-    },
-    {
-        CAMERA_FACING_FRONT,
-        270, /* orientation */
-    }
-};
-
-#define HTC_SWITCH_CAMERA_FILE_PATH "/sys/android_camera2/htcwc"
-
 static int getNumberOfCameras() {
     if (access(HTC_SWITCH_CAMERA_FILE_PATH, W_OK) == 0) {
         return 2;
     }
     /* FIXME: Support non-HTC front camera */
     return 1;
-}
-
-static void htcCameraSwitch(int cameraId)
-{
-    char buffer[16];
-    int fd;
-
-    snprintf(buffer, sizeof(buffer), "%d", cameraId);
-
-    fd = open(HTC_SWITCH_CAMERA_FILE_PATH, O_WRONLY);
-    write(fd, buffer, strlen(buffer));
-    close(fd);
 }
 
 extern "C" int HAL_getNumberOfCameras()
@@ -1472,21 +1514,6 @@ extern "C" sp<CameraHardwareInterface> openCameraHardware(int cameraId);
 extern "C" sp<CameraHardwareInterface> HAL_openCameraHardware(int cameraId)
 {
     LOGV("openCameraHardware: call createInstance");
-    if (getNumberOfCameras() == 2) {
-        htcCameraSwitch(cameraId);
-#ifdef BOARD_USE_REVERSE_FFC
-        if (cameraId == 1) {
-            /* Change default parameters for the front camera */
-            sp<CameraHardwareInterface> hardware = openCameraHardware(cameraId);
-            if (hardware != NULL) {
-                CameraParameters params(hardware->getParameters());
-                params.set("front-camera-mode", "reverse"); // default is "mirror"
-                hardware->setParameters(params);
-            }
-            return hardware;
-        }
-#endif
-    }
     return openCameraHardware(cameraId);
 }
 #endif

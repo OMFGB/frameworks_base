@@ -51,6 +51,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
+import android.util.AttributeSet;
 import android.util.Slog;
 import android.view.View;
 import android.view.WindowManager;
@@ -106,6 +107,10 @@ public class StatusBarPolicy {
     private boolean mBatteryShowLowOnEndCall = false;
     private static final boolean SHOW_LOW_BATTERY_WARNING = true;
     private static final boolean SHOW_BATTERY_WARNINGS_IN_CALL = true;
+    private boolean mHideBattery;
+
+    private boolean mHideSignal;
+    private boolean mHideAlarm;
 
     // phone
     private TelephonyManager mPhone;
@@ -451,6 +456,25 @@ public class StatusBarPolicy {
               R.drawable.stat_sys_data_fully_inandout_1x }
             };
 
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.HIDE_SIGNAL_ICON), false, this);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            updateSettings();
+        }
+    }
+
     // Assume it's all good unless we hear otherwise.  We don't always seem
     // to get broadcasts that it *is* there.
     IccCard.State mSimState = IccCard.State.READY;
@@ -723,6 +747,15 @@ public class StatusBarPolicy {
     private final void updateAlarm(Intent intent) {
         boolean alarmSet = intent.getBooleanExtra("alarmSet", false);
         mService.setIconVisibility("alarm_clock", alarmSet);
+	if(alarmSet){
+	    mHideAlarm = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_ALARM, 0) == 1);
+	
+	    if (mHideAlarm){
+		mService.setIconVisibility("alarm_clock", false);
+	    }else {
+		mService.setIconVisibility("alarm_clock", true);
+	    }
+	}
     }
 
     private final void updateSyncState(Intent intent) {
@@ -731,6 +764,7 @@ public class StatusBarPolicy {
         mService.setIconVisibility("sync_active", isActive);
         // Don't display sync failing icon: BUG 1297963 Set sync error timeout to "never"
         //mService.setIconVisibility("sync_failing", isFailing && !isActive);
+	updateSettings();
     }
 
     private final void updateBattery(Intent intent) {
@@ -738,7 +772,7 @@ public class StatusBarPolicy {
         int level = intent.getIntExtra("level", 0);
         mService.setIcon("battery", id, level);
 
-        boolean plugged = intent.getIntExtra("plugged", 0) != 0;
+       boolean plugged = intent.getIntExtra("plugged", 0) != 0;
         level = intent.getIntExtra("level", -1);
         if (false) {
             Slog.d(TAG, "updateBattery level=" + level
@@ -766,6 +800,7 @@ public class StatusBarPolicy {
         if (false) {
             Slog.d(TAG, "plugged=" + plugged + " oldPlugged=" + oldPlugged + " level=" + level);
         }
+      updateSettings();
     }
 
     private void onBatteryLow(Intent intent) {
@@ -888,6 +923,7 @@ public class StatusBarPolicy {
                 mBatteryShowLowOnEndCall = true;
             }
         }
+      updateSettings();
     }
 
     private DialogInterface.OnDismissListener mLowBatteryListener
@@ -961,6 +997,7 @@ public class StatusBarPolicy {
              updateWiMAX(intent);
              break;
         }
+      updateSettings();
     }
 
     private PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
@@ -1024,6 +1061,7 @@ public class StatusBarPolicy {
             mSimState = IccCard.State.UNKNOWN;
         }
         updateDataIcon();
+	updateSettings();
     }
 
     private boolean isCdma() {
@@ -1119,6 +1157,8 @@ public class StatusBarPolicy {
         }
         mPhoneSignalIconId = iconList[iconLevel];
         mService.setIcon("phone_signal", mPhoneSignalIconId, 0);
+      
+      updateSettings();
     }
 
     private int getCdmaLevel() {
@@ -1251,6 +1291,7 @@ public class StatusBarPolicy {
             } else {
                 visible = false;
             }
+	  updateSettings();
         }
 
         long ident = Binder.clearCallingIdentity();
@@ -1283,6 +1324,7 @@ public class StatusBarPolicy {
             mService.setIconVisibility("volume", visible);
             mVolumeVisible = visible;
         }
+      updateSettings();
     }
 
     private final void updateBluetooth(Intent intent) {
@@ -1319,6 +1361,8 @@ public class StatusBarPolicy {
 
         mService.setIcon("bluetooth", iconId, 0);
         mService.setIconVisibility("bluetooth", mBluetoothEnabled);
+
+	updateSettings();
     }
 
     private final void updateWifi(Intent intent) {
@@ -1354,6 +1398,7 @@ public class StatusBarPolicy {
                 mService.setIcon("wifi", iconId, 0);
             }
         }
+	updateSettings();
     }
 
     private final void updateWiMAX(Intent intent) {
@@ -1420,6 +1465,7 @@ public class StatusBarPolicy {
             mService.setIcon("wimax", iconId, 0);
         }
         mService.setIconVisibility("wimax", mIsWimaxEnabled);
+	updateSettings();
     }
 
     private final void updateGps(Intent intent) {
@@ -1438,6 +1484,7 @@ public class StatusBarPolicy {
             mService.setIcon("gps", R.drawable.stat_sys_gps_acquiring_anim, 0);
             mService.setIconVisibility("gps", true);
         }
+	updateSettings();
     }
 
     private final void updateTTY(Intent intent) {
@@ -1456,6 +1503,7 @@ public class StatusBarPolicy {
             if (false) Slog.v(TAG, "updateTTY: set TTY off");
             mService.setIconVisibility("tty", false);
         }
+	updateSettings();
     }
 
     private final void updateCdmaRoamingIcon(ServiceState state) {
@@ -1505,6 +1553,7 @@ public class StatusBarPolicy {
 
         }
         mService.setIcon("phone_signal", mPhoneSignalIconId, 0);
+	updateSettings();
     }
 
     private class StatusBarHandler extends Handler {
@@ -1518,5 +1567,26 @@ public class StatusBarPolicy {
                 break;
             }
         }
+    }
+
+   private void updateSettings() {
+        ContentResolver resolver = mContext.getContentResolver();
+
+	mHideSignal = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_SIGNAL_ICON, 0) == 1);
+
+	if (mHideSignal){
+            mService.setIconVisibility("phone_signal", false);
+	}else {
+	    mService.setIconVisibility("phone_signal", true);
+	}
+
+	mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
+	
+	if (mHideBattery){
+            mService.setIconVisibility("battery", false);
+	}else {
+	    mService.setIconVisibility("battery", true);
+	}
+
     }
 }

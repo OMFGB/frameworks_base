@@ -2185,8 +2185,27 @@ public final class Settings {
          * @hide
          */
         public static final String OVERSCROLL_WEIGHT = "overscroll_weight";
+		
+		/**
+		*	SBRISSEN ADDED
+		* @hide
+		*/
 
-
+		public static final String STATUSBAR_CLOCK_OPT = "statusbar_clock_opt"; 
+		public static final String STATUSBAR_CLOCK_COLOR = "statusbar_clock_color"; 
+		public static final String HIDE_SIGNAL_ICON = "hide_signal_icon";
+		public static final String STATUSBAR_HIDE_BATTERY = "statusbar_hide_battery";
+		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
+		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
+		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
+		public static final String STATUSBAR_CARRIER_TEXT = "statusbar_carrier_text";
+		public static final String HIDE_ADB_ICON = "hide_adb_icon";
+		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
+		public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 
+		public static final String BATTERY_COLOR_AUTO_REGULAR = "battery_color_auto_regular";
+		public static final String BATTERY_COLOR_AUTO_MEDIUM = "battery_color_auto_medium";
+		public static final String BATTERY_COLOR_AUTO_LOW = "battery_color_auto_low";
+		public static final String BATTERY_COLOR = "battery_color"; 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.

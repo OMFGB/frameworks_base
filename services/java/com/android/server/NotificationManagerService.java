@@ -139,6 +139,8 @@ public class NotificationManagerService extends INotificationManager.Stub
     private boolean mBatteryLow;
     private boolean mBatteryFull;
     private NotificationRecord mLedNotification;
+    
+    private boolean mHideAdb;
 
     private static final int BATTERY_LOW_ARGB = 0xFFFF0000; // Charging Low - red solid on
     private static final int BATTERY_MEDIUM_ARGB = 0xFFFFFF00;    // Charging - orange solid on
@@ -1271,6 +1273,7 @@ public class NotificationManagerService extends INotificationManager.Stub
     // security feature that we don't want people customizing the platform
     // to accidentally lose.
     private void updateAdbNotification(boolean adbEnabled) {
+	ContentResolver resolver = mContext.getContentResolver();
         if (adbEnabled) {
             if ("0".equals(SystemProperties.get("persist.adb.notify")) ||
                             Settings.Secure.getInt(mContext.getContentResolver(),
@@ -1309,13 +1312,16 @@ public class NotificationManagerService extends INotificationManager.Stub
                             "com.android.settings.DevelopmentSettings"));
                     PendingIntent pi = PendingIntent.getActivity(mContext, 0,
                             intent, 0);
+		    mHideAdb = (Settings.System.getInt(resolver, Settings.System.HIDE_ADB_ICON, 0) == 1);
 
-                    mAdbNotification.setLatestEventInfo(mContext, title, message, pi);
+		    if(!mHideAdb){
+                       mAdbNotification.setLatestEventInfo(mContext, title, message, pi);
 
-                    mAdbNotificationShown = true;
-                    notificationManager.notify(
-                            com.android.internal.R.string.adb_active_notification_title,
-                            mAdbNotification);
+		      mAdbNotificationShown = true;
+		      notificationManager.notify(
+			      com.android.internal.R.string.adb_active_notification_title,
+			      mAdbNotification);
+		    }
                 }
             }
 

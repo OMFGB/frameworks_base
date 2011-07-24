@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -24,6 +25,9 @@ import android.util.AttributeSet;
 import android.util.Slog;
 import android.widget.TextView;
 import android.view.MotionEvent;
+import android.text.format.*;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 
 import java.text.DateFormat;
 import java.util.Date;
@@ -32,6 +36,8 @@ public final class DateView extends TextView {
     private static final String TAG = "DateView";
 
     private boolean mUpdating = false;
+    private int mStatusbarClock;
+    private String mDateClock;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -66,8 +72,23 @@ public final class DateView extends TextView {
     }
 
     private final void updateClock() {
+	ContentResolver resolver = mContext.getContentResolver();
+
         Date now = new Date();
-        setText(DateFormat.getDateInstance(DateFormat.LONG).format(now));
+	DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(getContext());
+	DateFormat timeFormat = android.text.format.DateFormat.getTimeFormat(getContext());
+	  
+       mStatusbarClock = Settings.System.getInt(resolver, Settings.System.STATUSBAR_DATECLOCK, 1);
+
+      if(mStatusbarClock == 0){
+        setText("");
+      } else if (mStatusbarClock == 2) {
+	setText(timeFormat.format(now));
+      } else if (mStatusbarClock == 3){
+	setText(dateFormat.format(now).concat(" ").concat(timeFormat.format(now)));
+      } else {
+	setText(dateFormat.format(now));
+      }
     }
 
     void setUpdates(boolean update) {

@@ -2064,7 +2064,13 @@ public final class Settings {
 		 * @hide
 		 */
 		public static final String LAUNCHER_ENDLESS_LOOP = "launcher_endless_loop";
-	
+
+		/**
+		 * Sets whether or not Launcher should use sensor orientation
+		 * @hide
+		 */
+		public static final String LAUNCHER_ORIENTATION = "launcher_orientation";
+		
 		/**
 		 * Carrier caption option
 		 * @hide

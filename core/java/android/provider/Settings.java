@@ -2179,7 +2179,6 @@ public final class Settings {
 		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
 		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
 		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
-		public static final String STATUSBAR_CARRIER_TEXT = "statusbar_carrier_text";
 		public static final String HIDE_ADB_ICON = "hide_adb_icon";
 		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
 		public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 

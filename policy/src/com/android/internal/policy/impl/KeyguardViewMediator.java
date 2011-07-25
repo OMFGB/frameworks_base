@@ -120,6 +120,7 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
      * The default amount of time we stay awake (used for all key input)
      */
     protected static final int AWAKE_INTERVAL_DEFAULT_MS = 5000;
+    private static int mLockscreenTimeout;
 
 
     /**
@@ -782,8 +783,8 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
 
     /** {@inheritDoc} */
     public void pokeWakelock() {
-        pokeWakelock(mKeyboardOpen ?
-                AWAKE_INTERVAL_DEFAULT_KEYBOARD_OPEN_MS : AWAKE_INTERVAL_DEFAULT_MS);
+  pokeWakelock(mKeyboardOpen ?
+               AWAKE_INTERVAL_DEFAULT_KEYBOARD_OPEN_MS : AWAKE_INTERVAL_DEFAULT_MS);
     }
 
     /** {@inheritDoc} */

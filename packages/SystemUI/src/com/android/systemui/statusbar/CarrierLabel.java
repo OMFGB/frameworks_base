@@ -90,7 +90,7 @@ public class CarrierLabel extends TextView {
 
     void updateNetworkName(boolean showSpn, String spn, boolean showPlmn, String plmn) {
 
-    	mCarrierCap = Settings.System.getString(getContext().getContentResolver(), Settings.System.STATUSBAR_CARRIER_TEXT);
+    	mCarrierCap = Settings.System.getString(getContext().getContentResolver(), Settings.System.CARRIER_CAP);
     	if (mCarrierCap != null){
     		setText(mCarrierCap);
     	} else {

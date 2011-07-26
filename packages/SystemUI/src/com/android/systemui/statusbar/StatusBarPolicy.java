@@ -1143,12 +1143,13 @@ public class StatusBarPolicy {
                 else if (cdmaDbm >= -95)  iconLevel = 2;
                 else if (cdmaDbm >= -100) iconLevel = 1;
                 else iconLevel = 0;
-
-            if ((mPhoneState == TelephonyManager.CALL_STATE_IDLE) && isEvdo()
-                && !mAlwaysUseCdmaRssi) {
-                iconLevel = getEvdoLevel();
-                if (false) {
-                    Slog.d(TAG, "use Evdo level=" + iconLevel + " to replace Cdma Level=" + getCdmaLevel());
+            } else {
+                if ((mPhoneState == TelephonyManager.CALL_STATE_IDLE) && isEvdo()
+                    && !mAlwaysUseCdmaRssi) {
+                    iconLevel = getEvdoLevel();
+                    if (false) {
+                        Slog.d(TAG, "use Evdo level=" + iconLevel + " to replace Cdma Level=" + getCdmaLevel());
+                    }
                 } else {
                     iconLevel = getCdmaLevel();
                 }

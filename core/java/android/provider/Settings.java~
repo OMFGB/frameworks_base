@@ -2039,13 +2039,7 @@ public final class Settings {
 		 * @hide
 		 */
 		public static final String LAUNCHER_ENDLESS_LOOP = "launcher_endless_loop";
-
-		/**
-		 * Sets whether or not Launcher should use sensor orientation
-		 * @hide
-		 */
-		public static final String LAUNCHER_ORIENTATION = "launcher_orientation";
-		
+	
 		/**
 		 * Carrier caption option
 		 * @hide
@@ -2179,6 +2173,7 @@ public final class Settings {
 		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
 		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
 		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
+		public static final String STATUSBAR_CARRIER_TEXT = "statusbar_carrier_text";
 		public static final String HIDE_ADB_ICON = "hide_adb_icon";
 		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
 		public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 
@@ -2187,7 +2182,6 @@ public final class Settings {
 		public static final String BATTERY_COLOR_AUTO_LOW = "battery_color_auto_low";
 		public static final String BATTERY_COLOR = "battery_color"; 
 		public static final String LOCKSCREEN_TABS = "lockscreen_tabs";
-		public static final String CUSTOM_LOCKSCREEN_TIMEOUT = "custom_lockscreen_timeout";
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.

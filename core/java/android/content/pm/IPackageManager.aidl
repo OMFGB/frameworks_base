@@ -114,8 +114,6 @@ interface IPackageManager {
 
     List<PackageInfo> getInstalledThemePackages();
 
-    List<ApplicationInfo> getInstalledApplications(int flags);
-
     /**
      * This implements getInstalledPackages via a "last returned row"
      * mechanism that is not exposed in the API. This is to get around the IPC

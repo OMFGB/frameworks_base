@@ -1581,17 +1581,37 @@ public class GSMPhone extends PhoneBase {
         return null;
     }
 
+    /**
+     * Activate or deactivate cell broadcast SMS.
+     *
+     * @param activate 0 = activate, 1 = deactivate
+     * @param response Callback message is empty on completion
+     */
     public void activateCellBroadcastSms(int activate, Message response) {
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for GSM.");
+        Log.e(LOG_TAG, "[GSMPhone] activateCellBroadcastSms() is obsolete; use SmsManager");
+        response.sendToTarget();
     }
 
+    /**
+     * Query the current configuration of cdma cell broadcast SMS.
+     *
+     * @param response Callback message is empty on completion
+     */
     public void getCellBroadcastSmsConfig(Message response) {
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for GSM.");
+        Log.e(LOG_TAG, "[GSMPhone] getCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        response.sendToTarget();
     }
 
-    public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response){
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for GSM.");
+    /**
+     * Configure cdma cell broadcast SMS.
+     *
+     * @param response Callback message is empty on completion
+     */
+    public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
+        Log.e(LOG_TAG, "[GSMPhone] setCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        response.sendToTarget();
     }
+<<<<<<< HEAD
 
     public boolean isCspPlmnEnabled() {
         return mSIMRecords.isCspPlmnEnabled();
@@ -1628,4 +1648,6 @@ public class GSMPhone extends PhoneBase {
         return countVoiceMessages;
     }
 
+=======
+>>>>>>> android-2.3.5_r1
 }

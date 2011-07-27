@@ -1124,7 +1124,12 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void activateCellBroadcastSms(int activate, Message response) {
+<<<<<<< HEAD
         mCM.setCdmaBroadcastActivation((activate == 0), response);
+=======
+        Log.e(LOG_TAG, "[CDMAPhone] activateCellBroadcastSms() is obsolete; use SmsManager");
+        response.sendToTarget();
+>>>>>>> android-2.3.5_r1
     }
 
     /**
@@ -1133,7 +1138,12 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void getCellBroadcastSmsConfig(Message response) {
+<<<<<<< HEAD
         mCM.getCdmaBroadcastConfig(response);
+=======
+        Log.e(LOG_TAG, "[CDMAPhone] getCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        response.sendToTarget();
+>>>>>>> android-2.3.5_r1
     }
 
     /**
@@ -1142,7 +1152,12 @@ public class CDMAPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
+<<<<<<< HEAD
         mCM.setCdmaBroadcastConfig(configValuesArray, response);
+=======
+        Log.e(LOG_TAG, "[CDMAPhone] setCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        response.sendToTarget();
+>>>>>>> android-2.3.5_r1
     }
 
     private static final String IS683A_FEATURE_CODE = "*228";

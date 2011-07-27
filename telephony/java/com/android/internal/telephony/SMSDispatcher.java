@@ -34,13 +34,15 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+<<<<<<< HEAD
 import android.os.StatFs;
 import android.os.Registrant;
 import android.preference.PreferenceManager;
+=======
+>>>>>>> android-2.3.5_r1
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.provider.Settings;
@@ -118,6 +120,7 @@ public abstract class SMSDispatcher extends Handler {
     /** Radio is ON */
     static final protected int EVENT_RADIO_ON = 12;
 
+<<<<<<< HEAD
     /** IMS registration/SMS encoding changed */
     static final protected int EVENT_IMS_STATE_CHANGED = 13;
 
@@ -144,6 +147,12 @@ public abstract class SMSDispatcher extends Handler {
     /** New broadcast SMS */
     static final protected int EVENT_NEW_BROADCAST_SMS = 13;
 
+=======
+    /** New broadcast SMS */
+    static final protected int EVENT_NEW_BROADCAST_SMS = 13;
+
+    protected Phone mPhone;
+>>>>>>> android-2.3.5_r1
     protected Context mContext;
     protected ContentResolver mResolver;
     protected CommandsInterface mCm;
@@ -440,6 +449,7 @@ public abstract class SMSDispatcher extends Handler {
         case EVENT_NEW_BROADCAST_SMS:
             handleBroadcastSms((AsyncResult)msg.obj);
             break;
+<<<<<<< HEAD
 
         case EVENT_ICC_CHANGED:
             updateIccAvailability();
@@ -459,6 +469,8 @@ public abstract class SMSDispatcher extends Handler {
                 storeVoiceMailCount();
             }
             break;
+=======
+>>>>>>> android-2.3.5_r1
         }
     }
 
@@ -1079,6 +1091,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     };
 
+<<<<<<< HEAD
     static public boolean isIms() {
         return mIms;
     }
@@ -1147,4 +1160,25 @@ public abstract class SMSDispatcher extends Handler {
         dispatch(broadcastIntent, "android.permission.RECEIVE_SMS");
     }
 
+=======
+    protected abstract void handleBroadcastSms(AsyncResult ar);
+
+    protected void dispatchBroadcastPdus(byte[][] pdus, boolean isEmergencyMessage) {
+        if (isEmergencyMessage) {
+            Intent intent = new Intent(Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
+            intent.putExtra("pdus", pdus);
+            if (Config.LOGD)
+                Log.d(TAG, "Dispatching " + pdus.length + " emergency SMS CB pdus");
+
+            dispatch(intent, "android.permission.RECEIVE_EMERGENCY_BROADCAST");
+        } else {
+            Intent intent = new Intent(Intents.SMS_CB_RECEIVED_ACTION);
+            intent.putExtra("pdus", pdus);
+            if (Config.LOGD)
+                Log.d(TAG, "Dispatching " + pdus.length + " SMS CB pdus");
+
+            dispatch(intent, "android.permission.RECEIVE_SMS");
+        }
+    }
+>>>>>>> android-2.3.5_r1
 }

@@ -1417,6 +1417,11 @@ public class StatusBarPolicy {
                     break;
             }
             mService.setIconVisibility("wimax", mIsWimaxEnabled);
+        } else if (action.equals(WimaxManagerConstants.WIMAX_ENABLED_CHANGED_ACTION)) {	
+             int wimaxStatus = intent.getIntExtra(WimaxManagerConstants.CURRENT_WIMAX_ENABLED_STATE,	
+                     WimaxManagerConstants.WIMAX_ENABLED_STATE_UNKNOWN);
+             mIsWimaxEnabled = (wimaxStatus == WimaxManagerConstants.WIMAX_ENABLED_STATE_ENABLED);
+        mService.setIconVisibility("wimax", mIsWimaxEnabled);
         } else if (action.equals(WimaxManagerConstants.SIGNAL_LEVEL_CHANGED_ACTION)) {
             mWimaxSignal = intent.getIntExtra(WimaxManagerConstants.EXTRA_NEW_SIGNAL_LEVEL, 0);
         } else if (action.equals(WimaxManagerConstants.RSSI_CHANGED_ACTION)) {
@@ -1435,6 +1440,30 @@ public class StatusBarPolicy {
             mWimaxExtraState = intent.getIntExtra(
                     WimaxManagerConstants.EXTRA_WIMAX_STATE_DETAIL,
                     WimaxManagerConstants.WIMAX_DEREGISTRATION);
+
+        switch(mWimaxState) {
+            case WimaxManagerConstants.WIMAX_STATE_DISCONNECTED:
+                iconId = sWimaxDisconnectedImg;
+                break;
+            case WimaxManagerConstants.WIMAX_STATE_CONNECTED:
+                if(mWimaxExtraState == WimaxManagerConstants.WIMAX_IDLE) {
+                    iconId = sWimaxIdleImg;
+                } else {
+                    iconId = sWimaxSignalImages[mInetCondition][mWimaxSignal];
+                }
+                break;
+        }
+        mService.setIcon("wimax", iconId, 0);
+    } else if (action.equals(WimaxManagerConstants.NETWORK_STATE_CHANGED_ACTION)) {
+            final NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(WimaxManagerConstants.EXTRA_NETWORK_INFO);
+            if (networkInfo != null && networkInfo.isConnected()) {
+                iconId = sWimaxSignalImages[mInetCondition][mWimaxSignal];
+            } else if (networkInfo != null && networkInfo.isAvailable()) {
+                iconId = sWimaxIdleImg;
+            } else {
+                iconId = sWimaxDisconnectedImg;
+            }
+            mService.setIcon("wimax", iconId, 0);
         }
         switch(mWimaxState) {
             case WimaxManagerConstants.WIMAX_STATE_DISCONNECTED:

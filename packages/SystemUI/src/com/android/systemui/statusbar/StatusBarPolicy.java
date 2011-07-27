@@ -1168,16 +1168,17 @@ public class StatusBarPolicy {
         if (iconLevel == -1) {
             mPhoneSignalIconId = R.drawable.stat_sys_signal_null;
         } else {
-            iconList = sSignalImages[mInetCondition];
-
-            // If 3G(EV) and 1x network are available than 3G should be
-            // displayed, displayed RSSI should be from the EV side.
-            // If a voice call is made then RSSI should switch to 1x.
-            if ((mPhoneState == TelephonyManager.CALL_STATE_IDLE) && isEvdo()
-                && !mAlwaysUseCdmaRssi) {
-                iconLevel = getEvdoLevel();
-                if (false) {
-                    Slog.d(TAG, "use Evdo level=" + iconLevel + " to replace Cdma Level=" + getCdmaLevel());
+            /*	 	
+             * Determine which icon should be displayed. Assumption  for	 	
+             * roaming ( voice and/or/no data) the roaming icon corresponding to 	
+             * voice technology will be displayed	 	
+             */	 	
+            if (mServiceState.getRoaming()) {	 	
+                if (mSignalStrength.isGsm()) {	 	
+                    iconList = sSignalImages_r[mInetCondition];	 	
+                } else {	 	
+                    /* roaming on CDMA, CDMA roaming indicator will be on */	 	
+                    iconList = sSignalImages[mInetCondition];
                 }
             } else {
                 iconList = sSignalImages[mInetCondition];

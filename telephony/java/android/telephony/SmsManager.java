@@ -22,6 +22,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.SmsRawData;
@@ -348,11 +349,7 @@ public final class SmsManager {
      * message identifier. Note that if two different clients enable the same
      * message identifier, they must both disable it for the device to stop
      * receiving those messages. All received messages will be broadcast in an
-<<<<<<< HEAD
      * intent with the action "android.provider.telephony.SMS_CB_RECEIVED".
-=======
-     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
->>>>>>> android-2.3.5_r1
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
@@ -408,7 +405,6 @@ public final class SmsManager {
     }
 
     /**
-<<<<<<< HEAD
      * Enable reception of cdma broadcast messages with the given
      * message identifier. Note that if two different clients enable the same
      * message identifier, they must both disable it for the device to stop
@@ -424,34 +420,12 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean enableCdmaBroadcast(int messageIdentifier) {
-=======
-     * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages. All received messages will be broadcast in an
-     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
-     * Note: This call is blocking, callers may want to avoid calling it from
-     * the main thread of an application.
-     *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
-     * @return true if successful, false otherwise
-     * @see #disableCellBroadcastRange(int, int)
-     *
-     * {@hide}
-     */
-    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
->>>>>>> android-2.3.5_r1
         boolean success = false;
 
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-<<<<<<< HEAD
                 success = iccISms.enableCdmaBroadcast(messageIdentifier);
-=======
-                success = iccISms.enableCellBroadcastRange(startMessageId, endMessageId);
->>>>>>> android-2.3.5_r1
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -461,19 +435,13 @@ public final class SmsManager {
     }
 
     /**
-<<<<<<< HEAD
      * Disable reception of cdma broadcast messages with the given
      * message identifier. Note that if two different clients enable the same
-=======
-     * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
->>>>>>> android-2.3.5_r1
      * message identifier, they must both disable it for the device to stop
      * receiving those messages.
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
-<<<<<<< HEAD
      * @param messageIdentifier Message identifier as specified in C.R1001-G
      * @return true if successful, false otherwise
      *
@@ -482,27 +450,12 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean disableCdmaBroadcast(int messageIdentifier) {
-=======
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
-     * @return true if successful, false otherwise
-     *
-     * @see #enableCellBroadcastRange(int, int)
-     *
-     * {@hide}
-     */
-    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
->>>>>>> android-2.3.5_r1
         boolean success = false;
 
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-<<<<<<< HEAD
                 success = iccISms.disableCdmaBroadcast(messageIdentifier);
-=======
-                success = iccISms.disableCellBroadcastRange(startMessageId, endMessageId);
->>>>>>> android-2.3.5_r1
             }
         } catch (RemoteException ex) {
             // ignore it

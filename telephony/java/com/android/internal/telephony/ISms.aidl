@@ -172,7 +172,6 @@ interface ISms {
     boolean disableCellBroadcast(int messageIdentifier);
 
     /**
-<<<<<<< HEAD
      * Enable reception of cdma broadcast messages with the given
      * message identifier. Note that if two different clients enable the same
      * message identifier, they must both disable it for the device to stop
@@ -201,33 +200,4 @@ interface ISms {
      * @see #enableCdmaBroadcast(int)
      */
     boolean disableCdmaBroadcast(int messageIdentifier);
-=======
-     * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable
-     * a message identifier range, they must both disable it for the device
-     * to stop receiving those messages.
-     *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
-     * @return true if successful, false otherwise
-     *
-     * @see #disableCellBroadcastRange(int, int)
-     */
-    boolean enableCellBroadcastRange(int startMessageId, int endMessageId);
-
-    /**
-     * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable
-     * a message identifier range, they must both disable it for the device
-     * to stop receiving those messages.
-     *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
-     * @return true if successful, false otherwise
-     *
-     * @see #enableCellBroadcastRange(int, int)
-     */
-    boolean disableCellBroadcastRange(int startMessageId, int endMessageId);
-
->>>>>>> android-2.3.5_r1
 }

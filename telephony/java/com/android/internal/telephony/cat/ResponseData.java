@@ -111,7 +111,7 @@ class GetInkeyInputResponseData extends ResponseData {
                     int size = mInData.length();
 
                     byte[] tempData = GsmAlphabet
-                            .stringToGsm7BitPacked(mInData, 0, 0);
+                            .stringToGsm7BitPacked(mInData);
                     data = new byte[size];
                     // Since stringToGsm7BitPacked() set byte 0 in the
                     // returned byte array to the count of septets used...

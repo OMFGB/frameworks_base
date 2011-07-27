@@ -18,7 +18,6 @@ package com.android.internal.telephony.cdma;
 
 import android.os.Parcel;
 import android.os.SystemProperties;
-import android.telephony.PhoneNumberUtils;
 import android.text.format.Time;
 import android.util.Config;
 import android.util.Log;
@@ -880,12 +879,7 @@ public class SmsMessage extends SmsMessageBase {
          * mechanism, and avoid null pointer exceptions.
          */
 
-        /**
-         * North America Plus Code :
-         * Convert + code to 011 and dial out for international SMS
-         */
-        CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCode(destAddrStr));
+        CdmaSmsAddress destAddr = CdmaSmsAddress.parse(destAddrStr);
         if (destAddr == null) return null;
 
         BearerData bearerData = new BearerData();

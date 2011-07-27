@@ -38,14 +38,9 @@ import android.util.Config;
 import android.util.Log;
 import com.android.internal.telephony.CommandsInterface.RadioTechnologyFamily;
 import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
-<<<<<<< HEAD
 import com.android.internal.telephony.UiccManager.AppFamily;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.SmsMessage;
-=======
-import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.WspTypeDecoder;
->>>>>>> android-2.3.5_r1
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.util.HexDump;
@@ -55,8 +50,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import android.content.res.Resources;
-
 
 final class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CDMA";
@@ -64,7 +57,6 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
 
-<<<<<<< HEAD
     CdmaSMSDispatcher(Phone phone, CommandsInterface cm) {
         super(phone, cm);
         Log.d(TAG, "Register for EVENT_NEW_SMS");
@@ -75,13 +67,6 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         //TODO: fusion - who should call this now?
         super.dispose();
         mCm.unSetOnNewCdmaSMS(this);
-=======
-    private boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
-            com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
-
-    CdmaSMSDispatcher(CDMAPhone phone) {
-        super(phone);
->>>>>>> android-2.3.5_r1
     }
 
     /**
@@ -270,13 +255,6 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             sourcePort |= 0xFF & pdu[index++];
             destinationPort = (0xFF & pdu[index++]) << 8;
             destinationPort |= 0xFF & pdu[index++];
-            // Some carriers incorrectly send duplicate port fields in omadm wap pushes.
-            // If configured, check for that here
-            if (mCheckForDuplicatePortsInOmadmWapPush) {
-                if (checkDuplicatePortOmadmWappush(pdu,index)) {
-                    index = index + 4; // skip duplicate port fields
-                }
-            }
         }
 
         // Lookup all other related parts
@@ -297,7 +275,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             if (cursorCount != totalSegments - 1) {
                 // We don't have all the parts yet, store this one away
                 ContentValues values = new ContentValues();
-                values.put("date", (long) 0);
+                values.put("date", new Long(0));
                 values.put("pdu", HexDump.toHexString(pdu, index, pdu.length - index));
                 values.put("address", address);
                 values.put("reference_number", referenceNumber);
@@ -537,7 +515,6 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         }
     }
 
-<<<<<<< HEAD
     protected void updateIccAvailability() {
         UiccCardApplication newApplication = mUiccManager
                 .getCurrentApplication(AppFamily.APP_FAM_3GPP2);
@@ -582,46 +559,4 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         storeVoiceMailCount();
     }
 
-=======
-    /**
-     * Optional check to see if the received WapPush is an OMADM notification with erroneous
-     * extra port fields.
-     * - Some carriers make this mistake.
-     * ex: MSGTYPE-TotalSegments-CurrentSegment
-     *       -SourcePortDestPort-SourcePortDestPort-OMADM PDU
-     * @param origPdu The WAP-WDP PDU segment
-     * @param index Current Index while parsing the PDU.
-     * @return True if OrigPdu is OmaDM Push Message which has duplicate ports.
-     *         False if OrigPdu is NOT OmaDM Push Message which has duplicate ports.
-     */
-    private boolean checkDuplicatePortOmadmWappush(byte[] origPdu, int index) {
-        index += 4;
-        byte[] omaPdu = new byte[origPdu.length - index];
-        System.arraycopy(origPdu, index, omaPdu, 0, omaPdu.length);
-
-        WspTypeDecoder pduDecoder = new WspTypeDecoder(omaPdu);
-        int wspIndex = 2;
-
-        // Process header length field
-        if (pduDecoder.decodeUintvarInteger(wspIndex) == false) {
-            return false;
-        }
-
-        wspIndex += pduDecoder.getDecodedDataLength(); // advance to next field
-
-        // Process content type field
-        if (pduDecoder.decodeContentType(wspIndex) == false) {
-            return false;
-        }
-
-        String mimeType = pduDecoder.getValueString();
-        if (mimeType == null) {
-            int binaryContentType = (int)pduDecoder.getValue32();
-            if (binaryContentType == WspTypeDecoder.CONTENT_TYPE_B_PUSH_SYNCML_NOTI) {
-                return true;
-            }
-        }
-        return false;
-    }
->>>>>>> android-2.3.5_r1
 }

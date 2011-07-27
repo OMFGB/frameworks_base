@@ -342,8 +342,7 @@ public class SmsMessage {
                     nextPos = pos + Math.min(limit, textLen - pos);
                 } else {
                     // For multi-segment messages, CDMA 7bit equals GSM 7bit encoding (EMS mode).
-                    nextPos = GsmAlphabet.findGsmSeptetLimitIndex(text, pos, limit,
-                            ted.languageTable, ted.languageShiftTable);
+                    nextPos = GsmAlphabet.findGsmSeptetLimitIndex(text, pos, limit);
                 }
             } else {  // Assume unicode.
                 nextPos = pos + Math.min(limit / 2, textLen - pos);
@@ -398,14 +397,8 @@ public class SmsMessage {
      * otherwise useful apps.
      */
 
-<<<<<<< HEAD
     /** TODO: fusion -  Not used remove? SmsMessage in gsm/cdma is public.
      * Get an SMS-SUBMIT PDU for a destination address and a message
-=======
-    /**
-     * Get an SMS-SUBMIT PDU for a destination address and a message.
-     * This method will not attempt to use any GSM national language 7 bit encodings.
->>>>>>> android-2.3.5_r1
      *
      * @param scAddress Service Centre address.  Null means use default.
      * @return a <code>SubmitPdu</code> containing the encoded SC
@@ -430,14 +423,8 @@ public class SmsMessage {
         return new SubmitPdu(spb);
     }
 
-<<<<<<< HEAD
     /** TODO: fusion -  Not used remove? SmsMessage in gsm/cdma is public.
      * Get an SMS-SUBMIT PDU for a destination address and a message
-=======
-    /**
-     * Get an SMS-SUBMIT PDU for a destination address and a message.
-     * This method will not attempt to use any GSM national language 7 bit encodings.
->>>>>>> android-2.3.5_r1
      *
      * @param scAddress Service Centre address.  Null means use default.
      * @return a <code>SubmitPdu</code> containing the encoded SC
@@ -459,14 +446,8 @@ public class SmsMessage {
         return new SubmitPdu(spb);
     }
 
-<<<<<<< HEAD
     /** TODO: fusion -  Not used remove? SmsMessage in gsm/cdma is public.
      * Get an SMS-SUBMIT PDU for a data message to a destination address &amp; port
-=======
-    /**
-     * Get an SMS-SUBMIT PDU for a data message to a destination address &amp; port.
-     * This method will not attempt to use any GSM national language 7 bit encodings.
->>>>>>> android-2.3.5_r1
      *
      * @param scAddress Service Centre address. null == use default
      * @param destinationAddress the address of the destination for the message

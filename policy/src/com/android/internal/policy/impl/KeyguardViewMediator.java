@@ -121,6 +121,7 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
      */
     protected static final int AWAKE_INTERVAL_DEFAULT_MS = 5000;
     private static int mLockscreenTimeout;
+    private static int mLockscreenType;
 
 
     /**
@@ -529,7 +530,14 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
      * Enable the keyguard if the settings are appropriate.
      */
     private void doKeyguard() {
-        synchronized (this) {
+	ContentResolver resolver = mContext.getContentResolver();
+	
+	synchronized (this) {
+	    mLockscreenType = Settings.System.getInt(resolver, Settings.System.LOCKSCREEN_TYPE,1);
+
+	    if(mLockscreenType == 0){
+		return;
+	    }
             // if another app is disabling us, don't show
             if (!mExternallyEnabled) {
                 if (DEBUG) Log.d(TAG, "doKeyguard: not showing because externally disabled");
@@ -783,8 +791,12 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
 
     /** {@inheritDoc} */
     public void pokeWakelock() {
-  pokeWakelock(mKeyboardOpen ?
-               AWAKE_INTERVAL_DEFAULT_KEYBOARD_OPEN_MS : AWAKE_INTERVAL_DEFAULT_MS);
+	ContentResolver resolver = mContext.getContentResolver();
+
+	mLockscreenTimeout = Settings.System.getInt(resolver, Settings.System.CUSTOM_LOCKSCREEN_TIMEOUT, 5000);
+
+	pokeWakelock(mKeyboardOpen ?
+               AWAKE_INTERVAL_DEFAULT_KEYBOARD_OPEN_MS : mLockscreenTimeout);
     }
 
     /** {@inheritDoc} */

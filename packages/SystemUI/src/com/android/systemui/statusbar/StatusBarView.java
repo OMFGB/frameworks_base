@@ -117,6 +117,7 @@ public class StatusBarView extends FrameLayout {
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(Intent.ACTION_SCREEN_OFF);
+	    filter.addAction(Intent.ACTION_SCREEN_ON);
 
             getContext().registerReceiver(mIntentReceiver, filter, null, getHandler());
 	    	    

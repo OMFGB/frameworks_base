@@ -108,6 +108,7 @@ public class StatusBarPolicy {
     private static final boolean SHOW_LOW_BATTERY_WARNING = true;
     private static final boolean SHOW_BATTERY_WARNINGS_IN_CALL = true;
     private boolean mHideBattery;
+    private int mMiuiBattery;
 
     private boolean mHideSignal;
     private boolean mHideAlarm;
@@ -115,6 +116,8 @@ public class StatusBarPolicy {
     // phone
     private TelephonyManager mPhone;
     private int mPhoneSignalIconId;
+
+    Handler mHandler2;
 
     //***** Signal strength icons
     //GSM/UMTS
@@ -467,6 +470,8 @@ public class StatusBarPolicy {
                     Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HIDE_SIGNAL_ICON), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
         }
 
         @Override
@@ -474,6 +479,7 @@ public class StatusBarPolicy {
             updateSettings();
         }
     }
+  
 
     // Assume it's all good unless we hear otherwise.  We don't always seem
     // to get broadcasts that it *is* there.
@@ -1593,8 +1599,9 @@ public class StatusBarPolicy {
 	}
 
 	mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
+	mMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.BATTERY_OPTION,0));
 	
-	if (mHideBattery){
+	if (mHideBattery || mMiuiBattery == 2){
             mService.setIconVisibility("battery", false);
 	}else {
 	    mService.setIconVisibility("battery", true);

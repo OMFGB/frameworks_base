@@ -105,6 +105,8 @@ public class BatteryText extends TextView {
             filter.addAction(Intent.ACTION_BATTERY_CHANGED);
 
             getContext().registerReceiver(mIntentReceiver, filter, null, getHandler());
+	    
+	    
         }
     }
 
@@ -174,6 +176,28 @@ public class BatteryText extends TextView {
 
         mBatteryAutoColor = (Settings.System
                 .getInt(resolver, Settings.System.BATTERY_TEXT_COLOR, 0) == 1);
+
+	if(!mBatteryAutoColor){
+	    mBatteryTextColor = Settings.System.getInt(resolver, Settings.System.BATTERY_COLOR, -1);
+	    setTextColor(mBatteryTextColor);
+	}else {
+	      Intent batteryIntent = mContext.getApplicationContext().registerReceiver(null,
+              new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+	      int level = batteryIntent.getIntExtra("level", 0);
+	      boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
+	      
+	      if (plugged){
+		  mBatteryTextColor = Settings.System.getInt(resolver, Settings.System.BATTERY_COLOR_AUTO_CHARGING, -1);
+	      }else if (level >= 60){
+		  mBatteryTextColor = Settings.System.getInt(resolver, Settings.System.BATTERY_COLOR_AUTO_REGULAR, -1);
+	      }else if (level <= 15){
+		  mBatteryTextColor = Settings.System.getInt(resolver, Settings.System.BATTERY_COLOR_AUTO_LOW, -1);
+	      }else {
+		  mBatteryTextColor = Settings.System.getInt(resolver, Settings.System.BATTERY_COLOR_AUTO_MEDIUM, -1);
+	      }
+	
+	      setTextColor(mBatteryTextColor);  
+	}
 
         mBatteryText = (Settings.System
                 .getInt(resolver, Settings.System.STATUSBAR_BATTERY_PERCENT, 0) == 1);

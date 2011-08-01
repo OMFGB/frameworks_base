@@ -97,5 +97,7 @@
     <color name="keyguard_text_color_soundon">#e69310</color>
     <color name="keyguard_text_color_decline">#fe0a5a</color>
 
+    <color name="android_green">#99AC06</color>
+
 </resources>
 

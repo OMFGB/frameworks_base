@@ -2173,13 +2173,13 @@ public final class Settings {
 		*/
 
 		public static final String STATUSBAR_CLOCK_OPT = "statusbar_clock_opt"; 
-		public static final String STATUSBAR_CLOCK_COLOR = "statusbar_clock_color"; 
+		public static final String STATUSBAR_CLOCK_COLOR = "statusbar_clock_color";
+		public static final String MIUI_BATTERY_COLOR = "miui_battery_color"; 
 		public static final String HIDE_SIGNAL_ICON = "hide_signal_icon";
 		public static final String STATUSBAR_HIDE_BATTERY = "statusbar_hide_battery";
 		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
 		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
 		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
-		public static final String HIDE_ADB_ICON = "hide_adb_icon";
 		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
 		public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 
 		public static final String BATTERY_COLOR_AUTO_REGULAR = "battery_color_auto_regular";

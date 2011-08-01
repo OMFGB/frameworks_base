@@ -488,6 +488,8 @@ public class StatusBarPolicy {
                     Settings.System.getUriFor(Settings.System.HIDE_SIGNAL_ICON), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
+	    resolver.registerContentObserver(
+		    Settings.System.getUriFor(Settings.System.MIUI_BATTERY_COLOR), false, this);
         }
 
         @Override

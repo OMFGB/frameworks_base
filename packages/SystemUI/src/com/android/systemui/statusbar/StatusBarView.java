@@ -305,12 +305,10 @@ public class StatusBarView extends FrameLayout {
 	     if(plugged){
 		  mBatteryChargingIndicator.setVisibility(VISIBLE);
 	      }
-	} else if (mHideBattery){
+	} else {
 	    mBatteryIndicator.setVisibility(GONE);
 	    mBatteryChargingIndicator.setVisibility(GONE);
-	} else {
-	    mBatteryChargingIndicator.setVisibility(GONE);
-            mBatteryIndicator.setVisibility(VISIBLE);
+	}
     }
      
 }

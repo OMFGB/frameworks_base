@@ -62,6 +62,7 @@ public class Clock extends TextView {
 
     private int mClockStyle;
     private int mClockColor;
+    private boolean mHideClock;
 
     Handler mHandler;
 
@@ -76,6 +77,8 @@ public class Clock extends TextView {
                     Settings.System.STATUSBAR_CLOCK_OPT), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.STATUSBAR_CLOCK_COLOR), false, this);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.HIDE_CLOCK), false, this);
         }
 
         @Override public void onChange(boolean selfChange) {
@@ -243,10 +246,14 @@ public class Clock extends TextView {
 	setTextColor(mClockColor);
 
         mClockStyle = Settings.System.getInt(resolver, Settings.System.STATUSBAR_CLOCK_OPT, 2);
+	mHideClock = (Settings.System.getInt(resolver, Settings.System.HIDE_CLOCK, 1) == 0);
 
-	if(mClockStyle == 3) {
+	if(mHideClock) {
 	    setVisibility(View.GONE);
-	}else if (mClockStyle != AM_PM_STYLE) {
+	} else {
+	    setVisibility(View.VISIBLE);
+	}
+	if (mClockStyle != AM_PM_STYLE) {
 	      AM_PM_STYLE = mClockStyle;
 	      setVisibility(View.VISIBLE);
 	      mClockFormatString = "";

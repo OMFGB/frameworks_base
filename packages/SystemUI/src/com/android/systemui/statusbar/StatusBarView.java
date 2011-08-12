@@ -56,7 +56,7 @@ public class StatusBarView extends FrameLayout {
     boolean mScreenOn = true;
     private boolean mAttached;
 
-    public int mMiuiBatteryColor;
+    public static int mMiuiBatteryColor;
 
     Handler mHandler;
 
@@ -191,7 +191,7 @@ public class StatusBarView extends FrameLayout {
         mHideBattery = (Settings.System
                 .getInt(resolver, Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
 	mMiuiBatteryColor = (Settings.System
-                .getInt(resolver, Settings.System.MIUI_BATTERY_COLOR, 0));
+                .getInt(resolver, Settings.System.MIUI_BATTERY_COLOR, -1));
 
 	if(mShowBatteryIndicator == 2 && !mHideBattery){
 	    mBatteryIndicator.setVisibility(VISIBLE);
@@ -204,14 +204,14 @@ public class StatusBarView extends FrameLayout {
 	    if(level <= 15){
 		mBatteryIndicator.setBackgroundColor(0xFFFF0000);
 	    } else {
-		mBatteryIndicator.setBackgroundColor(mMiuiBatteryColor);
+                mBatteryIndicator.setBackgroundColor(mMiuiBatteryColor);
 	    }
   
 	    mBatteryIndicator.layout(mBatteryIndicator.getLeft(),mBatteryIndicator.getTop(), ((r-l) * level) / 100,2);
 
 	    if(plugged){
 		mBatteryChargingIndicator.setVisibility(VISIBLE);
-		mBatteryChargingIndicator.setBackgroundColor(mMiuiBatteryColor);
+		    mBatteryChargingIndicator.setBackgroundColor(mMiuiBatteryColor);
 		int chargingWidth = Math.min(5,((r-l) * (100 - level)) / 2);
 		mBatteryChargingIndicator.layout(r,t,(r+chargingWidth),t+2);
 	    
@@ -222,11 +222,10 @@ public class StatusBarView extends FrameLayout {
 		a.setRepeatMode(1);
 		if(mScreenOn){
 		  mBatteryChargingIndicator.startAnimation(a);
-		}
-		else {
+		} else {
 		  mBatteryChargingIndicator.clearAnimation();
 		}
-	    }  
+	    }
 	} else {
 	    mBatteryIndicator.setVisibility(GONE);
 	    mBatteryChargingIndicator.setVisibility(GONE);

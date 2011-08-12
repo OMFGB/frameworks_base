@@ -37,6 +37,8 @@ public final class DateView extends TextView {
 
     private boolean mUpdating = false;
     private int mStatusbarClock;
+    private boolean mHideDate;
+
     private String mDateClock;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -78,16 +80,19 @@ public final class DateView extends TextView {
 	DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(getContext());
 	DateFormat timeFormat = android.text.format.DateFormat.getTimeFormat(getContext());
 	  
-       mStatusbarClock = Settings.System.getInt(resolver, Settings.System.STATUSBAR_DATECLOCK, 1);
+       mStatusbarClock = Settings.System.getInt(resolver, Settings.System.STATUSBAR_DATECLOCK, 0);
+       mHideDate = (Settings.System.getInt(resolver, Settings.System.HIDE_DATE, 1) == 0);
 
-      if(mStatusbarClock == 0){
-        setText("");
-      } else if (mStatusbarClock == 2) {
-	setText(timeFormat.format(now));
-      } else if (mStatusbarClock == 3){
-	setText(dateFormat.format(now).concat(" ").concat(timeFormat.format(now)));
+      if (!mHideDate) {
+         if (mStatusbarClock == 1) {
+	   setText(timeFormat.format(now));
+         } else if (mStatusbarClock == 2){
+	   setText(dateFormat.format(now).concat(" ").concat(timeFormat.format(now)));
+         } else {
+	   setText(dateFormat.format(now));
+         }
       } else {
-	setText(dateFormat.format(now));
+	setText("");
       }
     }
 

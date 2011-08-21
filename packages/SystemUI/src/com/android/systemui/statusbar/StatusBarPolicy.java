@@ -111,6 +111,8 @@ public class StatusBarPolicy {
 
     private boolean mHideSignal;
     private boolean mHideAlarm;
+    private boolean mHideWifi;
+    private boolean mHideBluetooth;
 
     private static final int LTE = 1;
     private static final int GSM = 2;
@@ -669,7 +671,7 @@ public class StatusBarPolicy {
 
         // wifi
         mService.setIcon("wifi", sWifiSignalImages[0][0], 0);
-        mService.setIconVisibility("wifi", false);
+	mService.setIconVisibility("wifi", false);
         // wifi will get updated by the sticky intents
 
         // wimax
@@ -700,7 +702,7 @@ public class StatusBarPolicy {
         mBluetoothA2dpConnected = false;
         mBluetoothHeadsetState = BluetoothHeadset.STATE_DISCONNECTED;
         mBluetoothPbapState = BluetoothPbap.STATE_DISCONNECTED;
-        mService.setIconVisibility("bluetooth", mBluetoothEnabled);
+	mService.setIconVisibility("bluetooth", mBluetoothEnabled);
 
         // Gps status
         mService.setIcon("gps", R.drawable.stat_sys_gps_acquiring_anim, 0);
@@ -770,15 +772,15 @@ public class StatusBarPolicy {
     private final void updateAlarm(Intent intent) {
         boolean alarmSet = intent.getBooleanExtra("alarmSet", false);
         mService.setIconVisibility("alarm_clock", alarmSet);
-  if(alarmSet){
-      mHideAlarm = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_ALARM, 0) == 1);
-  
-      if (mHideAlarm){
-    mService.setIconVisibility("alarm_clock", false);
-      }else {
-    mService.setIconVisibility("alarm_clock", true);
-     }
-  }
+
+	if(alarmSet){
+	    mHideAlarm = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_ALARM, 1) == 1);
+	    if (mHideAlarm){
+		mService.setIconVisibility("alarm_clock", false);
+	    }else {
+		mService.setIconVisibility("alarm_clock", true);
+	    }
+	}
     }
 
     private final void updateSyncState(Intent intent) {
@@ -997,7 +999,7 @@ public class StatusBarPolicy {
                 }
                 mService.setIcon("wifi", iconId, 0);
                 // Show the icon since wi-fi is connected
-                mService.setIconVisibility("wifi", true);
+		mService.setIconVisibility("wifi", true);
             } else {
                 mLastWifiSignalLevel = -1;
                 mIsWifiConnected = false;
@@ -1537,7 +1539,7 @@ public class StatusBarPolicy {
         }
     }
 
-    private final void updateBluetooth(Intent intent) {
+    public final void updateBluetooth(Intent intent) {
         int iconId = R.drawable.stat_sys_data_bluetooth;
         String action = intent.getAction();
         if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
@@ -1570,9 +1572,8 @@ public class StatusBarPolicy {
         }
 
         mService.setIcon("bluetooth", iconId, 0);
-        mService.setIconVisibility("bluetooth", mBluetoothEnabled);
-
-  updateSettings();
+	mService.setIconVisibility("bluetooth", mBluetoothEnabled);
+	updateSettings();
     }
 
     private final void updateWifi(Intent intent) {
@@ -1752,6 +1753,22 @@ public class StatusBarPolicy {
         ContentResolver resolver = mContext.getContentResolver();
 
 	mHideSignal = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_SIGNAL_ICON, 0) == 1);
+        mHideBluetooth = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_BLUETOOTH, 0) == 1);
+        mHideWifi = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_WIFI, 0) == 1);
+        mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
+        mMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.BATTERY_OPTION,1));
+
+        if (mIsWifiConnected && !mHideWifi) {
+            mService.setIconVisibility("wifi", true);
+        } else {
+            mService.setIconVisibility("wifi", false);
+	}
+
+        if (mBluetoothEnabled && !mHideBluetooth){
+            mService.setIconVisibility("bluetooth", true);
+        } else {
+            mService.setIconVisibility("bluetooth", false);
+        }
 
 	if (mHideSignal){
             mService.setIconVisibility("phone_signal", false);
@@ -1759,9 +1776,6 @@ public class StatusBarPolicy {
 	    mService.setIconVisibility("phone_signal", true);
 	}
 
-	mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
-	mMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.BATTERY_OPTION,0));
-	
 	if (mHideBattery || mMiuiBattery == 2){
             mService.setIconVisibility("battery", false);
 	}else {

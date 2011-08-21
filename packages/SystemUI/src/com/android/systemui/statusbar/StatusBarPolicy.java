@@ -468,6 +468,8 @@ public class StatusBarPolicy {
 
         void observe() {
             ContentResolver resolver = mContext.getContentResolver();
+           resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.HIDE_BLUETOOTH), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
             resolver.registerContentObserver(
@@ -476,6 +478,8 @@ public class StatusBarPolicy {
                     Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
 	    resolver.registerContentObserver(
 		    Settings.System.getUriFor(Settings.System.MIUI_BATTERY_COLOR), false, this);
+           resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.HIDE_WIFI), false, this);
         }
 
         @Override

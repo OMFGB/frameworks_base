@@ -763,7 +763,7 @@ public class StatusBarPolicy {
         boolean alarmSet = intent.getBooleanExtra("alarmSet", false);
         mService.setIconVisibility("alarm_clock", alarmSet);
 	if(alarmSet){
-	    mHideAlarm = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_ALARM, 1) == 1);
+	    mHideAlarm = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_ALARM, 0) == 1);
 	    if (mHideAlarm){
 		mService.setIconVisibility("alarm_clock", false);
 	    }else {

@@ -113,6 +113,8 @@ public class StatusBarPolicy {
     private boolean mHideAlarm;
     private boolean mHideWifi;
     private boolean mHideBluetooth;
+    private boolean mHideData;
+    private boolean mHideSync;
 
     private static final int LTE = 1;
     private static final int GSM = 2;
@@ -484,7 +486,7 @@ public class StatusBarPolicy {
         }
         void observe() {
             ContentResolver resolver = mContext.getContentResolver();
-           resolver.registerContentObserver(
+            resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HIDE_BLUETOOTH), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
@@ -494,8 +496,12 @@ public class StatusBarPolicy {
                     Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
 	    resolver.registerContentObserver(
 		    Settings.System.getUriFor(Settings.System.MIUI_BATTERY_COLOR), false, this);
-           resolver.registerContentObserver(
+            resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HIDE_WIFI), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.HIDE_SYNC), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.HIDE_DATA), false, this);
         }
 
         @Override
@@ -793,7 +799,15 @@ public class StatusBarPolicy {
         mService.setIconVisibility("sync_active", isActive);
         // Don't display sync failing icon: BUG 1297963 Set sync error timeout to "never"
         //mService.setIconVisibility("sync_failing", isFailing && !isActive);
-  updateSettings();
+       if(isActive){
+            mHideSync = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_SYNC, 0) == 1);
+            if (mHideSync){
+                mService.setIconVisibility("sync_active", false);
+            } else {
+                mService.setIconVisibility("sync_active", true);
+            }
+        }
+	updateSettings();
     }
 
     private final void updateBattery(Intent intent) {
@@ -1761,6 +1775,22 @@ public class StatusBarPolicy {
         mHideWifi = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_WIFI, 0) == 1);
         mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
         mMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.BATTERY_OPTION,1));
+        mHideData = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_DATA, 0) == 1);
+
+	boolean dataIsActive = false;
+	ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
+	NetworkInfo[] netInfo = cm.getAllNetworkInfo();
+	for (NetworkInfo ni : netInfo) {
+	    if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
+		if (ni.isConnected())
+			dataIsActive = true;
+	}
+
+	if (dataIsActive && !mHideData) {
+	    mService.setIconVisibility("data_connection", true);
+	} else {
+            mService.setIconVisibility("data_connection", false);
+	}
 
         if (mIsWifiConnected && !mHideWifi) {
             mService.setIconVisibility("wifi", true);

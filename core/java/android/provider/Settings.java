@@ -2179,6 +2179,8 @@ public final class Settings {
                 public static final String HIDE_CLOCK = "hide_clock";
                 public static final String HIDE_DATE = "hide_date";
                 public static final String HIDE_WIFI = "hide_wifi";
+                public static final String HIDE_DATA = "hide_data";
+                public static final String HIDE_SYNC = "hide_sync";
                 public static final String HIDE_BLUETOOTH = "hide_bluetooth";
 		public static final String STATUSBAR_HIDE_BATTERY = "statusbar_hide_battery";
 		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";

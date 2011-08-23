@@ -20,7 +20,7 @@
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/exp_music_controls"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:clickable="true"
         android:focusable="true"
         android:background="@drawable/stat_power_bg">
@@ -28,12 +28,9 @@
         <ImageButton
             android:id="@+id/musicControlPlay"
             android:src="@drawable/stat_media_play"
+            android:layout_toRightOf="@+id/musicControlPrevious"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignWithParentIfMissing="true"        
-            android:layout_centerInParent="true"
-            android:layout_above="@+id/tab_selector"
-            android:layout_marginBottom="10dip"
             android:padding="10px"
             android:background="@color/transparent"
             />
@@ -43,10 +40,6 @@
 	    android:layout_height="wrap_content"
             android:src="@drawable/stat_media_pause"
             android:layout_toRightOf="@+id/musicControlPrevious"
-            android:layout_above="@+id/tab_selector"
-            android:layout_marginBottom="10dip"
-            android:layout_marginRight="20dip"
-            android:layout_marginLeft="20dip"
             android:padding="10px"
             android:background="@color/transparent"
             />
@@ -55,10 +48,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/stat_media_previous"
-            android:layout_marginBottom="10dip"
             android:padding="10px"
             android:layout_toRightOf="@+id/albumArt"
-            android:layout_above="@+id/tab_selector"
             android:background="@color/transparent"
             />
         <ImageButton
@@ -66,21 +57,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/stat_media_next"
-            android:layout_marginBottom="10dip"
             android:layout_toRightOf="@+id/musicControlPause"
-            android:layout_above="@+id/tab_selector"
             android:padding="10px"
             android:background="@color/transparent"
             />
-
         <ImageButton android:id="@+id/albumArt"
-            android:layout_width="125dip"
-            android:layout_height="125dip"
+            android:layout_width="75dip"
+            android:layout_height="75dip"
             android:src="@drawable/default_artwork"
             android:layout_alignParentLeft="true"
-            android:layout_above="@+id/tab_selector"
-            android:layout_marginTop="45dip"
-            android:adjustViewBounds="true"
             android:background="@color/transparent"
             android:scaleType="fitCenter"
             android:padding = "3px"
@@ -112,5 +97,4 @@
             android:layout_toRightOf="@+id/albumArt"
             android:lines="1"
             />
-
 </LinearLayout>

@@ -624,6 +624,13 @@ public class Intent implements Parcelable, Cloneable {
     public static final String ACTION_ATTACH_DATA = "android.intent.action.ATTACH_DATA";
 
     /**
+     * @hide
+     */
+    @SdkConstant(SdkConstantType.ACTIVITY_INTENT_ACTION)
+    public static final String ACTION_SIGNAL_DBM_CHANGED = "omfgb.intent.action.DBM_CHANGED";
+    
+    
+    /**
      * Activity Action: Provide explicit editable access to the given data.
      * <p>Input: {@link #getData} is URI of data to be edited.
      * <p>Output: nothing.

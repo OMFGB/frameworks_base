@@ -17,6 +17,14 @@
 
 package com.android.systemui.statusbar;
 
+import com.android.internal.app.IBatteryStats;
+import com.android.internal.telephony.IccCard;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.cdma.EriInfo;
+import com.android.internal.telephony.cdma.TtyIntent;
+import com.android.server.am.BatteryStatsService;
+import com.android.systemui.R;
+
 import android.app.AlertDialog;
 import android.app.StatusBarManager;
 import android.bluetooth.BluetoothA2dp;
@@ -40,17 +48,18 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.net.wimax.WimaxManagerConstants;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.storage.StorageManager;
 import android.provider.Settings;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
-import android.util.AttributeSet;
 import android.util.Slog;
 import android.view.View;
 import android.view.WindowManager;
@@ -58,15 +67,6 @@ import android.view.WindowManagerImpl;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
-import com.android.internal.app.IBatteryStats;
-import com.android.internal.telephony.IccCard;
-import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.cdma.EriInfo;
-import com.android.internal.telephony.cdma.TtyIntent;
-import com.android.server.am.BatteryStatsService;
-import com.android.systemui.R;
-import android.net.wimax.WimaxManagerConstants;
 
 /**
  * This class contains all of the policy about which icons are installed in the status
@@ -106,10 +106,10 @@ public class StatusBarPolicy {
     private boolean mBatteryShowLowOnEndCall = false;
     private static final boolean SHOW_LOW_BATTERY_WARNING = true;
     private static final boolean SHOW_BATTERY_WARNINGS_IN_CALL = true;
-    private boolean mHideBattery;
+    private boolean mShowBattery;
     private int mMiuiBattery;
 
-    private boolean mHideSignal;
+    private boolean mShowSignalIcon;
     private boolean mHideAlarm;
     private boolean mHideWifi;
     private boolean mHideBluetooth;
@@ -454,6 +454,17 @@ public class StatusBarPolicy {
               R.drawable.stat_sys_data_fully_out_h,
               R.drawable.stat_sys_data_fully_inandout_h }
     };
+    
+    private static final int[][] sDataNetType_4g = {
+        { R.drawable.stat_sys_data_connected_4g,
+          R.drawable.stat_sys_data_in_4g,
+          R.drawable.stat_sys_data_out_4g,
+          R.drawable.stat_sys_data_inandout_4g },
+        { R.drawable.stat_sys_data_fully_connected_4g,
+          R.drawable.stat_sys_data_fully_in_4g,
+          R.drawable.stat_sys_data_fully_out_4g,
+          R.drawable.stat_sys_data_fully_inandout_4g }
+};
 
     //CDMA
     // Use 3G icons for EVDO data and 1x icons for 1XRTT data
@@ -489,13 +500,13 @@ public class StatusBarPolicy {
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HIDE_BLUETOOTH), false, this);
             resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
+                    Settings.System.getUriFor(Settings.System.STATUSBAR_SHOW_BATTERY_ICON), false, this);
             resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.HIDE_SIGNAL_ICON), false, this);
+                    Settings.System.getUriFor(Settings.System.STATUSBAR_SHOW_SIGNAL_ICON), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
 	    resolver.registerContentObserver(
-		    Settings.System.getUriFor(Settings.System.MIUI_BATTERY_COLOR), false, this);
+		    Settings.System.getUriFor(Settings.System.STATUSBAR_SHOW_4G_ICON), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.HIDE_WIFI), false, this);
             resolver.registerContentObserver(
@@ -656,6 +667,10 @@ public class StatusBarPolicy {
         mStorageManager.registerListener(
                 new com.android.systemui.usb.StorageNotification(context));
 
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
+        updateSettings();
+        
         // battery
         mService.setIcon("battery", com.android.internal.R.drawable.stat_sys_battery_unknown, 0);
 
@@ -1169,6 +1184,12 @@ public class StatusBarPolicy {
     }
 
     private final void updateSignalStrength() {
+        updateSignalStrengthDbm();
+        if (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_SHOW_SIGNAL_ICON, 1) == 0) {
+            mService.setIconVisibility("phone_signal", false);
+            return;
+        }
         int iconLevel = -1;
         int[] iconList;
         updateCdmaRoamingIcon();
@@ -1379,6 +1400,24 @@ public class StatusBarPolicy {
         return rssiIconLevel;
 
     }
+    
+    public void updateSignalStrengthDbm() {
+        int dBm = -1;
+
+        if (!mSignalStrength.isGsm()) {
+            dBm = mSignalStrength.getCdmaDbm();
+        } else {
+            int gsmSignalStrength = mSignalStrength.getGsmSignalStrength();
+            int asu = (gsmSignalStrength == 99 ? -1 : gsmSignalStrength);
+            if (asu != -1) {
+                dBm = -113 + 2 * asu;
+            }
+        }
+
+        Intent dbmIntent = new Intent(Intent.ACTION_SIGNAL_DBM_CHANGED);
+        dbmIntent.putExtra("dbm", dBm);
+        mContext.sendBroadcast(dbmIntent);
+    }
 
     private int getCdmaLevel() {
         final int cdmaDbm = mSignalStrength.getCdmaDbm();
@@ -1436,7 +1475,12 @@ public class StatusBarPolicy {
         case TelephonyManager.NETWORK_TYPE_HSUPA:
         case TelephonyManager.NETWORK_TYPE_HSPA:
             if (mHspaDataDistinguishable) {
-                mDataIconList = sDataNetType_h[mInetCondition];
+                if (Settings.System.getInt(mContext.getContentResolver(),
+                        Settings.System.STATUSBAR_SHOW_4G_ICON, 0) == 1) {
+                    mDataIconList = sDataNetType_4g[mInetCondition];
+                } else {
+                    mDataIconList = sDataNetType_h[mInetCondition];
+                }
             } else {
                 mDataIconList = sDataNetType_3g[mInetCondition];
             }
@@ -1766,55 +1810,66 @@ public class StatusBarPolicy {
             }
         }
     }
+    
+    private final void updateBatteryVisibility() {
+        boolean active = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_SHOW_BATTERY_ICON, 1) == 1;
 
-   private void updateSettings() {
+        mService.setIconVisibility("battery", active);
+
+    }
+
+    private void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
 
-	mHideSignal = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_SIGNAL_ICON, 0) == 1);
-        mHideBluetooth = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_BLUETOOTH, 0) == 1);
-        mHideWifi = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_WIFI, 0) == 1);
-        mHideBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
-        mMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.BATTERY_OPTION,1));
-        mHideData = (Settings.System.getInt(mContext.getContentResolver(), Settings.System.HIDE_DATA, 0) == 1);
+        mShowSignalIcon = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_SHOW_SIGNAL_ICON, 1) == 1);
+        mHideBluetooth = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.HIDE_BLUETOOTH, 0) == 1);
+        mHideWifi = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.HIDE_WIFI, 0) == 1);
+        mHideData = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.HIDE_DATA, 0) == 1);
 
-	boolean dataIsActive = false;
-	ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(mContext.CONNECTIVITY_SERVICE);
-	NetworkInfo[] netInfo = cm.getAllNetworkInfo();
-	for (NetworkInfo ni : netInfo) {
-	    if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
-		if (ni.isConnected())
-			dataIsActive = true;
-	}
+        boolean dataIsActive = false;
+        ConnectivityManager cm = (ConnectivityManager) mContext
+                .getSystemService(mContext.CONNECTIVITY_SERVICE);
+        NetworkInfo[] netInfo = cm.getAllNetworkInfo();
+        for (NetworkInfo ni : netInfo) {
+            if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
+                if (ni.isConnected())
+                    dataIsActive = true;
+        }
 
-	if (dataIsActive && !mHideData) {
-	    mService.setIconVisibility("data_connection", true);
-	} else {
+        if (dataIsActive && !mHideData) {
+            mService.setIconVisibility("data_connection", true);
+        } else {
             mService.setIconVisibility("data_connection", false);
-	}
+        }
 
         if (mIsWifiConnected && !mHideWifi) {
             mService.setIconVisibility("wifi", true);
         } else {
             mService.setIconVisibility("wifi", false);
-	}
+        }
 
-        if (mBluetoothEnabled && !mHideBluetooth){
+        if (mBluetoothEnabled && !mHideBluetooth) {
             mService.setIconVisibility("bluetooth", true);
         } else {
             mService.setIconVisibility("bluetooth", false);
         }
 
-	if (mHideSignal){
+        if (mShowSignalIcon) {
+            mService.setIconVisibility("phone_signal", true);
+        } else {
             mService.setIconVisibility("phone_signal", false);
-	}else {
-	    mService.setIconVisibility("phone_signal", true);
-	}
+        }
 
-	if (mHideBattery || mMiuiBattery == 2){
+        if (mShowBattery) {
+            mService.setIconVisibility("battery", true);
+        } else {
             mService.setIconVisibility("battery", false);
-	}else {
-	    mService.setIconVisibility("battery", true);
-	}
-
+        }
+        updateBatteryVisibility();
     }
 }

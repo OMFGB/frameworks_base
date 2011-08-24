@@ -16,28 +16,25 @@
 
 package com.android.systemui.statusbar;
 
+import com.android.systemui.R;
+
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
-import android.content.res.Configuration;
-import android.graphics.Canvas;
-import android.os.SystemClock;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.database.ContentObserver;
+import android.os.Handler;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.graphics.*;
-import android.view.animation.*;
-import java.lang.Math;
-import android.database.ContentObserver;
-import android.provider.Settings;
-import android.content.ContentResolver;
-import android.os.Handler;
-
-import com.android.systemui.R;
 
 public class StatusBarView extends FrameLayout {
     private static final String TAG = "StatusBarView";
@@ -56,8 +53,6 @@ public class StatusBarView extends FrameLayout {
     boolean mScreenOn = true;
     private boolean mAttached;
 
-    public static int mMiuiBatteryColor;
-
     Handler mHandler;
 
     class SettingsObserver extends ContentObserver {
@@ -67,13 +62,25 @@ public class StatusBarView extends FrameLayout {
 
         void observe() {
             ContentResolver resolver = mContext.getContentResolver();
-
             resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.STATUSBAR_HIDE_BATTERY), false, this);
+                    Settings.System.getUriFor(Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY),
+                    false, this);
             resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
-           resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.MIUI_BATTERY_COLOR), false, this);
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_CHARGING), false,
+                    this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_LOW), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_MEDIUM), false,
+                    this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_REGULAR), false,
+                    this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_ENABLE_AUTOCOLOR),
+                    false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_STATIC), false, this);
         }
 
         @Override
@@ -84,6 +91,10 @@ public class StatusBarView extends FrameLayout {
     
     public StatusBarView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        
+        mHandler = new Handler();
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
     }
     
     public StatusBarView(Context context, AttributeSet attrs, int defStyle) {
@@ -92,8 +103,6 @@ public class StatusBarView extends FrameLayout {
         mHandler = new Handler();
         SettingsObserver settingsObserver = new SettingsObserver(mHandler);
         settingsObserver.observe();
-
-        updateSettings();
     }
 
     @Override
@@ -156,10 +165,8 @@ public class StatusBarView extends FrameLayout {
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
 
-	ContentResolver resolver = mContext.getContentResolver();
-	
-	int mShowBatteryIndicator;
-	boolean mHideBattery;
+        ContentResolver resolver = mContext.getContentResolver();
+        boolean mShowMiuiBattery;
 
         // put the date date view quantized to the icons
         int oldDateRight = mDate.getRight();
@@ -186,50 +193,43 @@ public class StatusBarView extends FrameLayout {
         mDate.layout(mDate.getLeft(), mDate.getTop(), newDateRight, mDate.getBottom());
         mBackground.setFixedBounds(-mDate.getLeft(), -mDate.getTop(), (r-l), (b-t));
 
-        mShowBatteryIndicator = (Settings.System
-                .getInt(resolver, Settings.System.BATTERY_OPTION, 0));
-        mHideBattery = (Settings.System
-                .getInt(resolver, Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
-	mMiuiBatteryColor = (Settings.System
-                .getInt(resolver, Settings.System.MIUI_BATTERY_COLOR, -1));
+        mShowMiuiBattery = (Settings.System.getInt(resolver,
+                Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
 
-	if(mShowBatteryIndicator == 2 && !mHideBattery){
-	    mBatteryIndicator.setVisibility(VISIBLE);
-	
-	    Intent batteryIntent = mContext.getApplicationContext().registerReceiver(null,
-	    new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-	    int level = batteryIntent.getIntExtra("level", 0);
-	    boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
+        if (mShowMiuiBattery) {
+            mBatteryIndicator.setVisibility(VISIBLE);
 
-	    if(level <= 15){
-		mBatteryIndicator.setBackgroundColor(0xFFFF0000);
-	    } else {
-                mBatteryIndicator.setBackgroundColor(mMiuiBatteryColor);
-	    }
-  
-	    mBatteryIndicator.layout(mBatteryIndicator.getLeft(),mBatteryIndicator.getTop(), ((r-l) * level) / 100,2);
+            Intent batteryIntent = mContext.getApplicationContext().registerReceiver(null,
+                    new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            int level = batteryIntent.getIntExtra("level", 0);
+            boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
 
-	    if(plugged){
-		mBatteryChargingIndicator.setVisibility(VISIBLE);
-		    mBatteryChargingIndicator.setBackgroundColor(mMiuiBatteryColor);
-		int chargingWidth = Math.min(5,((r-l) * (100 - level)) / 2);
-		mBatteryChargingIndicator.layout(r,t,(r+chargingWidth),t+2);
-	    
-		Animation a = new TranslateAnimation(0,(float)level-(r-l),0,0);
-		a.setInterpolator(new AccelerateInterpolator());
-		a.setDuration(1500);
-		a.setRepeatCount(-1);
-		a.setRepeatMode(1);
-		if(mScreenOn){
-		  mBatteryChargingIndicator.startAnimation(a);
-		} else {
-		  mBatteryChargingIndicator.clearAnimation();
-		}
-	    }
-	} else {
-	    mBatteryIndicator.setVisibility(GONE);
-	    mBatteryChargingIndicator.setVisibility(GONE);
-	}
+            updateColor(plugged, level);
+
+            mBatteryIndicator.layout(mBatteryIndicator.getLeft(), mBatteryIndicator.getTop(),
+                    ((r - l) * level) / 100, 2);
+
+            if (plugged) {
+                mBatteryChargingIndicator.setVisibility(VISIBLE);
+                mBatteryChargingIndicator.setBackgroundColor(0xFF33CC33);
+                int chargingWidth = Math.min(5, ((r - l) * (100 - level)) / 2);
+                mBatteryChargingIndicator.layout(r, t, (r + chargingWidth), t + 2);
+
+                Animation a = new TranslateAnimation(0, (float) level - (r - l), 0, 0);
+                a.setInterpolator(new AccelerateInterpolator());
+                a.setDuration(2000);
+                a.setRepeatCount(-1);
+                a.setRepeatMode(1);
+                if (mScreenOn) {
+                    mBatteryChargingIndicator.startAnimation(a);
+                } else {
+                    mBatteryChargingIndicator.clearAnimation();
+                }
+            }
+        } else {
+            mBatteryIndicator.setVisibility(GONE);
+            mBatteryChargingIndicator.setVisibility(GONE);
+        }
 }
 
     
@@ -283,31 +283,71 @@ public class StatusBarView extends FrameLayout {
         return mService.interceptTouchEvent(event)
                 ? true : super.onInterceptTouchEvent(event);
     }
+    
+    private void updateColor(boolean plugged, int batt) {
+        boolean autoColorBatteryText = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_ENABLE_AUTOCOLOR, 1) == 1 ? true : false;
+
+        int color_auto_charging = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_AUTO_CHARGING, 0xFF93D500);
+
+        int color_auto_regular = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_AUTO_REGULAR, 0xFFFFFFFF);
+
+        int color_auto_medium = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_AUTO_MEDIUM, 0xFFD5A300);
+
+        int color_auto_low = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_AUTO_LOW, 0xFFD54B00);
+
+        int color_regular = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.BATTERY_COLOR_AUTO_REGULAR, 0xFFFFFFFF);
+
+        if (autoColorBatteryText) {
+            if (plugged) {
+                mBatteryIndicator.setBackgroundColor(color_auto_charging);
+                mBatteryChargingIndicator.setBackgroundColor(color_auto_charging);
+
+            } else {
+                if (batt < 15) {
+                    mBatteryIndicator.setBackgroundColor(color_auto_low);
+                } else if (batt < 40) {
+                    mBatteryIndicator.setBackgroundColor(color_auto_medium);
+                } else {
+                    mBatteryIndicator.setBackgroundColor(color_auto_regular);
+
+                }
+
+            }
+        } else {
+            mBatteryIndicator.setBackgroundColor(color_regular);
+            mBatteryChargingIndicator.setBackgroundColor(color_regular);
+        }
+
+    }
 
     private void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
 
-        int mShowBatteryIndicator = (Settings.System
-                .getInt(resolver, Settings.System.BATTERY_OPTION, 0));
-        boolean mHideBattery = (Settings.System
-                .getInt(resolver, Settings.System.STATUSBAR_HIDE_BATTERY, 0) == 1);
-        int mMiuiBatteryColor = (Settings.System
-                .getInt(resolver, Settings.System.MIUI_BATTERY_COLOR, 0));
+        boolean mShowMiuiBattery = (Settings.System.getInt(resolver,
+                Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
 
-	if(mShowBatteryIndicator == 2 && !mHideBattery){
-	    Intent batteryIntent = mContext.getApplicationContext().registerReceiver(null,
-	    new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-	    
-	    boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
+        if (mShowMiuiBattery) {
+            Intent batteryIntent = mContext.getApplicationContext().registerReceiver(null,
+                    new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 
-	     mBatteryIndicator.setVisibility(VISIBLE);
-	     if(plugged){
-		  mBatteryChargingIndicator.setVisibility(VISIBLE);
-	      }
-	} else {
-	    mBatteryIndicator.setVisibility(GONE);
-	    mBatteryChargingIndicator.setVisibility(GONE);
-	}
+            boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
+            
+            updateColor(plugged, batteryIntent.getIntExtra("level", 0));
+            mBatteryIndicator.setVisibility(VISIBLE);
+            if (plugged) {
+                mBatteryChargingIndicator.setVisibility(VISIBLE);
+            }
+
+        } else {
+            mBatteryIndicator.setVisibility(GONE);
+            mBatteryChargingIndicator.setVisibility(GONE);
+        }
     }
      
 }

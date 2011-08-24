@@ -16,6 +16,8 @@
 
 package com.android.server;
 
+import static android.provider.Settings.System.BATTERY_OPTION;
+
 import com.android.internal.app.IBatteryStats;
 import com.android.server.am.BatteryStatsService;
 
@@ -24,11 +26,13 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.os.BatteryManager;
 import android.os.Binder;
-import android.os.FileUtils;
-import android.os.IBinder;
 import android.os.DropBoxManager;
+import android.os.FileUtils;
+import android.os.Handler;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -39,12 +43,9 @@ import android.util.Slog;
 
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-
-import static android.provider.Settings.System.BATTERY_OPTION;
 
 /**
  * <p>BatteryService monitors the charging status, and charge level of the device
@@ -121,7 +122,9 @@ class BatteryService extends Binder {
 
     private boolean mSentLowBatteryBroadcast = false;
 
-    private int mBatteryOption = 1;
+    private int mBatteryOption = 0;
+    
+    private Handler mHandler;
     
     public BatteryService(Context context) {
         mContext = context;
@@ -134,10 +137,31 @@ class BatteryService extends Binder {
 
         mUEventObserver.startObserving("SUBSYSTEM=power_supply");
 
-	mBatteryOption = Settings.System.getInt(mContext.getContentResolver(), BATTERY_OPTION, 1);
+        mBatteryOption = Settings.System.getInt(mContext.getContentResolver(), BATTERY_OPTION, 0);
 
+        mHandler = new Handler();
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
+        
         // set initial status
         update();
+    }
+    
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.BATTERY_OPTION), false, this);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            updateSettings();
+        }
     }
 
     final boolean isPowered() {
@@ -445,17 +469,15 @@ class BatteryService extends Binder {
     public final int getIcon(int level) {
         if (mBatteryStatus == BatteryManager.BATTERY_STATUS_CHARGING) {
             return com.android.internal.R.drawable.stat_sys_battery_charge;
-        } else if (mBatteryStatus == BatteryManager.BATTERY_STATUS_DISCHARGING ||
-                mBatteryStatus == BatteryManager.BATTERY_STATUS_NOT_CHARGING ||
-                mBatteryStatus == BatteryManager.BATTERY_STATUS_FULL) {
+        } else if (mBatteryStatus == BatteryManager.BATTERY_STATUS_DISCHARGING
+                || mBatteryStatus == BatteryManager.BATTERY_STATUS_NOT_CHARGING
+                || mBatteryStatus == BatteryManager.BATTERY_STATUS_FULL) {
 
-	  if (mBatteryOption == 0) {
-            return com.android.internal.R.drawable.stat_sys_battery_percentage;
-          } else if (mBatteryOption == 1 ) {
-            return com.android.internal.R.drawable.stat_sys_battery;
-          } else {
-            return com.android.internal.R.drawable.stat_sys_battery;
-          }
+            if (mBatteryOption == 1) {
+                return com.android.internal.R.drawable.stat_sys_battery_percentage;
+            } else {
+                return com.android.internal.R.drawable.stat_sys_battery;
+            }
 
         } else {
             return com.android.internal.R.drawable.stat_sys_battery_unknown;
@@ -486,5 +508,11 @@ class BatteryService extends Binder {
             pw.println("  temperature: " + mBatteryTemperature);
             pw.println("  technology: " + mBatteryTechnology);
         }
+    }
+    
+    private void updateSettings() {
+        ContentResolver resolver = mContext.getContentResolver();
+        mBatteryOption = Settings.System.getInt(resolver, Settings.System.BATTERY_OPTION, 0);
+        sendIntent();
     }
 }

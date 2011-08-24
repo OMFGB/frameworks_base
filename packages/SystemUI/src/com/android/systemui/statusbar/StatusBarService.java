@@ -132,6 +132,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
     // icons
     LinearLayout mIcons;
+    LinearLayout mClock;
     IconMerger mNotificationIcons;
     LinearLayout mStatusIcons;
 
@@ -334,6 +335,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mStatusIcons = (LinearLayout)sb.findViewById(R.id.statusIcons);
         mNotificationIcons = (IconMerger)sb.findViewById(R.id.notificationIcons);
         mIcons = (LinearLayout)sb.findViewById(R.id.icons);
+        mClock = (LinearLayout)sb.findViewById(R.id.center);
         mTickerView = sb.findViewById(R.id.ticker);
         mDateView = (DateView)sb.findViewById(R.id.date);
 
@@ -1213,9 +1215,11 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             if (SPEW) Slog.d(TAG, "tickerStarting");
             mTicking = true;
             mIcons.setVisibility(View.GONE);
+            mClock.setVisibility(View.GONE);
             mTickerView.setVisibility(View.VISIBLE);
             mTickerView.startAnimation(loadAnim(com.android.internal.R.anim.push_up_in, null));
             mIcons.startAnimation(loadAnim(com.android.internal.R.anim.push_up_out, null));
+            mClock.startAnimation(loadAnim(com.android.internal.R.anim.push_up_out, null));
             if (mExpandedVisible) {
                 setDateViewVisibility(false, com.android.internal.R.anim.push_up_out);
             }
@@ -1226,8 +1230,10 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             if (SPEW) Slog.d(TAG, "tickerDone");
             mTicking = false;
             mIcons.setVisibility(View.VISIBLE);
+            mClock.setVisibility(View.VISIBLE);
             mTickerView.setVisibility(View.GONE);
             mIcons.startAnimation(loadAnim(com.android.internal.R.anim.push_down_in, null));
+            mClock.startAnimation(loadAnim(com.android.internal.R.anim.push_down_in, null));
             mTickerView.startAnimation(loadAnim(com.android.internal.R.anim.push_down_out, null));
             if (mExpandedVisible) {
                 setDateViewVisibility(true, com.android.internal.R.anim.push_down_in);
@@ -1238,8 +1244,10 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             if (SPEW) Slog.d(TAG, "tickerHalting");
             mTicking = false;
             mIcons.setVisibility(View.VISIBLE);
+            mClock.setVisibility(View.VISIBLE);
             mTickerView.setVisibility(View.GONE);
             mIcons.startAnimation(loadAnim(com.android.internal.R.anim.fade_in, null));
+            mClock.startAnimation(loadAnim(com.android.internal.R.anim.fade_in, null));
             mTickerView.startAnimation(loadAnim(com.android.internal.R.anim.fade_out, null));
             if (mExpandedVisible) {
                 setDateViewVisibility(true, com.android.internal.R.anim.fade_in);

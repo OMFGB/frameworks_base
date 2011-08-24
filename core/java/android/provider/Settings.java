@@ -1955,14 +1955,11 @@ public final class Settings {
          */
         public static final String STATUS_BAR_CM_BATTERY = "status_bar_cm_battery";
 
-		/*
-		 * Whether to show the clock in the status bar
-		 * of the stock battery icon
-		 * 0: don't show the clock
-		 * 1: show the clock
-		 * default: 1
-		 * @hide
-		 */
+        /**
+         * 0: hide
+         * 1: show right clock
+         * 2: show center clock
+         *  @hide */
 		public static final String STATUS_BAR_CLOCK = "status_bar_clock";
 	
 	   /**
@@ -2021,17 +2018,17 @@ public final class Settings {
 		 */
 		public static final String LAUNCHER_2_PACKAGE = "com.android.launcher";
 
-                /**
-                * Sets Wallpaper image to move with the homescreens. 
-                * @hide
-                */
-                public static final String WALLPAPER_LOOP = "wallpaper_loop";
+        /**
+        * Sets Wallpaper image to move with the homescreens. 
+        * @hide
+        */
+        public static final String WALLPAPER_LOOP = "wallpaper_loop";
 
-                /**
-                * Sets four hotseat buttons. 
-                * @hide
-                */
-                public static final String FOUR_HOTSEATS = "four_hotseats";
+        /**
+        * Sets four hotseat buttons. 
+        * @hide
+        */
+        public static final String FOUR_HOTSEATS = "four_hotseats";
 
 		/**
 		 * Sets Launcher to continuously loop from one end of the 
@@ -2104,6 +2101,8 @@ public final class Settings {
 		
 
 		/**
+		 * 0: show regular gingerbread battery
+		 * 1: show gingerbread with percent battery
 		* @hide
 		*/
 		public static final String BATTERY_OPTION = "battery_option";
@@ -2168,32 +2167,141 @@ public final class Settings {
         public static final String OVERSCROLL_WEIGHT = "overscroll_weight";
 		
 		/**
-		*	SBRISSEN ADDED
+		* SBRISSEN ADDED
 		* @hide
 		*/
-
 		public static final String STATUSBAR_CLOCK_OPT = "statusbar_clock_opt"; 
-		public static final String STATUSBAR_CLOCK_COLOR = "statusbar_clock_color";
-		public static final String MIUI_BATTERY_COLOR = "miui_battery_color"; 
-		public static final String HIDE_SIGNAL_ICON = "hide_signal_icon";
-                public static final String HIDE_CLOCK = "hide_clock";
-                public static final String HIDE_DATE = "hide_date";
-                public static final String HIDE_WIFI = "hide_wifi";
-                public static final String HIDE_DATA = "hide_data";
-                public static final String HIDE_SYNC = "hide_sync";
-                public static final String HIDE_BLUETOOTH = "hide_bluetooth";
-		public static final String STATUSBAR_HIDE_BATTERY = "statusbar_hide_battery";
-		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
-		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
-		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
-		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
-		public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 
-		public static final String BATTERY_COLOR_AUTO_REGULAR = "battery_color_auto_regular";
-		public static final String BATTERY_COLOR_AUTO_MEDIUM = "battery_color_auto_medium";
-		public static final String BATTERY_COLOR_AUTO_LOW = "battery_color_auto_low";
-		public static final String BATTERY_COLOR = "battery_color"; 
-		public static final String CUSTOM_LOCKSCREEN_TIMEOUT = "custom_lockscreen_timeout";
+		
         /**
+         * Display style of AM/PM next to clock in status bar 0: Normal display
+         * (Eclair stock) 1: Small display (Froyo stock) 2: No display
+         * (Gingerbread stock) default: 2
+         * 
+         * @hide
+         */
+        public static final String STATUS_BAR_AM_PM = "status_bar_am_pm";
+
+        /**
+         * Whether to display the signal text in dBm. 0: don't display 1:
+         * display without dBm appended 2: display with dBm appended default: 0
+         * 
+         * @hide
+         */
+        public static final String STATUS_BAR_SIGNAL_TEXT_STYLE = "status_bar_signal_style";
+        
+        /**
+         * Whether to enable signal text being auto color or not. Boolean: 1 or
+         * 0.
+         * 
+         * @hide
+         */
+        public static final String STATUS_BAR_SIGNAL_TEXT_ENABLE_AUTOCOLOR = "tweaks_signal_text_autocolor_enable";
+        
+
+        /**
+         * @hide
+         */
+        public static final String STATUS_BAR_SIGNAL_TEXT_STATIC = "tweaks_signal_text_color";
+        
+        /** 
+         * @hide
+         */
+        public static final String STATUS_BAR_SIGNAL_TEXT_0_BARS = "tweaks_signal_text_color_0";
+
+        /** @hide */
+        public static final String STATUS_BAR_SIGNAL_TEXT_1_BARS = "tweaks_signal_text_color_1";
+
+        /** @hide */
+        public static final String STATUS_BAR_SIGNAL_TEXT_2_BARS = "tweaks_signal_text_color_2";
+
+        /** @hide */
+        public static final String STATUS_BAR_SIGNAL_TEXT_3_BARS = "tweaks_signal_text_color_3";
+
+        /** @hide */
+        public static final String STATUS_BAR_SIGNAL_TEXT_4_BARS = "tweaks_signal_text_color_4";
+        
+        /** @hide */
+        public static final String STATUSBAR_ENABLE_MIUI_BATTERY = "miui_enable_bar";
+        
+        /** @hide */
+        public static final String STATUSBAR_SHOW_4G_ICON = "tweaks_signal_text_color_4";
+        
+        /**
+         * clock color hex
+         * @hide
+         */
+        public static final String STATUS_BAR_CLOCK_COLOR = "status_bar_clock_color";
+
+		/** @hide */
+		public static final String MIUI_BATTERY_COLOR = "miui_battery_color"; 
+		
+		/** @hide */
+		public static final String STATUSBAR_SHOW_SIGNAL_ICON = "hide_signal_icon";
+		
+		/** @hide */
+		public static final String HIDE_CLOCK = "hide_clock";
+		
+		/** @hide */
+		public static final String HIDE_DATE = "hide_date";
+		
+		/** @hide */
+		public static final String HIDE_WIFI = "hide_wifi";
+		
+		/** @hide */
+		public static final String HIDE_DATA = "hide_data";
+		
+		/** @hide */
+		public static final String HIDE_SYNC = "hide_sync";
+		
+		/** @hide */
+		public static final String HIDE_BLUETOOTH = "hide_bluetooth";
+		
+		/** @hide */
+		public static final String STATUSBAR_SHOW_BATTERY_ICON = "statusbar_hide_battery";
+		
+		/** 
+		 * style of the battery text
+		 * 1: show with regular %
+		 * 2: hide
+		 * 3: show with small %
+		 * 4: don't show a %
+		 * @hide */
+		public static final String STATUSBAR_BATTERY_TEXT_STYLE = "statusbar_battery_text_style";
+		
+		/** @hide */
+		public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
+		
+		/** @hide */
+		public static final String STATUSBAR_HIDE_ALARM = "statusbar_hide_alarm";
+		
+		/** @hide */
+		public static final String STATUSBAR_DATECLOCK = "statusbar_dateclock";
+		
+		/** @hide */
+		public static final String BATTERY_TEXT_COLOR = "battery_text_color";
+		
+		/** @hide */
+        public static final String BATTERY_COLOR_AUTO_CHARGING = "battery_color_auto_charging"; 
+        
+		/** @hide */
+		public static final String BATTERY_COLOR_ENABLE_AUTOCOLOR = "battery_color_enable_auto_color"; 
+		
+		/** @hide */
+		public static final String BATTERY_COLOR_AUTO_REGULAR = "battery_color_auto_regular";
+		
+		/** @hide */
+		public static final String BATTERY_COLOR_AUTO_MEDIUM = "battery_color_auto_medium";
+		
+		/** @hide */
+		public static final String BATTERY_COLOR_AUTO_LOW = "battery_color_auto_low";
+		
+		/** @hide */
+		public static final String BATTERY_COLOR_STATIC = "battery_color_static"; 
+		
+		/** @hide */
+		public static final String CUSTOM_LOCKSCREEN_TIMEOUT = "custom_lockscreen_timeout";
+        
+		/**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          * @hide

@@ -33,8 +33,15 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.view.animation.RotateAnimation;
+import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
+import android.widget.ImageView;
+
+import com.android.internal.R;
 
 public class SenseLikeLock extends View{
 	
@@ -42,12 +49,13 @@ public class SenseLikeLock extends View{
 	// ********************* Debug Variables
 	
 	
-	private String TAG = "CircularSelector";
+	private String TAG = "SenseLikeLock";
 	private static final boolean DBG = true;
 	private static final boolean IDBG = true;
 	private static final boolean TDBG = false;
     private static final boolean VISUAL_DEBUG = true;
 	
+    private Animation mUnlockAnimation;
     
     // ***********Rotation constants and variables
     /**
@@ -114,6 +122,7 @@ public class SenseLikeLock extends View{
 	//
 	public SenseLikeLock(Context context) {
 		this(context,null);
+		
 		// TODO Auto-generated constructor stub
 	}
 	public SenseLikeLock(Context context, AttributeSet attrs) {
@@ -391,8 +400,7 @@ public class SenseLikeLock extends View{
           }
           
        
-         
-          if(!mTriggering){
+
          
           // always draw the lower background
           canvas.drawBitmap(this.mLowerBackground,  0, (height -(this.mLowerBackground.getHeight()) ), mPaint);
@@ -441,22 +449,24 @@ public class SenseLikeLock extends View{
 	    	  }
         	  
           }
-          }
           
-          else{
-        	  
-        	  this.doUnlockAnimation(canvas);
-          }
           
 		
 		return;
 	}
-	private void doUnlockAnimation(Canvas canvas) {
+	private void doUnlockAnimation() {
 		Log.d(TAG, "dounlockanimation");
-		 mPaint.setColor(0xffff0000);
-         mPaint.setStyle(Paint.Style.STROKE);
- 
-		canvas.drawCircle(this.getWidth()/2, this.getHeight()/2, this.mLockIcon.getWidth()/2, this.mPaint);
+		
+		this.mUnlockAnimation = new ScaleAnimation(1,0,1,0);
+		this.mUnlockAnimation.setDuration(1000L);
+		this.mUnlockAnimation.setInterpolator(new AccelerateInterpolator());
+
+		mUnlockAnimation.setRepeatCount(0);
+		this.startAnimation(mUnlockAnimation);
+		
+	
+		
+		
 		// TODO Auto-generated method stub
 		
 	}
@@ -678,14 +688,14 @@ public class SenseLikeLock extends View{
         		// Create an animation that moves the circle to the middle
         		// and becomes bigger, with the app icon in the middle, then unlock
         		//mCanvas.
-        		this.doUnlockAnimation(mCanvas);
+        		this.doUnlockAnimation();
         		break;
         		
         	}
         	case OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED:
         		// Create an animation that moves the circle to the middle
         		// and becomes bigger, then unlock
-        		this.doUnlockAnimation(mCanvas);
+        		this.doUnlockAnimation();
         		break;
         	
         	}
@@ -714,7 +724,10 @@ public class SenseLikeLock extends View{
     	setGrabbedState(OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE);
     	mIsTouchInCircle = false;
     	mUsingShortcuts = false;
-    	mDontUnlock = true;
+    	mTriggering = false;
+    	this.mLockX = 0;
+    	this.mLockY = 0;
+    	
     	
     }
     

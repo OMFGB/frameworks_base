@@ -27,12 +27,14 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.KeyEvent;
 import android.widget.*;
 import android.view.ViewGroup;
 import android.media.AudioManager;
@@ -44,6 +46,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import com.google.android.collect.Lists;
 
 import android.util.Slog;
 
@@ -58,39 +62,42 @@ public class MusicControls extends FrameLayout {
     private static final LinearLayout.LayoutParams BUTTON_LAYOUT_PARAMS = new LinearLayout.LayoutParams(
                                         ViewGroup.LayoutParams.WRAP_CONTENT, // width = wrap_content
                                         ViewGroup.LayoutParams.MATCH_PARENT, // height = match_parent
-                                        1.0f                                    // weight = 1
+                                        2.0f                                    // weight = 1
                                         );
 
     private static final Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
+
+    private ArrayList<InfoCallback> mInfoCallbacks = Lists.newArrayList();
 
     private Context mContext;
     private LayoutInflater mInflater;
     private AudioManager mAudioManager;
 
     private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
-    private boolean mWasMusicActive = false;
     private boolean mIsMusicActive = am.isMusicActive();
+    private boolean paused = false;
 
-    private ImageButton mPlayIcon;
-    private ImageButton mPauseIcon;
+    private ImageButton mPlayPauseIcon;
     private ImageButton mRewindIcon;
     private ImageButton mForwardIcon;
     private ImageButton mAlbumArt;
 
-    private TextView mNowPlayingArtist;
-    private TextView mNowPlayingAlbum;
+    private TextView mNowPlayingInfo;
 
     private static String mArtist = null;
     private static String mTrack = null;
     private static Boolean mPlaying = null;
-    private static long mSongId = 0;
-    private static long mAlbumId = 0;
+    private static long mSongId = 0;    private static long mAlbumId = 0;
 
     public MusicControls(Context context, AttributeSet attrs) {
         super(context, attrs);
 
         mContext = context;
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+        IntentFilter iF = new IntentFilter();
+        iF.addAction("com.android.music.metachanged");
+        mContext.registerReceiver(mMusicReceiver, iF);
     }
 
     public void setupControls() {
@@ -105,40 +112,69 @@ public class MusicControls extends FrameLayout {
     }
 
     public void updateControls() {
-	Slog.d(TAG, "Updating Music Controls Visibility");
+        Slog.d(TAG, "Updating Music Controls Visibility");
+        mIsMusicActive = am.isMusicActive();
 
-        mPlayIcon = (ImageButton) findViewById(R.id.musicControlPlay);
-        mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);
+        mPlayPauseIcon = (ImageButton) findViewById(R.id.musicControlPlayPause);
+        mPlayPauseIcon.setImageResource(R.drawable.stat_media_pause);
         mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
         mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
+        mNowPlayingInfo = (TextView) findViewById(R.id.musicNowPlayingInfo);
+        mNowPlayingInfo.setSelected(true); // set focus to TextView to allow scrolling
+        mNowPlayingInfo.setTextColor(0xffffffff);
         mAlbumArt = (ImageButton) findViewById(R.id.albumArt);
-   	  Uri uri = getArtworkUri(getContext(), SongId(),
-	  AlbumId());
-	  if (uri != null) {
-	      mAlbumArt.setImageURI(uri);
-	  }
 
-        mNowPlayingArtist = (TextView) findViewById(R.id.musicNowPlayingArtist);
-        mNowPlayingArtist.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingArtist.setTextColor(0xffffffff);
-            String nowPlayingArtist = NowPlayingArtist();
-            mNowPlayingArtist.setText(nowPlayingArtist);
-
-        mNowPlayingAlbum = (TextView) findViewById(R.id.musicNowPlayingAlbum);
-        mNowPlayingAlbum.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingAlbum.setTextColor(0xffffffff);
-            String nowPlayingAlbum = NowPlayingAlbum();
-            mNowPlayingAlbum.setText(nowPlayingAlbum);
-
-//        setVisibility(View.VISIBLE);
-
-	if (mIsMusicActive || mWasMusicActive) {
-	     Slog.d(TAG, "Music is active");
-	     setVisibility(View.VISIBLE);
-	} else {
+        if (mIsMusicActive) {
+             Slog.d(TAG, "Music is active");
+             setVisibility(View.VISIBLE);
+	     updateInfo();
+        } else {
              Slog.d(TAG, "Music is not active");
-	     setVisibility(View.GONE);
-	}
+             setVisibility(View.GONE);
+        }
+   }
+
+    public void updateInfo() {
+	Slog.d(TAG, "Updating Music Controls Info");
+        mIsMusicActive = am.isMusicActive();
+
+        // Set album art
+        Uri uri = getArtworkUri(getContext(), SongId(), AlbumId());
+        if (uri != null) {
+           mAlbumArt.setImageURI(uri);
+        } else {
+           mAlbumArt.setImageResource(R.drawable.default_artwork);
+        }
+
+        handleSongUpdate();
+	String nowPlayingArtist = NowPlayingArtist();
+	String nowPlayingAlbum = NowPlayingAlbum();
+        mNowPlayingInfo.setText(nowPlayingArtist + " -- " + nowPlayingAlbum);
+
+        mPlayPauseIcon.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+            mIsMusicActive = am.isMusicActive();
+	    paused = false;
+	    if (!mIsMusicActive) {
+		paused = true;
+	    }
+            sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+	    mPlayPauseIcon.setImageResource(paused ? R.drawable.stat_media_pause : R.drawable.stat_media_play);
+            }
+        });
+
+        mRewindIcon.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+            }
+        });
+
+        mForwardIcon.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
+            }
+        });
+
     }
 
     public static Uri getArtworkUri(Context context, long song_id, long album_id) {
@@ -209,8 +245,8 @@ public class MusicControls extends FrameLayout {
             mPlaying = intent.getBooleanExtra("playing", false);
             mSongId = intent.getLongExtra("songid", 0);
             mAlbumId = intent.getLongExtra("albumid", 0);
-	    intent = new Intent("internal.policy.impl.updateSongStatus");
-            context.sendBroadcast(intent);
+	    handleSongUpdate();
+	    updateInfo();
         }
     };
 
@@ -238,4 +274,27 @@ public class MusicControls extends FrameLayout {
         return mAlbumId;
     }
 
+    private void handleSongUpdate() {
+           for (int i = 0; i< mInfoCallbacks.size(); i++) {
+               mInfoCallbacks.get(i).onMusicChanged();
+           }
+    }
+
+    interface InfoCallback {
+	void onMusicChanged();
+    }
+
+    private void sendMediaButtonEvent(int code) {
+        long eventtime = SystemClock.uptimeMillis();
+
+        Intent downIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null);
+        KeyEvent downEvent = new KeyEvent(eventtime, eventtime, KeyEvent.ACTION_DOWN, code, 0);
+        downIntent.putExtra(Intent.EXTRA_KEY_EVENT, downEvent);
+        getContext().sendOrderedBroadcast(downIntent, null);
+
+        Intent upIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null);
+        KeyEvent upEvent = new KeyEvent(eventtime, eventtime, KeyEvent.ACTION_UP, code, 0);
+        upIntent.putExtra(Intent.EXTRA_KEY_EVENT, upEvent);
+        getContext().sendOrderedBroadcast(upIntent, null);
+    }
 }

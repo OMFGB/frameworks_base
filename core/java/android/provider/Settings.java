@@ -2244,6 +2244,16 @@ public final class Settings {
 		/** @hide */
 		public static final String HIDE_DATE = "hide_date";
 		
+        /**
+         * 2272 Enable the Trackball notification. The value is boolean (1 or
+         * 0).
+         * @hide
+         */
+		public static final String TRACKBALL_NOTIFICATION_ON = "trackball_notification_on";
+
+        /** @hide */
+        public static final String HIDE_USB = "hide_usb";
+
 		/** @hide */
 		public static final String HIDE_WIFI = "hide_wifi";
 		

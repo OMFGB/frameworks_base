@@ -90,18 +90,16 @@ public class MobileDataStateTracker extends NetworkStateTracker {
             mEnabled = false;
         }
 
-        mDnsPropNames = new String[] {
-                "net.rmnet0.dns1",
-                "net.rmnet0.dns2",
-                "net.eth0.dns1",
-                "net.eth0.dns2",
-                "net.eth0.dns3",
-                "net.eth0.dns4",
-                "net.gprs.dns1",
-                "net.gprs.dns2",
-                "net.ppp0.dns1",
-                "net.ppp0.dns2"};
+        String[] ifNames = SystemProperties.get(
+            "mobiledata.interfaces",
+            "rmnet0,eth0,gprs,ppp0"
+        ).split(",");
 
+        mDnsPropNames = new String[2 * ifNames.length];
+        for (int i = 0; i < ifNames.length; ++i) {
+            mDnsPropNames[2*i+0] = "net." + ifNames[i] + ".dns1";
+            mDnsPropNames[2*i+1] = "net." + ifNames[i] + ".dns2";
+        }
     }
 
     /**
@@ -248,7 +246,14 @@ public class MobileDataStateTracker extends NetworkStateTracker {
                                 if (mInterfaceName == null) {
                                     Log.d(TAG, "CONNECTED event did not supply interface name.");
                                 }
-                                mDefaultGatewayAddr = getIpFromString(SystemProperties.get("net.ppp0.remote-ip"));
+
+                                // Samsung CDMA devices do not export gateway to the framework correctly
+                                // if using FroYo RIL blobs, we can extract it from system properties
+                                if (SystemProperties.get("ro.ril.samsung_cdma").equals("true"))
+                                    mDefaultGatewayAddr = getIpFromString(SystemProperties.get("net.ppp0.remote-ip"));
+                                else
+                                    mDefaultGatewayAddr = intent.getIntExtra(Phone.DATA_GATEWAY_KEY, 0);
+
                                 if (mDefaultGatewayAddr == 0) {
                                     Log.d(TAG, "CONNECTED event did not supply a default gateway.");
                                 }

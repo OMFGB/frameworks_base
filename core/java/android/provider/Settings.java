@@ -4061,6 +4061,12 @@ public final class Settings {
         public static final String KILL_APP_LONGPRESS_BACK = "kill_app_on_longpress_back";
         
         /**
+         * Virtual network roaming
+         * @hide
+         */
+        public static final String MVNO_ROAMING = "button_mvno_roaming_key";
+
+        /**
          * @hide
          */
         public static final String[] SETTINGS_TO_BACKUP = {

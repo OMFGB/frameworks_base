@@ -141,6 +141,7 @@ class RILRequest {
                 this.mNext = sPool;
                 sPool = this;
                 sPoolSize++;
+                mResult = null;
             }
         }
     }
@@ -208,6 +209,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private static final boolean DBG = false;
     static final boolean RILJ_LOGD = Config.LOGD;
     static final boolean RILJ_LOGV = DBG ? Config.LOGD : Config.LOGV;
+    private boolean rilNeedsNullPath = false;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -370,6 +372,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             rr.onError(GENERIC_FAILURE, null);
                             rr.release();
                         }
+                    } finally {
+                        // Note: We are "Done" only if there are no outstanding
+                        // requests or replies. Thus this code path will only release
+                        // the wake lock on errors.
+                        releaseWakeLockIfDone();
                     }
 
                     if (!alreadySubtracted && mRequestMessagesPending > 0) {
@@ -615,6 +622,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         super(context);
         mCdmaSubscription  = cdmaSubscription;
         mNetworkMode = networkMode;
+        rilNeedsNullPath = context.getResources().getBoolean(com.android.internal.R.bool.config_rilNeedsNullPath);
         //At startup mPhoneType is first set from networkMode
         switch(networkMode) {
             case RILConstants.NETWORK_MODE_WCDMA_PREF:
@@ -1453,6 +1461,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         rr.mp.writeInt(command);
         rr.mp.writeInt(fileid);
+        // MB501 (zeppelin) and other phones (motus, morrison, etc) require this
+        // to get data working
+        if (rilNeedsNullPath) {
+            path = null;
+        }
         rr.mp.writeString(path);
         rr.mp.writeInt(p1);
         rr.mp.writeInt(p2);
@@ -2007,7 +2020,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             default:
                 throw new RuntimeException(
-                            "Unrecognized RIL_RadioState: " +stateInt);
+                            "Unrecognized RIL_RadioState: " + stateInt);
         }
         return state;
     }
@@ -2070,6 +2083,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
     protected void
     send(RILRequest rr) {
         Message msg;
+
+        if (mSocket == null) {
+            rr.onError(RADIO_NOT_AVAILABLE, null);
+            rr.release();
+            return;
+        }
 
         msg = mSender.obtainMessage(EVENT_SEND, rr);
 
@@ -2402,7 +2421,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESTRICTED_STATE_CHANGED: ret = responseInts(p); break;
             case RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED:  ret =  responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS:  ret =  responseCdmaSms(p); break;
-            case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:  ret =  responseString(p); break;
+            case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:  ret =  responseRaw(p); break;
             case RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL:  ret =  responseVoid(p); break;
             case RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
             case RIL_UNSOL_CDMA_CALL_WAITING: ret = responseCdmaCallWaiting(p); break;

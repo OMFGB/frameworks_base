@@ -446,9 +446,10 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         boolean desiredPowerState = mGsmPhone.mSST.getDesiredPowerState();
 
         if ((state == State.IDLE || state == State.SCANNING)
-                && (gprsState == ServiceState.STATE_IN_SERVICE || noAutoAttach)
+                && (gprsState == ServiceState.STATE_IN_SERVICE || !noAutoAttach)
                 && mGsmPhone.mSIMRecords.getRecordsLoaded()
-                && phone.getState() == Phone.State.IDLE
+                && (mGsmPhone.mSST.isConcurrentVoiceAndData() ||
+                        phone.getState() == Phone.State.IDLE )
                 && isDataAllowed()
                 && !mIsPsRestricted
                 && desiredPowerState ) {

@@ -17,120 +17,129 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
 	android:gravity="center_horizontal"
 	android:id="@+id/root">
 
-	<TextView
-		android:id="@+id/carrier"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_alignParentTop="true"
-		android:layout_alignParentRight="true"
-		android:layout_marginTop="10dip"
-		android:layout_marginRight="8dip"
-		android:singleLine="true"
-		android:ellipsize="marquee"
-		android:gravity="right|bottom"
-		android:textAppearance="?android:attr/textAppearanceMedium"
-		android:textSize="22sp" />
+	 <TextView
+        android:id="@+id/carrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="10dip"
+        android:layout_centerInParent="true"
+        android:singleLine="true"
+        android:ellipsize="marquee"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textStyle="bold"
+        />
 
-	<!-- "emergency calls only" shown when sim is missing or PUKd -->
-	<TextView
-		android:id="@+id/emergencyCallText"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_below="@id/carrier"
-		android:layout_alignParentRight="true"
-		android:layout_marginTop="0dip"
-		android:layout_marginRight="8dip"
-		android:text="@string/emergency_calls_only"
-		android:textAppearance="?android:attr/textAppearanceSmall"
-		android:textColor="@color/white" />
+    <!-- "emergency calls only" shown when sim is missing or PUKd -->
+    <TextView
+        android:id="@+id/emergencyCallText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/carrier"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="0dip"
+        android:layout_marginRight="8dip"
+        android:text="@string/emergency_calls_only"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="@color/white"
+       />
 
-	<!-- time and date -->
-	<com.android.internal.widget.DigitalClock
-		android:id="@+id/time"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_below="@id/carrier"
-		android:layout_marginTop="32dip"
-		android:layout_marginLeft="20dip"
-		android:paddingBottom="8dip">
+    <!-- time and date -->
+    <com.android.internal.widget.DigitalClock android:id="@+id/time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/carrier"
+        android:layout_marginTop="52dip"
+        android:layout_centerInParent="true"
+        >
 
-		<TextView
-			android:id="@+id/timeDisplay"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:singleLine="true"
-			android:ellipsize="none"
-			android:textSize="72sp"
-			android:textAppearance="?android:attr/textAppearanceMedium"
-			android:shadowColor="#C0000000"
-			android:shadowDx="0"
-			android:shadowDy="0"
-			android:shadowRadius="3.0"
-			android:layout_marginBottom="10dip" />
+        <TextView android:id="@+id/timeDisplay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:singleLine="true"
+            android:ellipsize="none"
+            android:textSize="72sp"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:shadowColor="#C0000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="3.0"
+            android:layout_marginBottom="10dip"
+            />
 
-		<TextView
-			android:id="@+id/am_pm"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:layout_toRightOf="@id/timeDisplay"
-			android:layout_alignBaseline="@id/timeDisplay"
-			android:singleLine="true"
-			android:ellipsize="none"
-			android:textSize="22sp"
-			android:layout_marginLeft="8dip"
-			android:textAppearance="?android:attr/textAppearanceMedium"
-			android:shadowColor="#C0000000"
-			android:shadowDx="0"
-			android:shadowDy="0"
-			android:shadowRadius="3.0" />
-	</com.android.internal.widget.DigitalClock>
 
-	<TextView
-		android:id="@+id/date"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_below="@id/time"
-		android:layout_marginLeft="24dip"
-		android:textAppearance="?android:attr/textAppearanceMedium" />
+        <TextView android:id="@+id/am_pm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/timeDisplay"
+            android:layout_alignBaseline="@id/timeDisplay"
+            android:singleLine="true"
+            android:ellipsize="none"
+            android:textSize="22sp"
+            android:layout_marginLeft="8dip"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:shadowColor="#C0000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="3.0"
+            />
 
-	<TextView
-		android:id="@+id/status1"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_below="@id/date"
-		android:layout_marginTop="4dip"
-		android:layout_marginLeft="24dip"
-		android:textAppearance="?android:attr/textAppearanceMedium"
-		android:drawablePadding="4dip" />
+    </com.android.internal.widget.DigitalClock>
 
-	<TextView
-		android:id="@+id/status2"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_below="@id/status1"
-		android:layout_marginTop="4dip"
-		android:layout_marginLeft="24dip"
-		android:textAppearance="?android:attr/textAppearanceMedium"
-		android:drawablePadding="4dip" />
+    <TextView
+        android:id="@+id/date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/time"
+        android:layout_centerInParent="true"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textStyle="bold"
 
-	<TextView
-		android:id="@+id/customMsg"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginTop="4.0dip"
-		android:layout_marginLeft="24dip"
-		android:layout_marginRight="24dip"
-		android:layout_below="@id/status2"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
+        />
 
+    <TextView
+        android:id="@+id/status1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/date"
+        android:layout_marginTop="4dip"
+        android:layout_centerInParent="true"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:drawablePadding="4dip"
+        android:textStyle="bold"
+        />
+
+    <TextView
+        android:id="@+id/status2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/status1"
+        android:layout_marginTop="4dip"
+        android:layout_centerInParent="true"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textStyle="bold"
+        android:drawablePadding="4dip"
+        />
+
+    <TextView
+        android:id="@+id/screenLocked"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/status2"
+        android:layout_marginLeft="24dip"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginTop="12dip"
+        android:drawablePadding="4dip"
+        />
 	
 
 	<com.android.internal.widget.UnlockRing
 		android:id="@+id/unlock_ring"
 		android:orientation="horizontal"
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:layout_alignParentRight="true" />
+		android:layout_height="fill_parent"
+		android:layout_alignParentBottom="true" />
 
 	<!-- emergency call button shown when sim is PUKd and tab_selector is hidden -->
 	<Button
@@ -145,72 +154,135 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
 		android:drawablePadding="8dip"
 		android:visibility="gone" />
 
-	<!-- music control buttons -->
-	<ImageButton
-		android:id="@+id/musicControlPlay"
-		android:src="@drawable/ic_media_play"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
-		android:layout_alignParentBottom="true"
-		android:layout_marginBottom="10dip"
-		android:padding="10px"
-		android:background="@color/transparent"
-		android:visibility="gone" />
-	<ImageButton
-		android:id="@+id/musicControlPause"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:src="@drawable/ic_media_pause"
-		android:layout_centerInParent="true"
-		android:layout_alignParentBottom="true"
-		android:layout_marginBottom="10dip"
-		android:padding="10px"
-		android:background="@color/transparent"
-		android:visibility="gone" />
-	<ImageButton
-		android:id="@+id/musicControlPrevious"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:src="@drawable/ic_media_previous"
-		android:layout_alignParentBottom="true"
-		android:layout_marginBottom="10dip"
-		android:layout_marginRight="20dip"
-		android:padding="10px"
-		android:layout_toLeftOf="@+id/musicControlPause"
-		android:background="@color/transparent"
-		android:visibility="gone" />
-	<ImageButton
-		android:id="@+id/musicControlNext"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:src="@drawable/ic_media_next"
-		android:layout_alignParentBottom="true"
-		android:layout_marginBottom="10dip"
-		android:layout_marginLeft="20dip"
-		android:padding="10px"
-		android:layout_toRightOf="@+id/musicControlPause"
-		android:background="@color/transparent"
-		android:visibility="gone" />
-	<TextView
-		android:id="@+id/musicNowPlaying"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_centerInParent="true"
-		android:lines="1"
-		android:scrollHorizontally="true"
-		android:ellipsize="marquee"
-		android:paddingTop="10dip"
-		android:gravity="bottom"
-		android:layout_alignWithParentIfMissing="true"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
-	<TextView
-		android:id="@+id/screenLocked"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginLeft="4dip"
-		android:textAppearance="?android:attr/textAppearanceSmall"
-		android:drawablePadding="4dip" 
-		android:layout_alignParentBottom="true"
-		android:gravity="bottom" />
+	<ImageButton 
+	    android:id="@+id/smsShortcutButton"
+            android:src="@drawable/lock_sms_button"
+            android:layout_alignParentBottom="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_alignParentLeft="true"
+            android:padding="15dp"
+            android:background="@color/transparent"
+	    />
+
+        <ImageButton 
+            android:id="@+id/phoneShortcutButton"
+            android:src="@drawable/lock_phone_button"
+            android:layout_alignParentBottom="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_alignParentRight="true"
+            android:padding="15dp"
+            android:background="@color/transparent"
+            />
+
+        <ImageView android:id="@+id/hide_music_controls_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_centerInParent="true"
+            android:layout_alignParentBottom="true"
+            android:padding="15dp"
+            android:src="@drawable/lock_hide_music_controls"
+            />
+
+        <ImageView android:id="@+id/display_music_controls_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_centerInParent="true"
+            android:layout_alignParentBottom="true"
+            android:padding="15dp"
+            android:src="@drawable/lock_display_music_controls"
+            />
+
+        <ImageButton
+            android:id="@+id/musicControlPlay"
+            android:src="@drawable/lock_ic_media_play"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignWithParentIfMissing="true"        
+            android:layout_centerInParent="true"
+            android:layout_above="@+id/tab_selector"
+            android:layout_marginBottom="10dip"
+            android:padding="10px"
+            android:background="@color/transparent"
+            />
+        <ImageButton
+            android:id="@+id/musicControlPause"
+            android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+            android:src="@drawable/lock_ic_media_pause"
+            android:layout_toRightOf="@+id/musicControlPrevious"
+            android:layout_above="@+id/tab_selector"
+            android:layout_marginBottom="10dip"
+            android:layout_marginRight="20dip"
+            android:layout_marginLeft="20dip"
+            android:padding="10px"
+            android:background="@color/transparent"
+            />
+        <ImageButton
+            android:id="@+id/musicControlPrevious"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/lock_ic_media_previous"
+            android:layout_marginBottom="10dip"
+            android:padding="10px"
+            android:layout_toRightOf="@+id/albumArt"
+            android:layout_above="@+id/tab_selector"
+            android:background="@color/transparent"
+            />
+        <ImageButton
+            android:id="@+id/musicControlNext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/lock_ic_media_next"
+            android:layout_marginBottom="10dip"
+            android:layout_toRightOf="@+id/musicControlPause"
+            android:layout_above="@+id/tab_selector"
+            android:padding="10px"
+            android:background="@color/transparent"
+            />
+
+        <ImageButton android:id="@+id/albumArt"
+            android:layout_width="125dip"
+            android:layout_height="125dip"
+            android:src="@drawable/default_artwork"
+            android:layout_alignParentLeft="true"
+            android:layout_above="@+id/tab_selector"
+            android:layout_marginTop="45dip"
+            android:adjustViewBounds="true"
+            android:background="@color/transparent"
+            android:scaleType="fitCenter"
+            android:padding = "3px"
+            />
+        <TextView
+            android:id="@+id/musicNowPlayingAlbum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollHorizontally="true"
+            android:ellipsize="marquee"
+            android:paddingTop="10dip" 
+            android:gravity="bottom"  
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:layout_above="@+id/musicControlPrevious"
+            android:layout_toRightOf="@+id/albumArt"
+            android:lines="1"
+            />
+
+        <TextView
+            android:id="@+id/musicNowPlayingArtist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollHorizontally="true"
+            android:ellipsize="marquee"
+            android:paddingTop="10dip"
+            android:gravity="bottom"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+	   		android:layout_above="@+id/musicNowPlayingAlbum"
+            android:layout_toRightOf="@+id/albumArt"
+            android:lines="1"
+            />
 </RelativeLayout>

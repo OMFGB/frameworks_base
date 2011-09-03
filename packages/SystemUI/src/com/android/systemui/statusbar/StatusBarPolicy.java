@@ -569,6 +569,9 @@ public class StatusBarPolicy {
 
     // state of inet connection - 0 not connected, 100 connected
     private int mInetCondition = 0;
+    
+    //whether to use 4G icon instead of H
+    private boolean mUse4GInsteadOfHspa = false;
 
     // sync state
     // If sync is active the SyncActive icon is displayed. If sync is not active but
@@ -781,6 +784,9 @@ public class StatusBarPolicy {
         } catch (Exception e) {
             mHspaDataDistinguishable = false;
         }
+        
+        mUse4GInsteadOfHspa = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_SHOW_4G_ICON, 0) == 1;
     }
 
     private final void updateAlarm(Intent intent) {
@@ -1281,8 +1287,7 @@ public class StatusBarPolicy {
         case TelephonyManager.NETWORK_TYPE_HSUPA:
         case TelephonyManager.NETWORK_TYPE_HSPA:
             if (mHspaDataDistinguishable) {
-                if (Settings.System.getInt(mContext.getContentResolver(),
-                        Settings.System.STATUSBAR_SHOW_4G_ICON, 0) == 1) {
+                if (mUse4GInsteadOfHspa) {
                     mDataIconList = sDataNetType_4g[mInetCondition];
                 } else {
                     mDataIconList = sDataNetType_h[mInetCondition];
@@ -1659,8 +1664,8 @@ public class StatusBarPolicy {
     }
 
     private void updateSettings() {
-        ContentResolver resolver = mContext.getContentResolver();
-
+        mUse4GInsteadOfHspa = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_SHOW_4G_ICON, 0) == 1;
         mShowSignalIcon = (Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.STATUSBAR_SHOW_SIGNAL_ICON, 1) == 1);
         mHideBluetooth = (Settings.System.getInt(mContext.getContentResolver(),

@@ -19,53 +19,44 @@ package com.android.internal.policy.impl;
 
 import com.android.internal.R;
 import com.android.internal.telephony.IccCard;
+import com.android.internal.widget.CircularSelector;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.internal.widget.RotarySelector;
 import com.android.internal.widget.SlidingTab;
-import com.android.internal.widget.CircularSelector;
+import com.android.internal.widget.UnlockRing;
 
-import android.app.Activity;
-
-import android.media.AudioManager;
-
-import android.content.ActivityNotFoundException;
-import android.content.Context;
-import android.content.Intent;
 import android.content.ContentResolver;
 import android.content.ContentUris;
+import android.content.Context;
+import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.content.res.ColorStateList;
+import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
 import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
+import android.os.SystemProperties;
+import android.os.Vibrator;
+import android.provider.Settings;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
-import android.graphics.drawable.Drawable;
-import android.util.Log;
-import android.media.AudioManager;
-import android.os.BatteryManager;
-import android.os.SystemClock;
-import android.os.SystemProperties;
-import android.os.ParcelFileDescriptor;
-import android.os.SystemProperties;
-import android.os.Vibrator;
-import android.provider.Settings;
-import android.content.SharedPreferences;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.Date;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.util.Map;
-
-import android.util.Slog;
-import android.content.Intent;
+import java.util.Date;
 
 /**
  * The screen within {@link LockPatternKeyguardView} that shows general
@@ -91,6 +82,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
 	private RotarySelector mRotarySelector;
 	private CircularSelector mCircularSelector;
+	private UnlockRing mUnlockRing;
     private TextView mTime;
     private TextView mDate;
     private TextView mStatus1;
@@ -157,13 +149,21 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
     
+    private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
+    	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);
     private boolean mUseRotary  = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_ROTARY_LOCKSCREEN);
     private boolean mUseCircular  = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_HC_LOCKSCREEN);
-    private boolean mUseTab   = (Settings.System.getInt(mContext.getContentResolver(),
-    	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_TAB_LOCKSCREEN);
     
+    private int mLockscreenStyle = Settings.System.getInt(mContext.getContentResolver(),
+            Settings.System.LOCKSCREEN_TYPE, 1);
+    
+    //lockscreen constants
+    public static final int LOCKCSREEN_TAB = 1;
+    public static final int LOCKSCREEN_ROTARY = 2;
+    public static final int LOCKSCREEN_HC_CONCEPT = 3;
+    public static final int LOCKSCREEN_HC = 4;
 
     private boolean mShouldShowMusicControls = (Settings.System.getInt(mContext.getContentResolver(),
     	    Settings.System.LOCKSCREEN_MUSIC_ON, 1) == 1);
@@ -350,6 +350,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         
         mCircularSelector = (CircularSelector) findViewById(R.id.circular_selector);
         mCircularSelector.setOnCircularSelectorTriggerListener(this);
+        
+        mUnlockRing = (UnlockRing) findViewById(R.id.unlock_ring);
         
         // end selector setup
         
@@ -1074,22 +1076,25 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 // layout
                 
                 // Set lock visibility
-                if(mUseTab){
-                	
-                	resetLockView();
-                	mSelector.setVisibility(View.VISIBLE);
-                }else if(mUseCircular){
-                	
-                	resetLockView();
-                	mCircularSelector.setVisibility(View.VISIBLE);
-                	
-                }else if(mUseRotary){
-                	
-                	resetLockView();
-                	mRotarySelector.setVisibility(View.VISIBLE);
-                	
+                if (mUseTab) {
+
+                    resetLockView();
+                    mSelector.setVisibility(View.VISIBLE);
+                } else if (mUseCircular) {
+
+                    resetLockView();
+                    mCircularSelector.setVisibility(View.VISIBLE);
+
+                } else if (mUseRotary) {
+
+                    resetLockView();
+                    mRotarySelector.setVisibility(View.VISIBLE);
+
+                } else if (mLockscreenStyle == LOCKSCREEN_HC) {
+                    
+                    resetLockView();
+                    
                 }
-                
                 
                 
                 mEmergencyCallText.setVisibility(View.GONE);

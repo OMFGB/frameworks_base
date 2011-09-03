@@ -40,20 +40,32 @@ public class StatusBarView extends FrameLayout {
     private static final String TAG = "StatusBarView";
 
     static final int DIM_ANIM_TIME = 400;
-    
+
     StatusBarService mService;
+
     boolean mTracking;
+
     int mStartX, mStartY;
+
     ViewGroup mNotificationIcons;
+
     ViewGroup mStatusIcons;
+
     View mDate;
+
     FixedSizeDrawable mBackground;
+
     View mBatteryIndicator;
+
     View mBatteryChargingIndicator;
+
     boolean mScreenOn = true;
+
     private boolean mAttached;
 
     Handler mHandler;
+
+    boolean mShowMiuiBattery;
 
     class SettingsObserver extends ContentObserver {
         SettingsObserver(Handler handler) {
@@ -88,32 +100,38 @@ public class StatusBarView extends FrameLayout {
             updateSettings();
         }
     }
-    
+
     public StatusBarView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        
+
         mHandler = new Handler();
         SettingsObserver settingsObserver = new SettingsObserver(mHandler);
         settingsObserver.observe();
+
+        mShowMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
     }
-    
+
     public StatusBarView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
 
         mHandler = new Handler();
         SettingsObserver settingsObserver = new SettingsObserver(mHandler);
         settingsObserver.observe();
+
+        mShowMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
     }
 
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        mNotificationIcons = (ViewGroup)findViewById(R.id.notificationIcons);
-        mStatusIcons = (ViewGroup)findViewById(R.id.statusIcons);
+        mNotificationIcons = (ViewGroup) findViewById(R.id.notificationIcons);
+        mStatusIcons = (ViewGroup) findViewById(R.id.statusIcons);
         mDate = findViewById(R.id.date);
-	  
-	mBatteryIndicator = findViewById(R.id.battery_indicator);
-	mBatteryChargingIndicator = findViewById(R.id.battery_indicator_charging);
+
+        mBatteryIndicator = findViewById(R.id.battery_indicator);
+        mBatteryChargingIndicator = findViewById(R.id.battery_indicator_charging);
 
         mBackground = new FixedSizeDrawable(mDate.getBackground());
         mBackground.setFixedBounds(0, 0, 0, 0);
@@ -125,15 +143,15 @@ public class StatusBarView extends FrameLayout {
         super.onAttachedToWindow();
         mService.onBarViewAttached();
 
-     if (!mAttached) {
+        if (!mAttached) {
             mAttached = true;
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(Intent.ACTION_SCREEN_OFF);
-	    filter.addAction(Intent.ACTION_SCREEN_ON);
+            filter.addAction(Intent.ACTION_SCREEN_ON);
 
             getContext().registerReceiver(mIntentReceiver, filter, null, getHandler());
-	    	    
+
         }
     }
 
@@ -148,13 +166,14 @@ public class StatusBarView extends FrameLayout {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (action.equals(Intent.ACTION_SCREEN_OFF)) {
-		mScreenOn = false;
+                mScreenOn = false;
             }
-	    if (action.equals(Intent.ACTION_SCREEN_ON)) {
-		mScreenOn = true;
+            if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                mScreenOn = true;
             }
         }
     };
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
@@ -191,7 +210,7 @@ public class StatusBarView extends FrameLayout {
         }
 
         mDate.layout(mDate.getLeft(), mDate.getTop(), newDateRight, mDate.getBottom());
-        mBackground.setFixedBounds(-mDate.getLeft(), -mDate.getTop(), (r-l), (b-t));
+        mBackground.setFixedBounds(-mDate.getLeft(), -mDate.getTop(), (r - l), (b - t));
 
         mShowMiuiBattery = (Settings.System.getInt(resolver,
                 Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
@@ -230,13 +249,11 @@ public class StatusBarView extends FrameLayout {
             mBatteryIndicator.setVisibility(GONE);
             mBatteryChargingIndicator.setVisibility(GONE);
         }
-}
-
-    
+    }
 
     /**
-     * Gets the left position of v in this view.  Throws if v is not
-     * a child of this.
+     * Gets the left position of v in this view. Throws if v is not a child of
+     * this.
      */
     private int getViewOffset(View v) {
         int offset = 0;
@@ -244,7 +261,7 @@ public class StatusBarView extends FrameLayout {
             offset += v.getLeft();
             ViewParent p = v.getParent();
             if (v instanceof View) {
-                v = (View)p;
+                v = (View) p;
             } else {
                 throw new RuntimeException(v + " is not a child of " + this);
             }
@@ -254,7 +271,7 @@ public class StatusBarView extends FrameLayout {
 
     private int getDateSize(ViewGroup g, int w, int offset) {
         final int N = g.getChildCount();
-        for (int i=0; i<N; i++) {
+        for (int i = 0; i < N; i++) {
             View v = g.getChildAt(i);
             int l = v.getLeft() + offset;
             int r = v.getRight() + offset;
@@ -266,9 +283,9 @@ public class StatusBarView extends FrameLayout {
     }
 
     /**
-     * Ensure that, if there is no target under us to receive the touch,
-     * that we process it ourself.  This makes sure that onInterceptTouchEvent()
-     * is always called for the entire gesture.
+     * Ensure that, if there is no target under us to receive the touch, that we
+     * process it ourself. This makes sure that onInterceptTouchEvent() is
+     * always called for the entire gesture.
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -280,10 +297,9 @@ public class StatusBarView extends FrameLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent event) {
-        return mService.interceptTouchEvent(event)
-                ? true : super.onInterceptTouchEvent(event);
+        return mService.interceptTouchEvent(event) ? true : super.onInterceptTouchEvent(event);
     }
-    
+
     private void updateColor(boolean plugged, int batt) {
         boolean autoColorBatteryText = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.BATTERY_COLOR_ENABLE_AUTOCOLOR, 1) == 1 ? true : false;
@@ -327,9 +343,7 @@ public class StatusBarView extends FrameLayout {
     }
 
     private void updateSettings() {
-        ContentResolver resolver = mContext.getContentResolver();
-
-        boolean mShowMiuiBattery = (Settings.System.getInt(resolver,
+        mShowMiuiBattery = (Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.STATUSBAR_ENABLE_MIUI_BATTERY, 0) == 1);
 
         if (mShowMiuiBattery) {
@@ -337,7 +351,7 @@ public class StatusBarView extends FrameLayout {
                     new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 
             boolean plugged = batteryIntent.getIntExtra("plugged", 0) != 0;
-            
+
             updateColor(plugged, batteryIntent.getIntExtra("level", 0));
             mBatteryIndicator.setVisibility(VISIBLE);
             if (plugged) {
@@ -349,6 +363,5 @@ public class StatusBarView extends FrameLayout {
             mBatteryChargingIndicator.setVisibility(GONE);
         }
     }
-     
-}
 
+}

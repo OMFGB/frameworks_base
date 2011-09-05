@@ -1303,14 +1303,21 @@ public class StatusBarPolicy {
         case TelephonyManager.NETWORK_TYPE_1xRTT:
             mDataIconList = sDataNetType_1x[mInetCondition];
             break;
-        case TelephonyManager.NETWORK_TYPE_EVDO_0: //fall through
+        case TelephonyManager.NETWORK_TYPE_EVDO_0: // fall through
         case TelephonyManager.NETWORK_TYPE_EVDO_A:
         case TelephonyManager.NETWORK_TYPE_EVDO_B:
+        case TelephonyManager.NETWORK_TYPE_EHRPD:
             mDataIconList = sDataNetType_3g[mInetCondition];
             break;
+        case TelephonyManager.NETWORK_TYPE_LTE:
+        case TelephonyManager.NETWORK_TYPE_HSPAP:
+            mDataIconList = sDataNetType_4g[mInetCondition];
+            break;
+
+
         default:
             mDataIconList = sDataNetType_g[mInetCondition];
-        break;
+            break;
         }
     }
 

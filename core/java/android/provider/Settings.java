@@ -708,6 +708,7 @@ public final class Settings {
         // Populated lazily, guarded by class object:
         private static NameValueCache sNameValueCache = null;
 
+
         private static final HashSet<String> MOVED_TO_SECURE;
         static {
             MOVED_TO_SECURE = new HashSet<String>(30);
@@ -2085,13 +2086,24 @@ public final class Settings {
 		 * @hide
 		 */
 		public static final String USE_SCREENOFF_ANIM = "use_screenoff_anim"; 
-		
+
+		/** @hide */
+		public static String LOCKSCREEN_CUSTOM_APP_HONEY_1 = "lockscreen_quadrant_1_uri";
+
+		/** @hide */
+		public static String LOCKSCREEN_CUSTOM_APP_HONEY_2 = "lockscreen_quadrant_2_uri";
+
+		/** @hide */
+		public static String LOCKSCREEN_CUSTOM_APP_HONEY_3 = "lockscreen_quadrant_3_uri";
+
+		/** @hide */
+		public static String LOCKSCREEN_CUSTOM_APP_HONEY_4 = "lockscreen_quadrant_4_uri";
+
 		/**
-		 * Whether or not to allow the lockscreen is allowed to have the music 
-		 * controls on.
-		 * @hide
-		*/
-	
+         * Whether or not to allow the lockscreen is allowed to have the music 
+         * controls on.
+         * @hide
+        */
 		public static final String LOCKSCREEN_MUSIC_ON = "lockscreen_music_controls";
 		
 		/**
@@ -2122,8 +2134,14 @@ public final class Settings {
 		* Use HoneyComb lockscreen concept
 		* @hide
 		*/
-		public static final int USE_HC_LOCKSCREEN = 3;
-		
+		public static final int USE_HCC_LOCKSCREEN = 3;
+
+        /**
+         * Use HoneyComb lockscreen
+         * 
+         * @hide
+         */
+        public static final int USE_HONEYCOMB_LOCKSCREEN = 4;
 
 		/**
 		 * 0: show regular gingerbread battery

@@ -152,22 +152,30 @@
         android:layout_marginRight="80dip"
         />
 
-<com.android.internal.widget.CircularSelector
+	<com.android.internal.widget.CircularSelector
     	android:id="@+id/circular_selector"
-	android:orientation="horizontal"
-	android:layout_alignParentRight="true"
-	android:layout_alignParentBottom="true"
+		android:orientation="horizontal"
+		android:layout_alignParentRight="true"
+		android:layout_alignParentBottom="true"
         android:layout_marginBottom="0dip"
-	android:layout_width="match_parent"
-	android:layout_height="wrap_content"
-    />
-       <com.android.internal.widget.RotarySelector
-            android:id="@+id/rotary_selector"
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            />
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+  	    />
+   <com.android.internal.widget.RotarySelector
+		android:id="@+id/rotary_selector"
+		android:orientation="horizontal"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		/>
+            
+	<com.android.internal.widget.UnlockRing
+		android:id="@+id/unlock_ring"
+		android:orientation="horizontal"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		/>
     
 
         <ImageButton 

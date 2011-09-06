@@ -386,10 +386,10 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mOngoingTitle.setVisibility(View.GONE);
         mLatestTitle.setVisibility(View.GONE);
 
-	mTogglesNotVisibleButton.setVisibility(View.GONE);
+        mTogglesNotVisibleButton.setVisibility(View.GONE);
         mTogglesVisibleButton.setVisibility(View.VISIBLE);
 
-	mMusicControls = (MusicControls)expanded.findViewById(R.id.exp_music_controls);
+        mMusicControls = (MusicControls)expanded.findViewById(R.id.exp_music_controls);
 
         mPowerWidget = (PowerWidget)expanded.findViewById(R.id.exp_power_stat);
         mPowerWidget.setupSettingsObserver(mHandler);
@@ -725,7 +725,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         if (mLatest.hasClearableItems()) {
             mClearButton.setVisibility(View.VISIBLE);
         } else {
-            mClearButton.setVisibility(View.INVISIBLE);
+            mClearButton.setVisibility(View.GONE);
         }
 
         mOngoingTitle.setVisibility(ongoing ? View.VISIBLE : View.GONE);

@@ -21,6 +21,7 @@ import com.android.internal.telephony.IccCard;
 import com.android.internal.widget.CircularSelector;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.internal.widget.RotarySelector;
+import com.android.internal.widget.SenseLikeLock;
 import com.android.internal.widget.SlidingTab;
 import com.android.internal.widget.UnlockRing;
 
@@ -64,7 +65,7 @@ import java.util.Date;
  */
 class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateMonitor.InfoCallback,
         KeyguardUpdateMonitor.SimStateCallback,  CircularSelector.OnCircularSelectorTriggerListener, UnlockRing.OnHoneyTriggerListener, 
-        SlidingTab.OnTriggerListener, RotarySelector.OnDialTriggerListener {
+        SlidingTab.OnTriggerListener, RotarySelector.OnDialTriggerListener, SenseLikeLock.OnSenseLikeSelectorTriggerListener {
 
     private static final boolean DBG = true;
     private static final String TAG = "LockScreen";
@@ -78,11 +79,15 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private KeyguardScreenCallback mCallback;
 
     private TextView mCarrier;
-    private SlidingTab mSelector;
 
+    /* Unlockers */
+    private SlidingTab mSelector;
 	private RotarySelector mRotarySelector;
 	private CircularSelector mCircularSelector;
 	private UnlockRing mUnlockRing;
+	private SenseLikeLock mSenseRingSelector;
+	
+	/* Other views */
     private TextView mTime;
     private TextView mDate;
     private TextView mStatus1;
@@ -90,6 +95,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private TextView mScreenLocked;
     private TextView mEmergencyCallText;
     private String mCarrierCap;
+    private Button mEmergencyCallButton;
+    
+    /* Music Controls */
     private ImageView mHideMusicControlsButton;
     private ImageView mDisplayMusicControlsButton;
     private ImageButton mPlayIcon;
@@ -99,7 +107,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private ImageButton mAlbumArt;
     private ImageButton mLockSMS;
     private ImageButton mLockPhone;
-    private Button mEmergencyCallButton;
+    
     
     
 
@@ -157,6 +165,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     	    Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_HCC_LOCKSCREEN);
     private boolean mUseHoney  = (Settings.System.getInt(mContext.getContentResolver(),
             Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_HONEYCOMB_LOCKSCREEN);
+    private boolean mUseSenseLike  = (Settings.System.getInt(mContext.getContentResolver(),
+            Settings.System.LOCKSCREEN_TYPE, 1) == Settings.System.USE_SENSELIKE_LOCKSCREEN);
     
     private int mLockscreenStyle = Settings.System.getInt(mContext.getContentResolver(),
             Settings.System.LOCKSCREEN_TYPE, 1);
@@ -168,6 +178,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     public static final int LOCKSCREEN_HC = 4;
     
     //custom quadrants for honeycomb
+    // can also be used for the sense like 
+    // app selection
     private String mCustomQuandrant1 = (Settings.System.getString(mContext.getContentResolver(),
             Settings.System.LOCKSCREEN_CUSTOM_APP_HONEY_1));
 
@@ -324,6 +336,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mUnlockRing.setOnHoneyTriggerListener(this);
         
         // end selector setup
+        
+        mSenseRingSelector = (SenseLikeLock) findViewById(R.id.sense_selector);
+        mSenseRingSelector.setOnSenseLikeSelectorTriggerListener(this);
         
 
 
@@ -1106,6 +1121,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
         mEmergencyCallButton.setVisibility(View.GONE); // in almost all cases
 
+        mLockscreenStyle = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.LOCKSCREEN_TYPE, 1);
+        
         switch (status) {
             case Normal:
             	mCarrierCap = Settings.System.getString(getContext().getContentResolver(), Settings.System.CARRIER_CAP);
@@ -1123,26 +1141,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 // layout
                 
                 // Set lock visibility
-                if (mUseTab) {
-
-                    resetLockView();
-                    mSelector.setVisibility(View.VISIBLE);
-                } else if (mUseCircular) {
-
-                    resetLockView();
-                    mCircularSelector.setVisibility(View.VISIBLE);
-
-                } else if (mUseRotary) {
-
-                    resetLockView();
-                    mRotarySelector.setVisibility(View.VISIBLE);
-
-                } else if (mUseHoney) {
-                    
-                    resetLockView();
-                    mUnlockRing.setVisibility(View.VISIBLE);
-                    
-                } 
+                resetLockView();
+                resolveLockscreenType(mLockscreenStyle);
                 
                 mEmergencyCallText.setVisibility(View.GONE);
                 break;
@@ -1158,26 +1158,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 // layout
                 mScreenLocked.setVisibility(View.VISIBLE);
                 
-                if(this.mUseTab){
-                	
-                	resetLockView();
-                	mSelector.setVisibility(View.VISIBLE);
-                }else if(this.mUseCircular){
-                	
-                	resetLockView();
-                	mCircularSelector.setVisibility(View.VISIBLE);
-                	
-                }else if(this.mUseRotary){
-                	
-                	resetLockView();
-                	mRotarySelector.setVisibility(View.VISIBLE);
-                	
-                }else if (mUseHoney) {
-                    
-                    resetLockView();
-                    mUnlockRing.setVisibility(View.VISIBLE);
-                    
-                } 
+                resetLockView();
+                resolveLockscreenType(mLockscreenStyle);
                 
                 mEmergencyCallText.setVisibility(View.GONE);
                 break;
@@ -1188,26 +1170,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
                 // layout
                 mScreenLocked.setVisibility(View.VISIBLE);     
-                if(mUseTab){
-                	
-                	resetLockView();
-                	mSelector.setVisibility(View.VISIBLE);
-                }else if(mUseCircular){
-                	
-                	resetLockView();
-                	mCircularSelector.setVisibility(View.VISIBLE);
-                	
-                }else if(mUseRotary){
-                	
-                	resetLockView();
-                	mRotarySelector.setVisibility(View.VISIBLE);
-                	
-                }else if (mUseHoney) {
-                    
-                    resetLockView();
-                    mUnlockRing.setVisibility(View.VISIBLE);
-                    
-                } 
+                resetLockView();
+                resolveLockscreenType(mLockscreenStyle);
                 
                 mEmergencyCallText.setVisibility(View.VISIBLE);
                 // do not need to show the e-call button; user may unlock
@@ -1234,26 +1198,10 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
                 // layout
                 mScreenLocked.setVisibility(View.INVISIBLE);   
-                if(mUseTab){
-                	
-                	resetLockView();
-                	mSelector.setVisibility(View.VISIBLE);
-                }else if(mUseCircular){
-                	
-                	resetLockView();
-                	mCircularSelector.setVisibility(View.VISIBLE);
-                	
-                }else if(mUseRotary){
-                	
-                	resetLockView();
-                	mRotarySelector.setVisibility(View.VISIBLE);
-                	
-                }else if (mUseHoney) {
-                    
-                    resetLockView();
-                    mUnlockRing.setVisibility(View.VISIBLE);
-                    
-                } 
+                resetLockView();
+                resolveLockscreenType(mLockscreenStyle);
+    
+                 
                 
                 mEmergencyCallText.setVisibility(View.GONE);
                 break;
@@ -1429,6 +1377,66 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         return null;
     }
    
+   @Override
+   public void OnSenseLikeSelectorGrabbedStateChanged(View v, int GrabState) {
+   // TODO Auto-generated method stub
+	   mCallback.pokeWakelock();
+
+   }
+   @Override
+   public void onSenseLikeSelectorTrigger(View v, int Trigger) {
+   // TODO Auto-generated method stub
+	   mCallback.goToUnlockScreen();
+	   
+	   /*
+	   switch(Trigger){
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.
+	   
+	   
+	   }
+	   */
+   }
+   
+   /**
+    * Function used to resolve the lockscreen type 
+    * to show to the user. Uses the settings.system
+    * variables to determine the type. 
+    * 
+    * @param settingsType Lockscreen type number
+    */
+   private void resolveLockscreenType(final int settingsType){
+	   
+	   switch(settingsType)
+	   {
+	   case Settings.System.USE_HONEYCOMB_LOCKSCREEN:
+		   mUnlockRing.setVisibility(View.VISIBLE);
+		   break;
+	   case Settings.System.USE_ROTARY_LOCKSCREEN:
+		   mRotarySelector.setVisibility(View.VISIBLE); 
+		   break;
+		   
+	   case Settings.System.USE_SENSELIKE_LOCKSCREEN: 
+		   mSenseRingSelector.setVisibility(View.VISIBLE);
+		   break;
+		   
+	   case Settings.System.USE_TAB_LOCKSCREEN: 
+		   mSelector.setVisibility(View.VISIBLE);
+		   break;
+	   case Settings.System.USE_HCC_LOCKSCREEN: 
+		   mCircularSelector.setVisibility(View.VISIBLE);
+		   break;
+		   
+	   default: 
+		   mSelector.setVisibility(View.VISIBLE);
+		   break;
+	   
+	   
+	   }
+	   
+  
+	   
+   }
+   
    private void resetLockView(){
 	   
 
@@ -1436,6 +1444,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
    	mSelector.setVisibility(View.GONE);
    	mRotarySelector.setVisibility(View.GONE);
    	mUnlockRing.setVisibility(View.GONE);
+   	mSenseRingSelector.setVisibility(View.GONE);
 	   
    }
 }

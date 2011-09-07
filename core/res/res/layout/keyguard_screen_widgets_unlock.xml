@@ -178,6 +178,13 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         />
+		  <com.android.internal.widget.SenseLikeLock
+        android:id="@+id/sense_selector"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        />
     
 	<ImageButton 
 	    android:id="@+id/smsShortcutButton"

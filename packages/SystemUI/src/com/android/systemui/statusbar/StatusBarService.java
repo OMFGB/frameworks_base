@@ -16,24 +16,23 @@
 
 package com.android.systemui.statusbar;
 
-import android.app.Service;
-import com.android.internal.statusbar.IStatusBar;
 import com.android.internal.statusbar.IStatusBarService;
 import com.android.internal.statusbar.StatusBarIcon;
 import com.android.internal.statusbar.StatusBarIconList;
-import com.android.systemui.statusbar.powerwidget.PowerWidget;
-import com.android.systemui.statusbar.MusicControls;
 import com.android.internal.statusbar.StatusBarNotification;
 import com.android.systemui.R;
+import com.android.systemui.statusbar.StatusBarView.SettingsObserver;
+import com.android.systemui.statusbar.powerwidget.PowerWidget;
+import com.android.systemui.statusbar.powerwidget.PowerWidgetBottom;
 
 import android.app.ActivityManagerNative;
-import android.app.AlarmManager;
 import android.app.Dialog;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.app.StatusBarManager;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -41,22 +40,22 @@ import android.content.IntentFilter.MalformedMimeTypeException;
 import android.content.pm.PackageManager;
 import android.content.res.CustomTheme;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.os.Binder;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.util.Slog;
-import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -70,22 +69,16 @@ import android.view.WindowManager;
 import android.view.WindowManagerImpl;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RemoteViews;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.FrameLayout;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
-
-import com.android.systemui.R;
-
-import com.android.systemui.statusbar.StatusBarPolicy;
 
 
 
@@ -145,6 +138,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
     View mExpandedContents;
 
     PowerWidget mPowerWidget;
+    PowerWidgetBottom mPowerWidgetBottom;
     MusicControls mMusicControls;
 
     // top bar
@@ -204,6 +198,9 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
     // for disabling the status bar
     int mDisabled = 0;
+    
+    // tracking for the last visible power widget id so hide toggle works properly
+    int mLastPowerToggle = 1;
 
     private class ExpandedDialog extends Dialog {
         ExpandedDialog(Context context) {
@@ -294,6 +291,10 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
         // Lastly, call to the icon policy to install/update all the icons.
         mIconPolicy = new StatusBarPolicy(this);
+        
+        mContext = getApplicationContext();
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
     }
 
     @Override
@@ -415,19 +416,66 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
         mTicker = new MyTicker(context, sb);
 
-        TickerView tickerView = (TickerView)sb.findViewById(R.id.tickerText);
+        TickerView tickerView = (TickerView) sb.findViewById(R.id.tickerText);
         tickerView.mTicker = mTicker;
 
-        mTrackingView = (TrackingView)View.inflate(context, R.layout.status_bar_tracking, null);
+        mTrackingView = (TrackingView) View.inflate(context, R.layout.status_bar_tracking, null);
         mTrackingView.mService = this;
-        mCloseView = (CloseDragHandle)mTrackingView.findViewById(R.id.close);
+        mCloseView = (CloseDragHandle) mTrackingView.findViewById(R.id.close);
         mCloseView.mService = this;
+
+        mPowerWidgetBottom = (PowerWidgetBottom) mTrackingView.findViewById(R.id.exp_power_stat);
+        mPowerWidgetBottom.setupSettingsObserver(mHandler);
+        mPowerWidgetBottom.setGlobalButtonOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        if(Settings.System.getInt(getContentResolver(),
+                                Settings.System.EXPANDED_HIDE_ONCHANGE, 0) == 1) {
+                            animateCollapse();
+                        }
+                    }
+                });
+        mPowerWidgetBottom.setGlobalButtonOnLongClickListener(new View.OnLongClickListener() {
+                   public boolean onLongClick(View v) {
+                       animateCollapse();
+                       return true;
+                   }
+               });
 
         mEdgeBorder = res.getDimensionPixelSize(R.dimen.status_bar_edge_ignore);
 
         // set the inital view visibility
         setAreThereNotifications();
         mDateView.setVisibility(View.INVISIBLE);
+    }
+    
+    class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.EXPANDED_VIEW_WIDGET),
+                    false, this);
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            updateSettings();
+        }
+    }
+    
+    private void updateSettings() {
+        int changedVal = Settings.System.getInt(getContentResolver(),
+                Settings.System.EXPANDED_VIEW_WIDGET, 0);
+
+        // check that it's not 0 to not reset the variable
+        // this should be the only place mLastPowerToggle is set
+        if (changedVal != 0) {
+            mLastPowerToggle = changedVal;
+        }
+
     }
 
     protected void addStatusBarView() {
@@ -449,7 +497,8 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         WindowManagerImpl.getDefault().addView(view, lp);
 
         mPowerWidget.setupWidget();
-	mMusicControls.setupControls();
+        mPowerWidgetBottom.setupWidget();
+	    mMusicControls.setupControls();
 
     }
 
@@ -807,8 +856,9 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mExpandedVisible = true;
         visibilityChanged(true);
 
-	mPowerWidget.updateWidget();
-	mMusicControls.updateControls();
+	    mPowerWidget.updateWidget();
+	    mPowerWidgetBottom.updateWidget();
+	    mMusicControls.updateControls();
 
         updateExpandedViewPos(EXPANDED_LEAVE_ALONE);
         mExpandedParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
@@ -1565,21 +1615,25 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
     public View.OnClickListener mTogglesVisibleButtonListener = new View.OnClickListener() {
         public void onClick(View v) {
-        boolean value;
-	value = (mAreTogglesVisible);
-            Settings.System.putInt(getContentResolver(), Settings.System.EXPANDED_VIEW_WIDGET,
-                    value ? 0 : 0);
-	mPowerWidget.updateVisibility();	
-	}
+            Settings.System.putInt(getContentResolver(), Settings.System.EXPANDED_VIEW_WIDGET, 0);
+            mPowerWidget.updateVisibility();
+            mPowerWidgetBottom.updateVisibility();
+            StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
+            StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
+
+        }
     };
 
     private View.OnClickListener mTogglesNotVisibleButtonListener = new View.OnClickListener() {
         public void onClick(View v) {
-        boolean value;
-        value = (mAreTogglesVisible);
+
             Settings.System.putInt(getContentResolver(), Settings.System.EXPANDED_VIEW_WIDGET,
-                    value ? 1 : 1);
-        mPowerWidget.updateVisibility();        
+                    mLastPowerToggle);
+            mPowerWidget.updateVisibility();
+            mPowerWidgetBottom.updateVisibility();
+            StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
+            StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
+
         }
     };
 

@@ -38,6 +38,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         >
+
+        <com.android.systemui.statusbar.powerwidget.PowerWidgetBottom android:id="@+id/exp_power_stat"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:background="#cc212121"
+             />
+
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

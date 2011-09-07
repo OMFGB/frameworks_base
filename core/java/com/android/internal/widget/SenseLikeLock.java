@@ -290,14 +290,16 @@ public class SenseLikeLock extends View{
 	
 	private boolean isLockIconTriggered() {
 		
-		if((mLockX > this.getWidth() || mLockX < 0) || (mLockX == 0 || mLockX == this.getWidth() )){
+		int padding = 5;
+		int width = getWidth();
+		int heighth = getHeight();
+		if((mLockX >= (width - padding) || mLockX <= padding ) ){
     		Log.d(TAG, "Dispatching horizontal lock trigger event");
     		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
     		return true;
     		
     	}// dispatch the trigger event
-    	if((mLockY < (this.getHeight()/4) || mLockY > this.getHeight()) ||
-    			( mLockY == (this.getHeight()/2) || mLockY == this.getHeight()) ){
+    	if( (mLockY <= (heighth/4)) || (mLockY >= (heighth - padding )) ){
 
     		Log.d(TAG, "Dispatching vertical lock trigger event");
     		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);

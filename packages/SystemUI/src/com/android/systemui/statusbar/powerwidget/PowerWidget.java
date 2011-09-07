@@ -199,12 +199,12 @@ public class PowerWidget extends FrameLayout {
                    Settings.System.EXPANDED_VIEW_WIDGET, 1) == 1;
         if(!displayPowerWidget) {
             setVisibility(View.GONE);
-        StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
-        StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
+            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
+            // StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
         } else {
             setVisibility(View.VISIBLE);
-        StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
-        StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
+            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
+            // StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
         }
     }
 

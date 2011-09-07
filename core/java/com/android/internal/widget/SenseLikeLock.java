@@ -43,6 +43,15 @@ import android.widget.ImageView;
 
 import com.android.internal.R;
 
+
+
+/*
+ * This class represents an unlock ring that can be moved 
+ * around along with definable shortcuts that can also
+ * be used to unlock the device. This is an open source clean room
+ * reverse engineering of the HTC unlocker for sense 3.0 > 
+ * 
+ */
 public class SenseLikeLock extends View{
 	
 	
@@ -51,9 +60,9 @@ public class SenseLikeLock extends View{
 	
 	private String TAG = "SenseLikeLock";
 	private static final boolean DBG = true;
-	private static final boolean IDBG = true;
+	private static final boolean IDBG = DBG;
 	private static final boolean TDBG = false;
-    private static final boolean VISUAL_DEBUG = true;
+    private static final boolean VISUAL_DEBUG = false;
 	
     private Animation mUnlockAnimation;
     
@@ -73,11 +82,15 @@ public class SenseLikeLock extends View{
 	   private Paint mPaint = new Paint();
 	   
 	   
-	   // *** Circular areas **
+	   // *** Backgrounds **
 	   Bitmap mLowerBackground;
 	   Bitmap mShortcutsBackground;
+	   
+	   // ** Unlocker icons **
 	   Bitmap mLockIcon;
 	   Bitmap mLockAppIcon;
+	   
+	   // ** Shortcut icons **
 	   Bitmap mShortCutOne;
 	   Bitmap mShortCutTwo;
 	   Bitmap mShortCutThree;
@@ -105,10 +118,10 @@ public class SenseLikeLock extends View{
 	
 	private enum mSelected {
 		
-		LOCK(1) ,
+		LOCK(1),
 		SHORTCUT(2);
 		
-		 private final double value;
+		private final double value;
 
 		
 		mSelected(int i){
@@ -688,14 +701,14 @@ public class SenseLikeLock extends View{
         		// Create an animation that moves the circle to the middle
         		// and becomes bigger, with the app icon in the middle, then unlock
         		//mCanvas.
-        		this.doUnlockAnimation();
+        		doUnlockAnimation();
         		break;
         		
         	}
         	case OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED:
         		// Create an animation that moves the circle to the middle
         		// and becomes bigger, then unlock
-        		this.doUnlockAnimation();
+        		doUnlockAnimation();
         		break;
         	
         	}

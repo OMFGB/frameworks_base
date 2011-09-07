@@ -2108,6 +2108,8 @@ public final class Settings {
 		
 		/**
 		 * Which lockscreen the user wants displayed.
+		 * This is dependant on the Lockscreen types
+		 * available. 
 		 * @hide
 		*/
 		public static final String LOCKSCREEN_TYPE = "lockscreen_type";
@@ -2142,6 +2144,13 @@ public final class Settings {
          * @hide
          */
         public static final int USE_HONEYCOMB_LOCKSCREEN = 4;
+       
+        /**
+         * Use SenseLike lockscreen
+         * 
+         * @hide
+         */
+        public static final int USE_SENSELIKE_LOCKSCREEN = 5;
 
 		/**
 		 * 0: show regular gingerbread battery

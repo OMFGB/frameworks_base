@@ -19,6 +19,7 @@
 package com.android.internal.widget;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -26,6 +27,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Display;
@@ -112,7 +115,8 @@ public class SenseLikeLock extends View{
 	   private OnSenseLikeSelectorTriggerListener mSenseLikeTriggerListener;
 	   private int  mGrabbedState = OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE;
 	 
-	   Boolean mSlideisSensitive = false;
+	   Boolean mUseTwoShortcuts = false;
+	  
 	private float mDensityScaleFactor = 1;
 	private int mShortCutSelected;
 	
@@ -426,7 +430,7 @@ public class SenseLikeLock extends View{
           if(mIsTouchInCircle){	
 
           		mLockIcon = getBitmapFor(R.drawable.sense_ring_on_unlock);
-        		canvas.drawBitmap(mLockIcon,  mLockX-(mLockIcon.getWidth()/2), mLockY - mLockIcon.getHeight()/2, mPaint);
+          		if(!mUseTwoShortcuts)canvas.drawBitmap(mLockIcon,  mLockX-(mLockIcon.getWidth()/2), mLockY - mLockIcon.getHeight()/2, mPaint);
         	
           }
           else if(mUsingShortcuts){
@@ -450,15 +454,15 @@ public class SenseLikeLock extends View{
         	  
         	  Log.d(TAG, "Shorcut bar drawing with moving ring");
         	  drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
-        	  drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
-        	  drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
+        	  if(!mUseTwoShortcuts)drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
+        	  if(!mUseTwoShortcuts)drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
         	  drawShortFour(canvas, halfWidth + (padding*4), mShortCutHeight);
         	  
         	  
-        	  if(isVertical()){
+        	  if(isVertical() && !mUseTwoShortcuts){
 	        	  // Fallback case where the lock is always drawn in the center on the bottom of the view
 	        	   canvas.drawBitmap(mLockIcon,  (width/2)-(mLockIcon.getWidth()/2), (height -(mLockIcon.getHeight()/3)), mPaint);
-	     	  }else{
+	     	  }else if( !mUseTwoShortcuts){
 	    		// TODO  
 	     		 canvas.drawBitmap(mLockIcon,  (width - mLockIcon.getWidth())/2, (height -(mLockIcon.getHeight()/2)), mPaint);
 	    	  }
@@ -493,31 +497,31 @@ public class SenseLikeLock extends View{
 	            	  Log.d(TAG, "Drawing shorcut new position");
 	            	  	
 	            	  drawMovableShort(canvas, 1, mShortcutsBackground.getWidth()/2 );
-	            	  drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
-	            	  drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
+	            	  if(!mUseTwoShortcuts)drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
+	            	  if(!mUseTwoShortcuts)drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
 	            	  drawShortFour(canvas, halfWidth + (padding*4), mShortCutHeight);
 	            	  	break;
 	          	}
           	  
             case 2 : {
           	  drawMovableShort(canvas, 2, mShortcutsBackground.getWidth()/2);
-          	  drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
-          	  drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
+          	  if(!mUseTwoShortcuts)drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
+          	  if(!mUseTwoShortcuts)drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
           	  drawShortFour(canvas, halfWidth + (padding*4), mShortCutHeight);
           	  
             }
       	  break;
             case 3 : {
           	  drawMovableShort(canvas, 3, mShortcutsBackground.getWidth()/2);
-          	  drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
-          	  drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
+          	  if(!mUseTwoShortcuts)drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
+          		if(!mUseTwoShortcuts)drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
           	  drawShortFour(canvas, halfWidth + (padding*4), mShortCutHeight);
             }
       	  break;
             case 4 : {
           	  drawMovableShort(canvas, 4, mShortcutsBackground.getWidth()/2);
-          	  drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
-          	  drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
+          	  if(!mUseTwoShortcuts)drawShortOne(canvas, halfWidth - (padding*6), mShortCutHeight);
+          	  if(!mUseTwoShortcuts)drawShortTwo(canvas,  halfWidth - (padding*3), mShortCutHeight);
           	  drawShortThree(canvas, halfWidth + (padding), mShortCutHeight);
             }
       	  break;
@@ -600,15 +604,12 @@ public class SenseLikeLock extends View{
     // ************* Initilization function
     
     private void initializeUI(){
-    	
+    	Log.d(TAG, "Initializing user interface");
     	mLockIcon = getBitmapFor(R.drawable.sense_ring);
     	mLowerBackground = getBitmapFor(R.drawable.sense_panel);
     	mShortcutsBackground = getBitmapFor(R.drawable.app_bg);
-    	mShortCutOne = getBitmapFor(R.drawable.app_camera);
-    	mShortCutTwo = getBitmapFor(R.drawable.app_gmail);
-    	mShortCutThree = getBitmapFor(R.drawable.app_msg);
-    	mShortCutFour = getBitmapFor(R.drawable.app_phone);
     	mLockAppIcon = getBitmapFor(R.drawable.sense_ring_appready);
+    	//setShortCutsDrawables(null, null, null, null);
     	
     }
     
@@ -630,30 +631,68 @@ public class SenseLikeLock extends View{
      * relationship with another class. In this context
      * it is used to allow the trigger for the widget
      * to be application dependent. The trigger can be 
-     * in one of two state either
-     *  {@link ICON_GRABBED_STATE_NONE} or {@link ICON_GRABBED_STATE_GRABBED}
+     * in one of three states but no more than one at a time.
+     * 
+     *  {@link ICON_GRABBED_STATE_NONE},  {@link ICON_GRABBED_STATE_GRABBED}, {@link ICON_SHORTCUT_GRABBED_STATE_GRABBED}
      */
     
     public interface OnSenseLikeSelectorTriggerListener{
     	
     	// Grabbed state
+    	/**
+    	 * Nothing is being grabbed
+    	 */
     	static final int ICON_GRABBED_STATE_NONE = 0;
+    	/**
+    	 * the lock icon has been grabbed
+    	 */
     	static final int ICON_GRABBED_STATE_GRABBED = 1;
+    	/**
+    	 * One of the shortcut icons have been grabbed
+    	 */
     	static final int ICON_SHORTCUT_GRABBED_STATE_GRABBED = 2;
     	
     	// Trigger for the lock icon
+    	/**
+    	 * The lock has been triggered
+    	 */
     	static final int LOCK_ICON_TRIGGERED = 10;
     	
     	// Tigger const for the shortcut icons
+    	/**
+    	 * Thefirst shortcut has been triggered
+    	 */
     	static final int LOCK_ICON_SHORTCUT_ONE_TRIGGERED   = 11;
+    	/**
+    	 * The second shortcut has been triggered
+    	 */
     	static final int LOCK_ICON_SHORTCUT_TWO_TRIGGERED   = 12;
+    	/**
+    	 * The third shortcut has been triggered
+    	 */
     	static final int LOCK_ICON_SHORTCUT_THREE_TRIGGERED = 13;
+    	/**
+    	 * The fourth shortcut has been triggered
+    	 */
     	static final int LOCK_ICON_SHORTCUT_FOUR_TRIGGERED  = 14;
     	
     	// Sets the grabbed state
+    	
+    	/**
+    	 * What happens when the grabbed state changes.
+    	 * Many times this is used to poke the wake lock.
+    	 * 
+    	 */
     	public void OnSenseLikeSelectorGrabbedStateChanged(View v, int GrabState);
     	
     	// Trigger interface methods
+    	/**
+    	 * When the shortcut icons or the lock icon is triggered
+    	 * this function will be executed. Many times this 
+    	 * is used to unlock the device but can be set so that
+    	 * is answers a users call.
+    	 * 
+    	 */
     	public void onSenseLikeSelectorTrigger(View v, int Trigger);
 
     	
@@ -662,11 +701,11 @@ public class SenseLikeLock extends View{
     // *********************** Callbacks
     
     /**
-     * Registers a callback to be invoked when the music controls
-     * are "triggered" by sliding the view one way or the other
-     * or pressing the music control buttons.
+     * Registers a callback to be invoked when the unlocker
+     * is "triggered" by moving the shortcuts  into the ring
+     * or by moving the ring past a specified point
      *
-     * @param l the OnMusicTriggerListener to attach to this view
+     * @param l the {@link OnSenseLikeSelectorTriggerListener} to attach to this view
      */
     public void setOnSenseLikeSelectorTriggerListener(OnSenseLikeSelectorTriggerListener l) {
     	 if (DBG) log("Setting the listners");
@@ -734,6 +773,16 @@ public class SenseLikeLock extends View{
     private Bitmap getBitmapFor(int resId) {
         return BitmapFactory.decodeResource(getContext().getResources(), resId);
     }
+    
+    
+    private Bitmap getBitmapFromDrawable(Drawable icon) {
+    	
+    	if (icon instanceof BitmapDrawable)
+    	return ((BitmapDrawable)icon).getBitmap();
+    	else return null;
+
+         
+    }
     private void reset(){
     	
     	setGrabbedState(OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE);
@@ -746,22 +795,99 @@ public class SenseLikeLock extends View{
     	
     }
     
+    
+    /* Functions associated with setting the pictures for the app */
+    
     /**
-     * If the implementor wishes that the grab state be
-     * changed from movement that come from the outside
-     * of the lock ring. Note, this still requires that the user move
-     * the lock icon out of the ring. The default behavior is to not 
-     * be sensitive to these kind of input and disregard the input.
+     * Wrapper function associated with setting the shortcut icons.
+     * Trigger is controlled by {@link onSenseLikeSelectorTrigger} from with
+     * the {@link OnSenseLikeSelectorTriggerListener}.
+     * This function must be called before the View
+     * is draw or a runtime exception will occur,
      * 
-     * 
-     * @param SlideAll Initiate lock movement if touch is received from outside the area and moved in.
      */
-    public void setSlide(boolean SlideAll){
-    	
-    	mSlideisSensitive = SlideAll;
-    	
+    public void setShortCutsDrawables(Drawable FarLeft, Drawable Left, Drawable Right, Drawable FarRight){
+    	log("Setting the shorcut icons");
+    	setShortcutOne(FarLeft);
+    	setShortcutTwo(Left);
+    	setShortcutThree(Right);
+    	setShortcutFour(FarRight); 	
+    }
+    
+    
+    private boolean setShortcutOne(Drawable icon){
+    	log("Setting the icon one");
+    	if(icon != null)mShortCutOne = getBitmapFromDrawable(icon);
+    	if(mShortCutOne != null)
+    		return true;
+    	else
+    	{
+    		mShortCutOne = getBitmapFor(R.drawable.app_camera);
+    		return false;
+    	}
+    }
+    
+    private boolean setShortcutTwo(Drawable icon){
+    	log("Setting the icon 2");
+    	if(icon != null)mShortCutTwo = getBitmapFromDrawable(icon);
+    	if(mShortCutTwo != null)
+    		return true;
+    	else
+    	{
+    		if(!mUseTwoShortcuts)mShortCutTwo = getBitmapFor(R.drawable.app_gmail);
+    		return false;
+    	}
+    }
+ 
+    private boolean setShortcutThree(Drawable icon){
+    	log("Setting the icon 3");
+    if(icon != null)mShortCutThree = getBitmapFromDrawable(icon);
+ 	if(mShortCutThree != null)
+ 		return true;
+ 	else
+ 	{
+ 		if(!mUseTwoShortcuts)mShortCutThree = getBitmapFor(R.drawable.app_msg);
+ 		return false;	
+ 	}
+ }
+ 
+    private boolean setShortcutFour(Drawable icon){
+    	log("Setting the icon 4");
+    if(icon != null)mShortCutFour = getBitmapFromDrawable(icon);
+ 	if(mShortCutFour != null)
+ 		return true;
+ 	else
+ 	{
+ 		mShortCutFour = getBitmapFor(R.drawable.app_phone);
+ 		return false;
+ 	}
+ }
+    
+    public Intent[] setDefaultIntents(){
+    	Intent intent = new Intent(Intent.ACTION_DIAL); 
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        
+    	Intent[] i = {new Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),new Intent(),new Intent(),new Intent()};
+    	return i;
     	
     }
+    
+    
+    /**
+     * Change the amount of shortcuts available on the screen.
+     * Used for removing two app so that the user has only one of two choices.
+     * Also removes the lock ring touch sensitivity. 
+     * 
+     * 
+     * @param UseOnlyTwoShortcuts Use only two shortcuts if set to true.
+     */
+ 
+    public void setToTwoShortcuts(boolean UseOnlyTwoShortcuts){
+    	if(UseOnlyTwoShortcuts == true)Log.d(TAG, "Using only two shortcuts");
+    	mUseTwoShortcuts = UseOnlyTwoShortcuts;
+    	
+    }
+    
     
     
     

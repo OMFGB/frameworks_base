@@ -1484,8 +1484,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		   }
 		}
 	   
-	   if(numapps == 0){
+	   if(numapps != 4){
 		   mCustomApps = mSenseRingSelector.setDefaultIntents();
+		   for(int i = 0; i < 4; i++){
+			   if(mCustomQuandrants[i] != null){
+				   mCustomApps[i] =  Intent.parseUri(mCustomQuandrants[i]  ,0);
+				   
+			   }
+		   }
 		   numapps = 4;
 	   }else for(int i = 0; i < numapps ; i++){
 			  
@@ -1532,20 +1538,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                Log.w(TAG, "Missing shortcut_icons array item #" + i);
                shortcutsicons[i] = null;
            } catch (PackageManager.NameNotFoundException e) {
+        	   e.printStackTrace();
            	//Do-Nothing
            }
 	   }
 	   
-	   
-       if(numapps == 4){
-    	 
-    	 mSenseRingSelector.setToTwoShortcuts(false);
+	   // Finnally set the image
     	 mSenseRingSelector.setShortCutsDrawables(shortcutsicons[0], shortcutsicons[1], shortcutsicons[2], shortcutsicons[3]);  
-       }
-       else if(numapps == 2) {
-    	   mSenseRingSelector.setToTwoShortcuts(true);
-    	   mSenseRingSelector.setShortCutsDrawables(shortcutsicons[0], null, null,shortcutsicons[2]);
-       }
+   
 	   
    }
    

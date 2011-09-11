@@ -49,6 +49,7 @@ import com.android.internal.view.FastBitmapDrawable;
 
 
 
+
 /*
  * This class represents an unlock ring that can be moved 
  * around along with definable shortcuts that can also
@@ -57,11 +58,7 @@ import com.android.internal.view.FastBitmapDrawable;
  * 
  */
 public class SenseLikeLock extends View{
-	
-	
-	// ********************* Debug Variables
-	
-	
+
 	private String TAG = "SenseLikeLock";
 	private static final boolean DBG = true;
 	private static final boolean IDBG = DBG;
@@ -84,7 +81,7 @@ public class SenseLikeLock extends View{
 	 
 	   final Matrix mBgMatrix = new Matrix();
 	   private Paint mPaint = new Paint();
-	   
+
 	   
 	   // *** Backgrounds **
 	   Bitmap mLowerBackground;
@@ -116,12 +113,8 @@ public class SenseLikeLock extends View{
 	   private OnSenseLikeSelectorTriggerListener mSenseLikeTriggerListener;
 	   private int  mGrabbedState = OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE;
 	 
-	   Boolean mUseShortcutOne = false;
-	   Boolean mUseShortcutTwo = false;
-	   Boolean mUseShortcutThree = false;
-	   private Boolean mUseShortcutFour = false;
-	   
-	   private Boolean mIsInRingMode = false;
+	  
+	
 	  
 	private float mDensityScaleFactor = 1;
 	private int mShortCutSelected;
@@ -742,10 +735,10 @@ public class SenseLikeLock extends View{
     }
     
     
-    private Bitmap getBitmapFromDrawable(FastBitmapDrawable icon) {
+    private Bitmap getBitmapFromDrawable(Drawable icon) {
     	Log.d(TAG, "Decoding drawable to bitmap");
     	
-	Bitmap myBitmap =  Bitmap.createBitmap(25, 25, Config.ARGB_8888);
+	Bitmap myBitmap =  Bitmap.createBitmap(25, 25, Bitmap.Config.ARGB_8888);
 	Canvas canvas = new Canvas(myBitmap);
 	// create your favourite drawable:
 	Drawable drawable = icon;// new, or load drawable resource
@@ -765,6 +758,7 @@ public class SenseLikeLock extends View{
     		return null;
     	}
 
+
          
     }
     private void reset(){
@@ -779,6 +773,7 @@ public class SenseLikeLock extends View{
     	
     }
     
+
     
     /* Functions associated with setting the pictures for the app */
     
@@ -790,38 +785,38 @@ public class SenseLikeLock extends View{
      * or all of the shortcuts will be disabled,
      * 
      */
-    public void setShortCutsDrawables(FastBitmapDrawable FarLeft, FastBitmapDrawable Left, FastBitmapDrawable Right, FastBitmapDrawable FarRight){
-    	log("Setting the shorcut icons");
-    	
-    	/**         **/
-    	log("Setting the icon one");
-    	if(FarLeft != null)mShortCutOne = getBitmapFromDrawable(FarLeft);
-    	if(mShortCutOne != null)
-    		mUseShortcutOne = true;
-    	else
-    		mUseShortcutOne = false;
-    	/*      *    */
-    	log("Setting the icon Two");
-    	if(FarLeft != null)mShortCutTwo = getBitmapFromDrawable(Left);
-    	if(mShortCutTwo != null)
-    		mUseShortcutTwo = true;
-    	else
-    		mUseShortcutTwo = false;
-    	/*      *    */
-    	log("Setting the icon Three");
-    	if(FarLeft != null)mShortCutThree = getBitmapFromDrawable(Right);
-    	if(mShortCutThree != null)
-    		mUseShortcutThree = true;
-    	else
-    		mUseShortcutThree = false;
-    	/*      *    */
-    	log("Setting the icon one");
-    	if(FarLeft != null)mShortCutFour = getBitmapFromDrawable(FarRight);
-    	if(mShortCutFour != null)
-    		mUseShortcutFour = true;
-    	else
-    		mUseShortcutFour = false;
-    	/*      *    */
+    public void setShortCutsDrawables(Drawable FarLeft, Drawable Left, Drawable Right, Drawable FarRight) {
+        log("Setting the icon One");
+        if(FarLeft != null)mShortCutOne = getBitmapFromDrawable(FarLeft);
+
+        if(mShortCutOne != null)
+           mUseShortcutOne = true;
+        else
+           mUseShortcutOne = false;
+
+        log("Setting the icon Two");
+        if(FarLeft != null)mShortCutTwo = getBitmapFromDrawable(Left);
+
+        if(mShortCutTwo != null)
+           mUseShortcutTwo = true;
+        else
+           mUseShortcutTwo = false;
+
+        log("Setting the icon Three");
+        if(FarLeft != null)mShortCutThree = getBitmapFromDrawable(Right);
+
+        if(mShortCutThree != null)
+           mUseShortcutThree = true;
+        else
+           mUseShortcutThree = false;
+
+        log("Setting the icon Four");
+        if(FarLeft != null)mShortCutFour = getBitmapFromDrawable(FarRight);
+
+        if(mShortCutFour != null)
+           mUseShortcutFour = true;
+        else
+           mUseShortcutFour = false;
     }
     
     

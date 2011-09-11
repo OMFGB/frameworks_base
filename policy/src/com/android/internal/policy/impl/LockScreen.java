@@ -25,7 +25,6 @@ import com.android.internal.widget.RotarySelector;
 import com.android.internal.widget.SenseLikeLock;
 import com.android.internal.widget.SlidingTab;
 import com.android.internal.widget.UnlockRing;
-import com.android.internal.widget.SenseLikeLock.OnSenseLikeSelectorTriggerListener;
 
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -1395,7 +1394,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                            0, 100
 	};
 	   switch(Trigger){
-	   case OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED:
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED:
                  
 		   vibe.vibrate(pattern, -1);
 		   mCustomApps[0].addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -1403,25 +1402,25 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
            mCallback.goToUnlockScreen();
 
 		   break;
-	   case OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_TWO_TRIGGERED:
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_TWO_TRIGGERED:
 		   vibe.vibrate(pattern, -1);
 		   mCustomApps[1].addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
            getContext().startActivity(mCustomApps[1]);
            mCallback.goToUnlockScreen();
 		   break;
-	   case OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_THREE_TRIGGERED:
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_THREE_TRIGGERED:
 		   vibe.vibrate(pattern, -1);
 		   mCustomApps[2].addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
            getContext().startActivity(mCustomApps[2]);
            mCallback.goToUnlockScreen();
 		   break;
-	   case OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_FOUR_TRIGGERED:
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_FOUR_TRIGGERED:
 		   vibe.vibrate(pattern, -1);
 		   mCustomApps[3].addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
            getContext().startActivity(mCustomApps[3]);
            mCallback.goToUnlockScreen();
 		   break;
-	   case OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED:
+	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED:
 		   mCallback.goToUnlockScreen();
 		   break;
 	   }
@@ -1470,18 +1469,18 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	   
    }
    
-   private void setupSenseLikeRingShortcuts(){
-	   
-	   int numapps = 0;
-	   Intent intent = new Intent();
-	   PackageManager pm = mContext.getPackageManager();
-	   mCustomApps = new Intent[4];
-	   
-	   FastBitmapDrawable[] shortcutsicons;
-	   for(int i = 0; i < mCustomQuandrants.length ; i++){
-		   if(mCustomQuandrants[i] != null){
-			   numapps++;
-		   }
+
+    private void setupSenseLikeRingShortcuts(){
+	    int numapps = 0;
+	    Intent intent = new Intent();
+	    PackageManager pm = mContext.getPackageManager();
+	    mCustomApps = new Intent[4];
+	    Drawable[] shortcutsicons;
+
+	    for(int i = 0; i < mCustomQuandrants.length ; i++){
+		    if(mCustomQuandrants[i] != null){
+			    numapps++;
+		    }
 		}
 	   
 	   if(numapps != 4){
@@ -1525,15 +1524,13 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		   
 	   }
 	   
-	   shortcutsicons = new FastBitmapDrawable[numapps];
-	   
-	  float iconScale =0.80f;
+	   shortcutsicons = new Drawable[numapps];
+	   float iconScale =0.80f;
 	  
 	   for(int i = 0; i < numapps ; i++){
 		   try {
-           	
-			   shortcutsicons[i] = (FastBitmapDrawable) pm.getActivityIcon( mCustomApps[i]);
-			   shortcutsicons[i] = (FastBitmapDrawable) scaledDrawable(shortcutsicons[i], mContext ,iconScale);
+			   shortcutsicons[i] = pm.getActivityIcon(mCustomApps[i]);
+			   shortcutsicons[i] = scaledDrawable(shortcutsicons[i], mContext, iconScale);
            } catch (ArrayIndexOutOfBoundsException ex) {
                Log.w(TAG, "Missing shortcut_icons array item #" + i);
                shortcutsicons[i] = null;
@@ -1549,7 +1546,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	   
    }
    
+
    static Drawable scaledDrawable(Drawable icon,Context context, float scale) {
+
 		final Resources resources=context.getResources();
 		int sIconHeight= (int) resources.getDimension(android.R.dimen.app_icon_size);
 		int sIconWidth = sIconHeight;

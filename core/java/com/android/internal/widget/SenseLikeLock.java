@@ -803,8 +803,8 @@ public class SenseLikeLock extends View{
      * Wrapper function associated with setting the shortcut icons.
      * Trigger is controlled by {@link onSenseLikeSelectorTrigger} from with
      * the {@link OnSenseLikeSelectorTriggerListener}.
-     * This function must be called before the View
-     * is draw or a runtime exception will occur,
+     * This function must be called before the View is created
+     * or all of the shortcuts will be disabled,
      * 
      */
     public void setShortCutsDrawables(FastBitmapDrawable FarLeft, FastBitmapDrawable Left, FastBitmapDrawable Right, FastBitmapDrawable FarRight){

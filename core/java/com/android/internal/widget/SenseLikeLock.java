@@ -45,6 +45,7 @@ import android.view.animation.TranslateAnimation;
 import android.widget.ImageView;
 
 import com.android.internal.R;
+import com.android.internal.view.FastBitmapDrawable;
 
 
 
@@ -769,11 +770,17 @@ public class SenseLikeLock extends View{
     }
     
     
-    private Bitmap getBitmapFromDrawable(Drawable icon) {
+    private Bitmap getBitmapFromDrawable(FastBitmapDrawable icon) {
+    	Log.d(TAG, "Decoding drawable to bitmap");
     	
-    	if (icon instanceof BitmapDrawable)
-    	return ((BitmapDrawable)icon).getBitmap();
-    	else return null;
+    	if (icon instanceof FastBitmapDrawable)
+    		
+    		return((FastBitmapDrawable)icon).getBitmap();
+    	else
+    	{
+    		Log.d(TAG, "The drawable"+ icon.toString() +" is null");
+    		return null;
+    	}
 
          
     }
@@ -800,7 +807,7 @@ public class SenseLikeLock extends View{
      * is draw or a runtime exception will occur,
      * 
      */
-    public void setShortCutsDrawables(Drawable FarLeft, Drawable Left, Drawable Right, Drawable FarRight){
+    public void setShortCutsDrawables(FastBitmapDrawable FarLeft, FastBitmapDrawable Left, FastBitmapDrawable Right, FastBitmapDrawable FarRight){
     	log("Setting the shorcut icons");
     	
     	/**         **/

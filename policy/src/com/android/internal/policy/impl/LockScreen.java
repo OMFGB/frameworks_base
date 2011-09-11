@@ -1477,7 +1477,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	   PackageManager pm = mContext.getPackageManager();
 	   mCustomApps = new Intent[4];
 	   
-	   Drawable[] shortcutsicons;
+	   FastBitmapDrawable[] shortcutsicons;
 	   for(int i = 0; i < mCustomQuandrants.length ; i++){
 		   if(mCustomQuandrants[i] != null){
 			   numapps++;
@@ -1519,15 +1519,15 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		   
 	   }
 	   
-	   shortcutsicons = new Drawable[numapps];
+	   shortcutsicons = new FastBitmapDrawable[numapps];
 	   
 	  float iconScale =0.80f;
 	  
 	   for(int i = 0; i < numapps ; i++){
 		   try {
            	
-			   shortcutsicons[i] = pm.getActivityIcon( mCustomApps[i]);
-			   shortcutsicons[i] = scaledDrawable(shortcutsicons[i], mContext ,iconScale);
+			   shortcutsicons[i] = (FastBitmapDrawable) pm.getActivityIcon( mCustomApps[i]);
+			   shortcutsicons[i] = (FastBitmapDrawable) scaledDrawable(shortcutsicons[i], mContext ,iconScale);
            } catch (ArrayIndexOutOfBoundsException ex) {
                Log.w(TAG, "Missing shortcut_icons array item #" + i);
                shortcutsicons[i] = null;

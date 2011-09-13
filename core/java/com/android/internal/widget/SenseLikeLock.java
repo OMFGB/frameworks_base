@@ -773,12 +773,23 @@ public class SenseLikeLock extends View{
     private Bitmap getBitmapFromDrawable(FastBitmapDrawable icon) {
     	Log.d(TAG, "Decoding drawable to bitmap");
     	
-    	if (icon instanceof FastBitmapDrawable)
+	Bitmap myBitmap =  Bitmap.createBitmap(25, 25, Config.ARGB_8888);
+	Canvas canvas = new Canvas(myBitmap);
+	// create your favourite drawable:
+	Drawable drawable = icon;// new, or load drawable resource
+ 	drawable.draw(canvas);
+ 	// Since the canvas draws onto the bitmap
+ 	// and the drawable draws onto the canvas
+ 	// the bitmap should have the image as
+ 	// from the drawable drawn onto it
+ 	if(myBitmap != null)
+ 		return myBitmap;
+ 	else if (icon instanceof BitmapDrawable)
     		
-    		return((FastBitmapDrawable)icon).getBitmap();
+    		return((BitmapDrawable)icon).getBitmap();
     	else
     	{
-    		Log.d(TAG, "The drawable"+ icon.toString() +" is null");
+    		Log.d(TAG, "The drawable could not be decoded into a bitmap");
     		return null;
     	}
 

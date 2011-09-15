@@ -18,8 +18,11 @@
 
 package com.android.internal.widget;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -29,6 +32,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Display;
@@ -738,7 +742,7 @@ public class SenseLikeLock extends View{
     private Bitmap getBitmapFromDrawable(Drawable icon) {
     	Log.d(TAG, "Decoding drawable to bitmap");
     	
-	Bitmap myBitmap =  Bitmap.createBitmap(25, 25, Bitmap.Config.ARGB_8888);
+	Bitmap myBitmap =  Bitmap.createBitmap(icon.getIntrinsicWidth(),icon.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
 	Canvas canvas = new Canvas(myBitmap);
 	// create your favourite drawable:
 	Drawable drawable = icon;// new, or load drawable resource
@@ -747,6 +751,7 @@ public class SenseLikeLock extends View{
  	// and the drawable draws onto the canvas
  	// the bitmap should have the image as
  	// from the drawable drawn onto it
+ 	myBitmap = Bitmap.createScaledBitmap(myBitmap, mShortcutsBackground.getWidth(), mShortcutsBackground.getHeight(), false);
  	if(myBitmap != null)
  		return myBitmap;
  	else if (icon instanceof BitmapDrawable)
@@ -824,8 +829,13 @@ public class SenseLikeLock extends View{
     public Intent[] setDefaultIntents(){
     	Intent intent = new Intent(Intent.ACTION_DIAL); 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        
-    	Intent[] i = {new Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),new Intent(),new Intent(),new Intent()};
+
+		
+    	Intent[] i = {
+    			new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    			new Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_EMAIL, new String("")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    			new Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    			new Intent(Intent.ACTION_VIEW).putExtra("sms_body", "").putExtra(Intent.EXTRA_STREAM, "").setType("image/png").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)};
     	return i;
     	
     }

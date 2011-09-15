@@ -194,6 +194,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
             Settings.System.LOCKSCREEN_CUSTOM_APP_HONEY_3)),(Settings.System.getString(mContext.getContentResolver(),
             Settings.System.LOCKSCREEN_CUSTOM_APP_HONEY_4))};
     
+    private boolean mUseCustomSenseApps = (Settings.System.getInt(mContext.getContentResolver(),
+            Settings.System.USE_SENSE_CUSTOM_APPS, 0) == 1);
+    
     Intent[] mCustomApps;
     
     // Default to show
@@ -1597,28 +1600,38 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 	    mCustomApps = new Intent[4];
 	    Drawable[] shortcutsicons;
 
+	    Log.d(TAG,"Seting up sense ring");
 	    for(int i = 0; i < mCustomQuandrants.length ; i++){
 		    if(mCustomQuandrants[i] != null){
 			    numapps++;
 		    }
 		}
 	   
+	    Log.d(TAG,"Setting intents");
 	   if(numapps != 4){
+		   Log.d(TAG,"Seting defaults");
 		   mCustomApps = mSenseRingSelector.setDefaultIntents();
 		   for(int i = 0; i < 4; i++){
 			   if(mCustomQuandrants[i] != null){
-				   mCustomApps[i] =  Intent.parseUri(mCustomQuandrants[i]  ,0);
+				   Log.d(TAG,"Setting custom intent #" + i);
+				   try{
+						intent = Intent.parseUri(mCustomQuandrants[i], 0);
+					}catch (java.net.URISyntaxException ex) {
+						Log.w(TAG, "Invalid hotseat intent: " + mCustomQuandrants[i]);
+			               // bogus; leave intent=null
+			        }
 				   
 			   }
 		   }
 		   numapps = 4;
 	   }else for(int i = 0; i < numapps ; i++){
-			  
+		   
+		   Log.d(TAG,"Setting custom intent #" + i);
 				try{
 					intent = Intent.parseUri(mCustomQuandrants[i], 0);
 				}catch (java.net.URISyntaxException ex) {
 					Log.w(TAG, "Invalid hotseat intent: " + mCustomQuandrants[i]);
-		               // bogus; leave intent=null
+		               ex.printStackTrace();
 		        }
 				
 				 
@@ -1656,6 +1669,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                shortcutsicons[i] = null;
            } catch (PackageManager.NameNotFoundException e) {
         	   e.printStackTrace();
+        	   shortcutsicons[i] = null;
            	//Do-Nothing
            }
 	   }

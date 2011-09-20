@@ -86,9 +86,6 @@ public class StatusBarView extends FrameLayout {
                     Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_MEDIUM), false,
                     this);
             resolver.registerContentObserver(
-                    Settings.System.getUriFor(Settings.System.BATTERY_COLOR_AUTO_REGULAR), false,
-                    this);
-            resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.BATTERY_COLOR_ENABLE_AUTOCOLOR),
                     false, this);
             resolver.registerContentObserver(
@@ -304,20 +301,17 @@ public class StatusBarView extends FrameLayout {
         boolean autoColorBatteryText = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.BATTERY_COLOR_ENABLE_AUTOCOLOR, 1) == 1 ? true : false;
 
+	int color_static = Settings.System.getInt(getContext().getContentResolver(),
+		Settings.System.BATTERY_COLOR_STATIC, 0xFF99AC06);
+
         int color_auto_charging = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.BATTERY_COLOR_AUTO_CHARGING, 0xFF93D500);
-
-        int color_auto_regular = Settings.System.getInt(getContext().getContentResolver(),
-                Settings.System.BATTERY_COLOR_AUTO_REGULAR, 0xFFFFFFFF);
 
         int color_auto_medium = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.BATTERY_COLOR_AUTO_MEDIUM, 0xFFD5A300);
 
         int color_auto_low = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.BATTERY_COLOR_AUTO_LOW, 0xFFD54B00);
-
-        int color_regular = Settings.System.getInt(getContext().getContentResolver(),
-                Settings.System.BATTERY_COLOR_AUTO_REGULAR, 0xFFFFFFFF);
 
         if (autoColorBatteryText) {
             if (plugged) {
@@ -330,14 +324,14 @@ public class StatusBarView extends FrameLayout {
                 } else if (batt < 40) {
                     mBatteryIndicator.setBackgroundColor(color_auto_medium);
                 } else {
-                    mBatteryIndicator.setBackgroundColor(color_auto_regular);
+                    mBatteryIndicator.setBackgroundColor(color_static);
 
                 }
 
             }
         } else {
-            mBatteryIndicator.setBackgroundColor(color_regular);
-            mBatteryChargingIndicator.setBackgroundColor(color_regular);
+            mBatteryIndicator.setBackgroundColor(color_static);
+            mBatteryChargingIndicator.setBackgroundColor(color_static);
         }
 
     }

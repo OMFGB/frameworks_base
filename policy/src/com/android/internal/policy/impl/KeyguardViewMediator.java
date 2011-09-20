@@ -1173,19 +1173,14 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
         }
     };
 
-    public static String NowPlayingArtist() {
+    public static String NowPlayingInfo() {
         if (mArtist != null && mPlaying) {
-            return (mArtist);
-        } else {
-            return "";
-        }
-    }
-
-    public static String NowPlayingAlbum() {
-        if (mArtist != null && mPlaying) {
-            return (mTrack);
-        } else {
-            return "";
+            return (mArtist + " -- " + mTrack);
+        } else if (mArtist != null && !mPlaying) {
+	    return "PAUSED";
+	    //mLockscreen.PPIcon.set
+	} else {
+            return "UNKNOWN";
         }
     }
 

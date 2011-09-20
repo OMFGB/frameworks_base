@@ -1,42 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <LinearLayout 
-    android:layout_width="fill_parent" 
-    xmlns:android="http://schemas.android.com/apk/res/android" 
-    android:layout_height="wrap_content"
-    android:gravity="center_horizontal">
-	    
-	   
-	    <com.android.internal.widget.MusicControlsLayout 
-	    android:id="@+id/music_controls_layout" 
-	    android:layout_width="wrap_content" 
-	    android:layout_height="wrap_content">
-	    
-		    <ImageView android:layout_height="wrap_content" 
-			    android:layout_width="wrap_content" 
-	     		android:id="@+id/rewind_button"
-	      		android:src="@drawable/lock_ic_media_previous" 
-	            android:padding="10dip"
-	            android:clickable="true"
-	            android:focusable="true"
-	            />
-	        <ImageView  android:layout_height="wrap_content" 
-			    android:layout_width="wrap_content" 
-			    android:id="@+id/play_pause_button" 
-			    android:padding="10dip"
-	            android:clickable="true"
-	            android:focusable="true"
-			    />
-    
-		    <ImageView  android:layout_height="wrap_content" 
-			    android:layout_width="wrap_content" 
-			    android:id="@+id/fast_forward_button" 
-			    android:src="@drawable/lock_ic_media_next" 
-			    android:padding="10dip"
-	            android:clickable="true"
-	            android:focusable="true"
-			    />
-	    </com.android.internal.widget.MusicControlsLayout>
-	    
-	    
-	    
-    </LinearLayout>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
+	android:layout_width="match_parent"
+        android:layout_height="175.0px">
+
+    <ImageView 
+        android:layout_width="match_parent"
+        android:layout_height="175.0px"
+        android:background="@drawable/buttonbar_bg"
+        android:src="@drawable/screen_background_dark_transparent"
+    />
+
+    <ImageView android:id="@+id/albumArt"
+        android:layout_width="150.0px"
+        android:layout_height="150.0px"
+        android:src="@drawable/default_artwork"
+	android:paddingLeft="16dip"
+        android:paddingBottom="45dip"
+	android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:scaleType="fitCenter"
+     />
+
+     <TextView
+        android:id="@+id/musicNowPlayingInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scrollHorizontally="true"
+        android:ellipsize="marquee"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:lines="1"
+	android:layout_centerInParent="true"
+	android:paddingBottom="20dip"
+        android:layout_alignParentBottom="true"
+      />
+
+     <ImageView 
+        android:id="@+id/musicControlPrevious"
+        android:layout_height="wrap_content" 
+        android:layout_width="wrap_content" 
+	android:layout_marginLeft="105dip"
+        android:paddingTop="28dip"
+        android:src="@drawable/lock_ic_media_previous" 
+      />
+
+     <ImageView 
+        android:id="@+id/musicControlPP"
+        android:layout_height="wrap_content" 
+        android:layout_width="wrap_content" 
+        android:layout_marginLeft="180dip"
+        android:paddingTop="28dip"
+        android:src="@drawable/lock_ic_media_pause" 
+      />
+
+     <ImageView  
+        android:id="@+id/musicControlNext" 
+	android:layout_height="wrap_content" 
+	android:layout_width="wrap_content"
+        android:layout_marginLeft="260dip"
+        android:paddingTop="28dip"
+        android:src="@drawable/lock_ic_media_next" 
+     />
+</RelativeLayout>
+

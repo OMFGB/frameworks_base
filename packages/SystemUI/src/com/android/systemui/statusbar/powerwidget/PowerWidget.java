@@ -68,6 +68,8 @@ public class PowerWidget extends FrameLayout {
 
     private static final int LAYOUT_SCROLL_BUTTON_THRESHOLD = 6;
 
+    private StatusBarService mSBService;
+
     private Context mContext;
     private LayoutInflater mInflater;
     private WidgetBroadcastReceiver mBroadcastReceiver = null;
@@ -192,6 +194,14 @@ public class PowerWidget extends FrameLayout {
         BUTTON_LAYOUT_PARAMS.width = mContext.getResources().getDisplayMetrics().widthPixels / LAYOUT_SCROLL_BUTTON_THRESHOLD;
     }
 
+    public void visibilityToggled() {
+   	if (this.getVisibility() == View.VISIBLE) {
+            setVisibility(View.GONE);
+	} else {
+           setVisibility(View.VISIBLE);
+	}
+    }
+
     public void updateVisibility() {
 	Slog.d(TAG, "Updating Widget Visibility");
         // now check if we need to display the widget still
@@ -199,12 +209,8 @@ public class PowerWidget extends FrameLayout {
                    Settings.System.EXPANDED_VIEW_WIDGET, 1) == 1;
         if(!displayPowerWidget) {
             setVisibility(View.GONE);
-            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
-            // StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
         } else {
             setVisibility(View.VISIBLE);
-            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
-            // StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
         }
     }
 

@@ -44,6 +44,10 @@ import android.database.ContentObserver;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
+import android.net.Uri;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
@@ -60,6 +64,7 @@ import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -84,9 +89,9 @@ import java.util.ArrayList;
 
 public class StatusBarService extends Service implements CommandQueue.Callbacks {
     static final String TAG = "StatusBarService";
-     private static final String DATA_TYPE_TMOBILE_STYLE = "vnd.tmobile.cursor.item/style";
-     private static final String DATA_TYPE_TMOBILE_THEME = "vnd.tmobile.cursor.item/theme";
-     private static final String ACTION_TMOBILE_THEME_CHANGED = "com.tmobile.intent.action.THEME_CHANGED";
+    private static final String DATA_TYPE_TMOBILE_STYLE = "vnd.tmobile.cursor.item/style";
+    private static final String DATA_TYPE_TMOBILE_THEME = "vnd.tmobile.cursor.item/theme";
+    private static final String ACTION_TMOBILE_THEME_CHANGED = "com.tmobile.intent.action.THEME_CHANGED";
     static final boolean SPEW_ICONS = false;
     static final boolean SPEW = false;
 
@@ -144,9 +149,8 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
     // top bar
     TextView mNoNotificationsTitle;
     TextView mClearButton;
-    public static ImageView mTogglesVisibleButton; 
-    public static ImageView mTogglesNotVisibleButton;
-    private boolean mAreTogglesVisible = true;    
+    public static ImageView mTogglesButton;
+    public static ImageView mMusicToggleButton; 
     // drag bar
     CloseDragHandle mCloseView;
     // ongoing
@@ -230,6 +234,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         if (currentTheme != null) {
             mCurrentTheme = (CustomTheme)currentTheme.clone();
         }
+        updateSettings();
         makeStatusBarView(this);
 
         // receive broadcasts
@@ -348,24 +353,11 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mLatestTitle = (TextView)expanded.findViewById(R.id.latestTitle);
         mLatestItems = (LinearLayout)expanded.findViewById(R.id.latestItems);
         mNoNotificationsTitle = (TextView)expanded.findViewById(R.id.noNotificationsTitle);
-        mTogglesNotVisibleButton = (ImageView)expanded.findViewById(R.id.toggles_not_visible_button);
-        mTogglesNotVisibleButton.setOnClickListener(mTogglesNotVisibleButtonListener);
-	mTogglesNotVisibleButton.setOnLongClickListener(new View.OnLongClickListener() {
-            public boolean onLongClick(View v) {
-                Slog.d(TAG, "LongClick");
-                Intent i = new Intent();
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setClassName("com.t3hh4xx0r","com.t3hh4xx0r.god_mode.PowerWidgetActivity");
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                animateCollapse();
-                return true;
-            }
-        });
-
-        mTogglesVisibleButton = (ImageView)expanded.findViewById(R.id.toggles_visible_button);
-        mTogglesVisibleButton.setOnClickListener(mTogglesVisibleButtonListener);
-	mTogglesVisibleButton.setOnLongClickListener(new View.OnLongClickListener() {
+	mMusicToggleButton = (ImageView)expanded.findViewById(R.id.music_toggle_button);
+        mMusicToggleButton.setOnClickListener(mMusicToggleButtonListener);
+        mTogglesButton = (ImageView)expanded.findViewById(R.id.toggles_button);
+        mTogglesButton.setOnClickListener(mTogglesButtonListener);
+	mTogglesButton.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
                 Slog.d(TAG, "LongClick");
                 Intent i = new Intent();
@@ -387,9 +379,6 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mOngoingTitle.setVisibility(View.GONE);
         mLatestTitle.setVisibility(View.GONE);
 
-        mTogglesNotVisibleButton.setVisibility(View.GONE);
-        mTogglesVisibleButton.setVisibility(View.VISIBLE);
-
         mMusicControls = (MusicControls)expanded.findViewById(R.id.exp_music_controls);
 
         mPowerWidget = (PowerWidget)expanded.findViewById(R.id.exp_power_stat);
@@ -408,11 +397,6 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                        return true;
                    }
                });
-
-        mAreTogglesVisible = (Settings.System.getInt(
-                        context.getContentResolver(),
-                        Settings.System.EXPANDED_VIEW_WIDGET, 1) == 1
-                );
 
         mTicker = new MyTicker(context, sb);
 
@@ -1613,28 +1597,21 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         }
     }
 
-    public View.OnClickListener mTogglesVisibleButtonListener = new View.OnClickListener() {
-        public void onClick(View v) {
-            Settings.System.putInt(getContentResolver(), Settings.System.EXPANDED_VIEW_WIDGET, 0);
-            mPowerWidget.updateVisibility();
-            mPowerWidgetBottom.updateVisibility();
-            StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
-            StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
-
-        }
+    public View.OnClickListener mMusicToggleButtonListener = new View.OnClickListener() {
+	public void onClick(View v) {
+	mMusicControls.visibilityToggled();
+	}
     };
 
-    private View.OnClickListener mTogglesNotVisibleButtonListener = new View.OnClickListener() {
+    public View.OnClickListener mTogglesButtonListener = new View.OnClickListener() {
         public void onClick(View v) {
-
-            Settings.System.putInt(getContentResolver(), Settings.System.EXPANDED_VIEW_WIDGET,
-                    mLastPowerToggle);
-            mPowerWidget.updateVisibility();
-            mPowerWidgetBottom.updateVisibility();
-            StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
-            StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
-
-        }
+	    Slog.d(TAG, "OPTION >> " + mLastPowerToggle);
+	    if (mLastPowerToggle == 2) {
+                mPowerWidgetBottom.visibilityToggled();
+	    } else if (mLastPowerToggle == 1) {
+   	        mPowerWidget.visibilityToggled();
+	    }
+	}
     };
 
     private View.OnClickListener mClearButtonListener = new View.OnClickListener() {

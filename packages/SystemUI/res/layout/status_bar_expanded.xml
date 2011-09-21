@@ -62,17 +62,7 @@
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textColor="#ffdfdfdf"
             />
-        <ImageView android:id="@+id/toggles_visible_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_marginTop="1dp"
-            android:paddingBottom="1dp"
-            android:paddingLeft="15dp"
-            android:paddingRight="15dp"
-            android:src="@drawable/ic_toggles_visible"
-            />
-        <ImageView android:id="@+id/toggles_not_visible_button"
+        <ImageView android:id="@+id/toggles_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -82,6 +72,17 @@
             android:paddingRight="15dp"
             android:src="@drawable/ic_toggles_not_visible"
             />
+	<ImageView android:id="@+id/music_toggle_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginTop="1dp"
+            android:paddingBottom="1dp"
+	    android:layout_toLeftOf="@id/toggles_button"
+            android:src="@drawable/ic_music_toggle"
+	    android:visibility="gone"
+            />
+
         </LinearLayout>
     </LinearLayout>
 

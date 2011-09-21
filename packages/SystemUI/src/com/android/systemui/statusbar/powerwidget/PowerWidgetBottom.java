@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.powerwidget;
 
 import com.android.systemui.statusbar.StatusBarService;
+import com.android.systemui.statusbar.powerwidget.PowerWidget;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -68,6 +69,7 @@ public class PowerWidgetBottom extends FrameLayout {
 
     protected static final int LAYOUT_SCROLL_BUTTON_THRESHOLD = 6;
 
+    protected PowerWidget mPowerWidget;
     protected Context mContext;
     protected LayoutInflater mInflater;
     protected WidgetBroadcastReceiver mBroadcastReceiver = null;
@@ -192,19 +194,23 @@ public class PowerWidgetBottom extends FrameLayout {
         BUTTON_LAYOUT_PARAMS.width = mContext.getResources().getDisplayMetrics().widthPixels / LAYOUT_SCROLL_BUTTON_THRESHOLD;
     }
 
+    public void visibilityToggled() {
+        if (this.getVisibility() == View.VISIBLE) {
+           this.setVisibility(View.GONE);
+        } else {
+            this.setVisibility(View.VISIBLE);
+	}
+    }
+
     public void updateVisibility() {
         Slog.d(TAG, "Updating Widget Visibility");
         // now check if we need to display the widget still
         boolean displayPowerWidget = Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.EXPANDED_VIEW_WIDGET, 1) == 2;
         if (!displayPowerWidget) {
-            setVisibility(View.GONE);
-            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.VISIBLE);
-            // StatusBarService.mTogglesVisibleButton.setVisibility(View.GONE);
+            this.setVisibility(View.GONE);
         } else {
-            setVisibility(View.VISIBLE);
-            // StatusBarService.mTogglesNotVisibleButton.setVisibility(View.GONE);
-            // StatusBarService.mTogglesVisibleButton.setVisibility(View.VISIBLE);
+            this.setVisibility(View.VISIBLE);
         }
     }
 

@@ -16,6 +16,8 @@
 
 package com.android.systemui.statusbar;
 
+import com.android.systemui.statusbar.StatusBarService;
+
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -73,6 +75,7 @@ public class MusicControls extends FrameLayout {
     private LayoutInflater mInflater;
     private AudioManager mAudioManager;
 
+    private StatusBarService mSBService;
     private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
     private boolean mIsMusicActive = am.isMusicActive();
     private boolean paused = false;
@@ -126,13 +129,23 @@ public class MusicControls extends FrameLayout {
 
         if (mIsMusicActive) {
              Slog.d(TAG, "Music is active");
+	     mSBService.mMusicToggleButton.setVisibility(View.VISIBLE);
              setVisibility(View.VISIBLE);
 	     updateInfo();
         } else {
              Slog.d(TAG, "Music is not active");
+             mSBService.mMusicToggleButton.setVisibility(View.GONE);
              setVisibility(View.GONE);
         }
    }
+
+    public void visibilityToggled() {
+	if (this.getVisibility() == View.VISIBLE) {
+	    setVisibility(View.GONE);
+	} else {
+            setVisibility(View.VISIBLE);
+	}
+    }
 
     public void updateInfo() {
 	Slog.d(TAG, "Updating Music Controls Info");

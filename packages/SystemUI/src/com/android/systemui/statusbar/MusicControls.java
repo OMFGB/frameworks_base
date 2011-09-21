@@ -90,7 +90,8 @@ public class MusicControls extends FrameLayout {
     private static String mArtist = null;
     private static String mTrack = null;
     private static Boolean mPlaying = null;
-    private static long mSongId = 0;    private static long mAlbumId = 0;
+    private static long mSongId = 0;
+    private static long mAlbumId = 0;
 
     public MusicControls(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -99,6 +100,7 @@ public class MusicControls extends FrameLayout {
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
         IntentFilter iF = new IntentFilter();
+        iF.addAction("com.android.music.playstatechanged");
         iF.addAction("com.android.music.metachanged");
         mContext.registerReceiver(mMusicReceiver, iF);
     }
@@ -112,6 +114,8 @@ public class MusicControls extends FrameLayout {
 	View controlsView = mInflater.inflate(R.layout.exp_music_controls, null, false);
 	ll.addView(controlsView, BUTTON_LAYOUT_PARAMS);
 	addView(ll, WIDGET_LAYOUT_PARAMS);
+
+	updateControls();
     }
 
     public void updateControls() {
@@ -129,9 +133,9 @@ public class MusicControls extends FrameLayout {
 
         if (mIsMusicActive) {
              Slog.d(TAG, "Music is active");
+	     updateInfo();
 	     mSBService.mMusicToggleButton.setVisibility(View.VISIBLE);
              setVisibility(View.VISIBLE);
-	     updateInfo();
         } else {
              Slog.d(TAG, "Music is not active");
              mSBService.mMusicToggleButton.setVisibility(View.GONE);
@@ -149,7 +153,6 @@ public class MusicControls extends FrameLayout {
 
     public void updateInfo() {
 	Slog.d(TAG, "Updating Music Controls Info");
-        mIsMusicActive = am.isMusicActive();
 
         // Set album art
         Uri uri = getArtworkUri(getContext(), SongId(), AlbumId());
@@ -159,20 +162,19 @@ public class MusicControls extends FrameLayout {
            mAlbumArt.setImageResource(R.drawable.default_artwork);
         }
 
-        handleSongUpdate();
 	String nowPlayingArtist = NowPlayingArtist();
 	String nowPlayingAlbum = NowPlayingAlbum();
-        mNowPlayingInfo.setText(nowPlayingArtist + " -- " + nowPlayingAlbum);
+        if (nowPlayingArtist.equals("PAUSED")) {
+	   mNowPlayingInfo.setText("PAUSED");
+	   mPlayPauseIcon.setImageResource(R.drawable.stat_media_play);
+	} else {
+  	   mNowPlayingInfo.setText(nowPlayingArtist + " -- " + nowPlayingAlbum);
+           mPlayPauseIcon.setImageResource(R.drawable.stat_media_pause);
+	}
 
         mPlayPauseIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-            mIsMusicActive = am.isMusicActive();
-	    paused = false;
-	    if (!mIsMusicActive) {
-		paused = true;
-	    }
-            sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-	    mPlayPauseIcon.setImageResource(paused ? R.drawable.stat_media_pause : R.drawable.stat_media_play);
+               sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
             }
         });
 
@@ -187,7 +189,6 @@ public class MusicControls extends FrameLayout {
                 sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
             }
         });
-
     }
 
     public static Uri getArtworkUri(Context context, long song_id, long album_id) {
@@ -252,6 +253,7 @@ public class MusicControls extends FrameLayout {
 
         @Override
         public void onReceive(Context context, Intent intent) {
+	    Slog.d(TAG, "RECEIVED!");
             String action = intent.getAction();
             mArtist = intent.getStringExtra("artist");
             mTrack = intent.getStringExtra("track");
@@ -259,14 +261,16 @@ public class MusicControls extends FrameLayout {
             mSongId = intent.getLongExtra("songid", 0);
             mAlbumId = intent.getLongExtra("albumid", 0);
 	    handleSongUpdate();
-	    updateInfo();
+            updateInfo();
         }
     };
 
     public static String NowPlayingArtist() {
         if (mArtist != null && mPlaying) {
             return (mArtist);
-        } else {
+        } else if (mArtist != null && !mPlaying) {
+	    return "PAUSED";
+	} else {
             return "unknown";
         }
     }
@@ -295,6 +299,11 @@ public class MusicControls extends FrameLayout {
 
     interface InfoCallback {
 	void onMusicChanged();
+    }
+
+    /** {@inheritDoc} */
+    public void onMusicChanged() {
+        updateInfo();
     }
 
     private void sendMediaButtonEvent(int code) {

@@ -22,7 +22,6 @@
   depending on the state of the device.  It is the same for landscape
   and portrait.-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/root">
@@ -146,13 +145,12 @@
         android:drawablePadding="4dip"
         />
 
-    <com.android.internal.widget.SlidingTab
-        android:id="@+id/tab_selector"
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="60dip"
+    <com.android.internal.widget.RotarySelector
+                android:id="@+id/rotary_selector"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
         />
 
     <!-- emergency call button shown when sim is PUKd and tab_selector is
@@ -170,29 +168,6 @@
         android:visibility="gone"
         />
 
-       <ImageButton 
-            android:id="@+id/smsShortcutButton"
-            android:src="@drawable/lock_sms_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentLeft="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
-
-        <ImageButton 
-            android:id="@+id/phoneShortcutButton"
-            android:src="@drawable/lock_phone_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentRight="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
 </RelativeLayout>
 
     <com.android.internal.policy.impl.MusicControlsPanel 

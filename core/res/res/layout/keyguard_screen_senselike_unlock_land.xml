@@ -9,13 +9,15 @@
 <!-- This is the general lock screen which shows information about the state of the device, as well as 
 	instructions on how to get past it depending on the state of the device. It is the same for landscape 
 	and portrait. -->
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
-	android:layout_width="fill_parent"
-	android:layout_height="fill_parent"
-	android:background="#70000000"
-	android:gravity="center_horizontal"
-	android:id="@+id/root">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:background="#70000000"
+    android:id="@+id/root">
+<RelativeLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
 	 <TextView
         android:id="@+id/carrier"
@@ -133,13 +135,13 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
         android:drawablePadding="4dip"
         />
 	
-
-	<com.android.internal.widget.UnlockRing
-		android:id="@+id/unlock_ring"
-		android:orientation="horizontal"
-		android:layout_width="match_parent"
-		android:layout_height="fill_parent"
-		android:layout_alignParentBottom="true" />
+        <com.android.internal.widget.SenseLikeLock
+        android:id="@+id/sense_selector"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        />
 
 	<!-- emergency call button shown when sim is PUKd and tab_selector is hidden -->
 	<Button
@@ -154,6 +156,7 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
 		android:drawablePadding="8dip"
 		android:visibility="gone" />
 
+<<<<<<< HEAD
 	<ImageButton 
 	    android:id="@+id/smsShortcutButton"
             android:src="@drawable/lock_sms_button"
@@ -286,3 +289,17 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
             android:lines="1"
             />
 </RelativeLayout>
+=======
+</RelativeLayout>
+
+    <com.android.internal.policy.impl.MusicControlsPanel 
+       android:id="@+id/musicControlsPanel"
+       android:layout_width="fill_parent"
+       android:layout_height="wrap_content"
+       android:layout_gravity="top"
+       android:src="@drawable/bottom_dock_handle"
+       />
+
+</FrameLayout>
+
+>>>>>>> cc8830e... More robust layout inflation for lockscreens.

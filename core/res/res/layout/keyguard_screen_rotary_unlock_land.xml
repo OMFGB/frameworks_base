@@ -21,14 +21,17 @@
   state of the device, as well as instructions on how to get past it
   depending on the state of the device.  It is the same for landscape
   and portrait.-->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<<<<<<< HEAD
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
+=======
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+>>>>>>> cc8830e... More robust layout inflation for lockscreens.
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#70000000"
+    android:gravity="center_horizontal"
     android:id="@+id/root">
-<RelativeLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
     <TextView
         android:id="@+id/carrier"
@@ -146,38 +149,13 @@
         android:drawablePadding="4dip"
         />
 
-    <com.android.internal.widget.SlidingTab
-        android:id="@+id/tab_selector"
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="60dip"
+    <com.android.internal.widget.RotarySelector
+                android:id="@+id/rotary_selector"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
         />
-
-	<ImageButton 
-	    android:id="@+id/smsShortcutButton"
-            android:src="@drawable/lock_sms_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentLeft="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-	    />
-
-        <ImageButton 
-            android:id="@+id/phoneShortcutButton"
-            android:src="@drawable/lock_phone_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentRight="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
 
         <ImageView android:id="@+id/hide_music_controls_button"
             android:layout_width="wrap_content"
@@ -302,31 +280,10 @@
         android:visibility="gone"
         />
 
-       <ImageButton 
-            android:id="@+id/smsShortcutButton"
-            android:src="@drawable/lock_sms_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentLeft="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
-
-        <ImageButton 
-            android:id="@+id/phoneShortcutButton"
-            android:src="@drawable/lock_phone_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentRight="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
 </RelativeLayout>
 
+<<<<<<< HEAD
+=======
     <com.android.internal.policy.impl.MusicControlsPanel 
        android:id="@+id/musicControlsPanel"
        android:layout_width="fill_parent"
@@ -337,3 +294,4 @@
 
 </FrameLayout>
 
+>>>>>>> cc8830e... More robust layout inflation for lockscreens.

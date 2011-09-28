@@ -1,3 +1,14 @@
+/*****************************************************************************************************
+/
+/
+/  SGS Style Music Widget:
+/     -REQUIRES: CM Music Player and MediaProvider
+/
+/  This was modeled from the SGS2 Music widget
+/
+/  Converted/Written By: Scott Brissenden
+*******************************************************************************************************/
+
 package com.android.internal.policy.impl;
 
 import java.lang.Object;

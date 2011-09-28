@@ -296,10 +296,6 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
         final ContentResolver cr = mContext.getContentResolver();
         mShowLockIcon = (Settings.System.getInt(cr, "show_status_bar_lock", 0) == 1);
 
-        IntentFilter iF = new IntentFilter();
-        iF.addAction("com.android.music.metachanged");
-        iF.addAction("com.android.music.playstatechanged");
-        mContext.registerReceiver(mMusicReceiver, iF);
     }
 
     /**
@@ -1157,46 +1153,6 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
             mKeyguardViewManager.onScreenTurnedOn();
         }
     }
-
-    private BroadcastReceiver mMusicReceiver = new BroadcastReceiver() {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            mArtist = intent.getStringExtra("artist");
-            mTrack = intent.getStringExtra("track");
-            mPlaying = intent.getBooleanExtra("playing", false);
-            mSongId = intent.getLongExtra("songid", 0);
-            mAlbumId = intent.getLongExtra("albumid", 0);
-	    intent = new Intent("internal.policy.impl.updateSongStatus");
-            context.sendBroadcast(intent);
-        }
-    };
-
-    public static String NowPlayingArtist() {
-        if (mArtist != null && mPlaying) {
-            return (mArtist);
-        } else {
-            return "";
-        }
-    }
-
-    public static String NowPlayingAlbum() {
-        if (mArtist != null && mPlaying) {
-            return (mTrack);
-        } else {
-            return "";
-        }
-    }
-
-    public static long SongId() {
-        return mSongId;
-    }
-
-    public static long AlbumId() {
-        return mAlbumId;
-    }
-
 }
 
 

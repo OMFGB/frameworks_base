@@ -144,38 +144,14 @@
         android:drawablePadding="4dip"
         />
 
-    <com.android.internal.widget.SlidingTab
-        android:id="@+id/tab_selector"
-        android:orientation="horizontal"
+     <com.android.internal.widget.CircularSelector
+        android:id="@+id/circular_selector"
+        android:orientation="vertical"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="0dip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="60dip"
-        />
-
-	<ImageButton 
-	    android:id="@+id/smsShortcutButton"
-            android:src="@drawable/lock_sms_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentLeft="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-	    />
-
-        <ImageButton 
-            android:id="@+id/phoneShortcutButton"
-            android:src="@drawable/lock_phone_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentRight="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
+    />
 
     <!-- emergency call button shown when sim is PUKd and tab_selector is
          hidden -->
@@ -192,28 +168,4 @@
         android:visibility="gone"
         />
 
-       <ImageButton 
-            android:id="@+id/smsShortcutButton"
-            android:src="@drawable/lock_sms_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentLeft="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
-
-        <ImageButton 
-            android:id="@+id/phoneShortcutButton"
-            android:src="@drawable/lock_phone_button"
-            android:layout_alignParentBottom="true"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:layout_alignParentRight="true"
-            android:padding="15dp"
-            android:background="@color/transparent"
-            />
 </RelativeLayout>
-

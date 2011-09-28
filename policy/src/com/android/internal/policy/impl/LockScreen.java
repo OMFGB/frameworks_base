@@ -57,6 +57,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RemoteViews;
 import android.widget.TextView;
 
 import java.io.File;
@@ -337,6 +338,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         Log.v(TAG, "Force landscape orientation = " + Boolean.toString(mLockScreenOrientationLand));
         final LayoutInflater inflater = LayoutInflater.from(context);
         if (DBG) Log.v(TAG, "Creation orientation = " + mCreationOrientation);
+	Log.d(TAG, "VIEWS REMOVED!");
+	removeAllViews();
         if (mCreationOrientation == Configuration.ORIENTATION_PORTRAIT) {
 	    if (mUseTab) {
                inflater.inflate(R.layout.keyguard_screen_tab_unlock, this, true);
@@ -692,7 +695,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     }
 
     public void onCircularSelectorTrigger(View v, int Trigger) {
-
         mCallback.goToUnlockScreen();
         //
 

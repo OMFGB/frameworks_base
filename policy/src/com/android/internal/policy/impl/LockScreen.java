@@ -25,10 +25,8 @@ import com.android.internal.widget.RotarySelector;
 import com.android.internal.widget.SenseLikeLock;
 import com.android.internal.widget.SlidingTab;
 import com.android.internal.widget.UnlockRing;
-
 import com.android.internal.policy.impl.MusicControlsPanel;
 import com.android.internal.policy.impl.LockScreenManager.LockscreenManagerCallback;
-
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -38,6 +36,8 @@ import android.content.IntentFilter;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -65,6 +65,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
+import java.util.List;
 
 /**
  * The screen within {@link LockPatternKeyguardView} that shows general
@@ -157,7 +158,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
     
-    
+
     /**
      * The status of this lock screen.
      */

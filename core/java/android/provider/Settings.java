@@ -2075,6 +2075,13 @@ public final class Settings {
 		public static String LOCKSCREEN_CUSTOM_APP_HONEY_4 = "lockscreen_quadrant_4_uri";
 
 		/**
+		 * 0: Dont use custom apps
+		 * 1: Use custom apps
+		 * @hide
+		 */
+		public static String USE_SENSE_CUSTOM_APPS = "lockscreen_custom_sense_apps";
+
+		/**
          * Whether or not to allow the lockscreen is allowed to have the music 
          * controls on.
          * @hide

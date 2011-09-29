@@ -262,7 +262,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		final LayoutInflater inflater = LayoutInflater.from(context);
 		mManager.inflateLockscreen(inflater, mCreationOrientation == Configuration.ORIENTATION_PORTRAIT);
 		mManager.setCallbackInterface(this);
-		mManager.setupActiveLockscreen();
+		mManager.setupActiveLockscreen(this.getContext());
 		mUnlocker = mManager.retreiveActiveLockscreen();
 	
         mCarrier = (TextView) findViewById(R.id.carrier);
@@ -275,7 +275,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mStatus2 = (TextView) findViewById(R.id.status2);
 
         mScreenLocked = (TextView) findViewById(R.id.screenLocked);
-        setUpShortCuts();
+        //setUpShortCuts();
         setUpMusicControls();
         
 
@@ -322,7 +322,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     private void setUpShortCuts() {
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
-	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
+        mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
     	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
 	        mCallback.pokeWakelock();

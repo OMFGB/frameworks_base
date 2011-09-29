@@ -50,10 +50,8 @@ public class MusicControlsPanel extends LinearLayout {
 	// =========================================
 
 	public MusicControlsPanel(Context context, Boolean isOpen) {
-		super(context);
-	        mContext = context;
-		this.isOpen = isOpen;
-		Init(null);
+	    this(context, (AttributeSet)null);
+		isOpen = isOpen;
 	}
 
 	public MusicControlsPanel(Context context, AttributeSet attrs) {

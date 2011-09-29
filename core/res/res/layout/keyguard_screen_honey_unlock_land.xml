@@ -154,12 +154,4 @@ xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
 		android:drawablePadding="8dip"
 		android:visibility="gone" />
 
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
-
 </RelativeLayout>

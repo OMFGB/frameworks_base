@@ -152,20 +152,7 @@
         android:layout_marginRight="80dip"
         />
 
-    <!-- emergency call button shown when sim is PUKd and tab_selector is
-         hidden -->
-    <Button
-        android:id="@+id/emergencyCallButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableLeft="@drawable/ic_emergency"
-        style="@style/Widget.Button.Transparent"
-        android:drawablePadding="8dip"
-        android:layout_marginRight="80dip"
-        android:visibility="gone"
-        />
-
-       <ImageButton 
+        <ImageButton 
             android:id="@+id/smsShortcutButton"
             android:src="@drawable/lock_sms_button"
             android:layout_alignParentBottom="true"
@@ -189,13 +176,18 @@
             android:background="@color/transparent"
             />
 
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
+    <!-- emergency call button shown when sim is PUKd and tab_selector is
+         hidden -->
+    <Button
+        android:id="@+id/emergencyCallButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:drawableLeft="@drawable/ic_emergency"
+        style="@style/Widget.Button.Transparent"
+        android:drawablePadding="8dip"
+        android:layout_marginRight="80dip"
+        android:visibility="gone"
+        />
 
 </LinearLayout>
 

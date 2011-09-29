@@ -25,6 +25,8 @@ import com.android.internal.widget.SenseLikeLock;
 import com.android.internal.widget.SlidingTab;
 import com.android.internal.widget.UnlockRing;
 
+import com.android.internal.policy.impl.MusicWidget;
+
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
@@ -99,6 +101,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     
     private ImageButton mLockSMS;
     private ImageButton mLockPhone;
+
+    private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+    private boolean mIsMusicActive = am.isMusicActive();
+    private LinearLayout mMusicLayoutTop;
+    private MusicWidget mMusicWidget;
 
     // current configuration state of keyboard and display
     private int mKeyboardHidden;
@@ -257,7 +264,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockPatternUtils = lockPatternUtils;
         mUpdateMonitor = updateMonitor;
         mCallback = callback;
-
         mEnableMenuKeyInLockScreen = shouldEnableMenuKey();
 
         mCreationOrientation = configuration.orientation;
@@ -335,6 +341,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         } else if (mUseSenseLike) {
            mSenseRingSelector = (SenseLikeLock) findViewById(R.id.sense_selector);
            mSenseRingSelector.setOnSenseLikeSelectorTriggerListener(this);
+	}
+
+	mMusicWidget = new MusicWidget(context,callback,updateMonitor);
+	mMusicLayoutTop = (LinearLayout) findViewById(R.id.musicwidget_top);
+
+	if (am.isMusicActive()) {
+          mMusicWidget.setTopLayout();
+          mMusicLayoutTop.addView(mMusicWidget);
 	}
 
         mEmergencyCallText = (TextView) findViewById(R.id.emergencyCallText);
@@ -659,9 +673,16 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         // cancels the grab.
         if (grabbedState != SlidingTab.OnTriggerListener.NO_HANDLE) {
             mCallback.pokeWakelock();
-        }
+/**        }else{
+ 	        if(am.isMusicActive())
+      		    mMusicWidget.setVisibility(View.VISIBLE);
+                    mMusicWidget.setControllerVisibility(true,mMusicWidget.isControllerShowing());  
+    		}else if(!am.isMusicActive()){
+      		    mMusicWidget.setVisibility(View.GONE);
+    		} **/
+        }  
     }
-    
+
     public void onHoneyGrabbedStateChange(View v, int grabbedState) {
         if (grabbedState != UnlockRing.OnHoneyTriggerListener.NO_HANDLE) {
             mCallback.pokeWakelock();
@@ -1012,13 +1033,20 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     /** {@inheritDoc} */
     public void onPause() {
-
+	if(am.isMusicActive())mMusicWidget.onPause();
     }
 
     /** {@inheritDoc} */
     public void onResume() {
         resetStatusInfo(mUpdateMonitor);
         mLockPatternUtils.updateEmergencyCallButtonState(mEmergencyCallButton);
+	if(am.isMusicActive()) {
+	    mMusicWidget.onResume();
+	    mMusicWidget.setVisibility(View.VISIBLE);
+	    mMusicWidget.setControllerVisibility(true,mMusicWidget.isControllerShowing());  
+        }else if(!am.isMusicActive()){
+	    mMusicWidget.setVisibility(View.GONE);
+        }
     }
 
     /** {@inheritDoc} */
@@ -1027,6 +1055,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockPatternUtils = null;
         mUpdateMonitor = null;
         mCallback = null;
+	mMusicWidget.cleanUp();
     }
 
     /** {@inheritDoc} */
@@ -1050,15 +1079,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
    @Override
    public void onSenseLikeSelectorTrigger(View v, int Trigger) {
-   // TODO Auto-generated method stub
 	   mCallback.goToUnlockScreen();
-
-	   /*
-	   switch(Trigger){
-	   case SenseLikeLock.OnSenseLikeSelectorTriggerListener.
-	   
-	   
-	   }
-	   */
    }
 }

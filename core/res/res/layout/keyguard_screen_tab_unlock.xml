@@ -21,14 +21,12 @@
   state of the device, as well as instructions on how to get past it
   depending on the state of the device.  It is the same for landscape
   and portrait.-->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:background="#70000000"
     android:id="@+id/root">
-<RelativeLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
     <TextView
         android:id="@+id/carrier"
@@ -155,6 +153,30 @@
         android:layout_marginBottom="60dip"
         />
 
+	<ImageButton 
+	    android:id="@+id/smsShortcutButton"
+            android:src="@drawable/lock_sms_button"
+            android:layout_alignParentBottom="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_alignParentLeft="true"
+            android:padding="15dp"
+            android:background="@color/transparent"
+	    />
+
+        <ImageButton 
+            android:id="@+id/phoneShortcutButton"
+            android:src="@drawable/lock_phone_button"
+            android:layout_alignParentBottom="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_alignParentRight="true"
+            android:padding="15dp"
+            android:background="@color/transparent"
+            />
+
     <!-- emergency call button shown when sim is PUKd and tab_selector is
          hidden -->
     <Button
@@ -194,14 +216,4 @@
             android:background="@color/transparent"
             />
 </RelativeLayout>
-
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
-
-</FrameLayout>
 

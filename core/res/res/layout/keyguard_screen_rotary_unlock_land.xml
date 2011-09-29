@@ -21,13 +21,13 @@
   state of the device, as well as instructions on how to get past it
   depending on the state of the device.  It is the same for landscape
   and portrait.-->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#70000000"
+    android:gravity="center_horizontal"
     android:id="@+id/root">
-<RelativeLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
     <TextView
         android:id="@+id/carrier"
@@ -153,30 +153,4 @@
                 android:layout_alignParentBottom="true"
         />
 
-    <!-- emergency call button shown when sim is PUKd and tab_selector is
-         hidden -->
-    <Button
-        android:id="@+id/emergencyCallButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableLeft="@drawable/ic_emergency"
-        android:layout_centerInParent="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="80dip"
-        style="@style/Widget.Button.Transparent"
-        android:drawablePadding="8dip"
-        android:visibility="gone"
-        />
-
 </RelativeLayout>
-
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
-
-</FrameLayout>
-

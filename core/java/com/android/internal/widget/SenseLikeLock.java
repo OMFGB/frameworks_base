@@ -54,6 +54,7 @@ import com.android.internal.view.FastBitmapDrawable;
 
 
 
+
 /*
  * This class represents an unlock ring that can be moved 
  * around along with definable shortcuts that can also

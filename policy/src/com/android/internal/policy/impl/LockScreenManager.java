@@ -1,7 +1,19 @@
 package com.android.internal.policy.impl;
 
+import java.util.List;
+
+import android.content.ComponentName;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.provider.Settings;
 import android.provider.Settings.System;
@@ -39,6 +51,7 @@ public class LockScreenManager implements OnTriggerListener, OnDialTriggerListen
 OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTriggerListener {
 
 
+	private static final boolean DBG = false;
 	private String TAG = this.getClass().getSimpleName();
 	private ContentResolver mResolver;
 	private int mType;
@@ -214,7 +227,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 	 * can manage.
 	 * 
 	 */
-	public void setupActiveLockscreen(){
+	public void setupActiveLockscreen(Context context){
 		
 		switch(mType){
 		
@@ -232,6 +245,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 			} case Settings.System.USE_SENSELIKE_LOCKSCREEN:{
 		          SenseLikeLock senseringselector = (SenseLikeLock) mLockscreen.findViewById(R.id.sense_selector);
 		          senseringselector.setOnSenseLikeSelectorTriggerListener(this);
+		          setupSenseLikeRingShortcuts(context, senseringselector);
 		          mUnlocker = (View) senseringselector;
 				break;
 			}case Settings.System.USE_TAB_LOCKSCREEN:{
@@ -560,10 +574,199 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
              mAudioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
          }
  }
+     private void setupSenseLikeRingShortcuts(Context context, SenseLikeLock senseringselector){
+    	 
+    	 
+    	 
+    	 int numapps = 0;
+    	 Intent intent = new Intent();
+    	 PackageManager pm = context.getPackageManager();
+    	 Intent[] customApps = new Intent[4];
+    	 Drawable[] shortcutsicons;
+
+    	 Log.d(TAG,"Seting up sense ring");
+    	 for(int i = 0; i < mCustomQuandrants.length ; i++){
+    	 if(mCustomQuandrants[i] != null){
+    	 numapps++;
+    	 }
+    	 }
+
+    	 Log.d(TAG,"Setting intents");
+    	 if(numapps != 4){
+    	 Log.d(TAG,"Seting defaults");
+    	 customApps = senseringselector.setDefaultIntents();
+    	 for(int i = 0; i < 4; i++){
+    	 if(mCustomQuandrants[i] != null){
+    	 Log.d(TAG,"Setting custom intent #" + i);
+    	 try{
+    	 intent = Intent.parseUri(mCustomQuandrants[i], 0);
+    	 }catch (java.net.URISyntaxException ex) {
+    	 Log.w(TAG, "Invalid hotseat intent: " + mCustomQuandrants[i]);
+    	 // bogus; leave intent=null
+    	 }
+
+    	 }
+    	 }
+    	 numapps = 4;
+    	 }else for(int i = 0; i < numapps ; i++){
+
+    	 Log.d(TAG,"Setting custom intent #" + i);
+    	 try{
+    	 intent = Intent.parseUri(mCustomQuandrants[i], 0);
+    	 }catch (java.net.URISyntaxException ex) {
+    	 Log.w(TAG, "Invalid hotseat intent: " + mCustomQuandrants[i]);
+    	 ex.printStackTrace();
+    	 }
+
+
+    	 ResolveInfo bestMatch = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+    	 List<ResolveInfo> allMatches = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+
+    	 if (DBG) {
+    	 Log.d(TAG, "Best match for intent: " + bestMatch);
+    	 Log.d(TAG, "All matches: ");
+    	 for (ResolveInfo ri : allMatches) {
+    	 Log.d(TAG, " --> " + ri);
+    	 }
+    	 }
+
+    	 ComponentName com = new ComponentName(
+    	 bestMatch.activityInfo.applicationInfo.packageName,
+    	 bestMatch.activityInfo.name);
+
+    	 customApps[i] = new Intent(Intent.ACTION_MAIN).setComponent(com);
+
+
+
+
+    	 }
+
+    	 shortcutsicons = new Drawable[numapps];
+    	 float iconScale =0.80f;
+
+    	 for(int i = 0; i < numapps ; i++){
+    	 try {
+    	 shortcutsicons[i] = pm.getActivityIcon(customApps[i]);
+    	 shortcutsicons[i] = scaledDrawable(shortcutsicons[i], context, iconScale);
+    	            } catch (ArrayIndexOutOfBoundsException ex) {
+    	                Log.w(TAG, "Missing shortcut_icons array item #" + i);
+    	                shortcutsicons[i] = null;
+    	            } catch (PackageManager.NameNotFoundException e) {
+    	          e.printStackTrace();
+    	          shortcutsicons[i] = null;
+    	             //Do-Nothing
+    	            }
+    	 }
+
+    	 // Finnally set the image
+    	 senseringselector.setShortCutsDrawables(shortcutsicons[0], shortcutsicons[1], shortcutsicons[2], shortcutsicons[3]);
+    	    
+
+    	    }
      
+
+     private Drawable scaledDrawable(Drawable icon,Context context, float scale) {
+	
+	  final Resources resources=context.getResources();
+	  int sIconHeight= (int) resources.getDimension(android.R.dimen.app_icon_size);
+	  int sIconWidth = sIconHeight;
+	
+	  int width = sIconWidth;
+	  int height = sIconHeight;
+	  Bitmap original;
+		  try{
+		  original= Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+		  } catch (OutOfMemoryError e) {
+		  return icon;
+		  }
+		  
+		  Canvas canvas = new Canvas(original);
+		  canvas.setBitmap(original);
+		  icon.setBounds(0,0, width, height);
+		  icon.draw(canvas);
+		  
+		  try{
+		  Bitmap endImage=Bitmap.createScaledBitmap(original, (int)(width*scale), (int)(height*scale), true);
+		  original.recycle();
+		  return new FastBitmapDrawable(endImage);
+		  } catch (OutOfMemoryError e) {
+		  return icon;
+		  }
+		  
+  }
      public void setVisibility(int vis){
     	 
     	 mUnlocker.setVisibility(vis);
     	 
      }
+     
+
+     public class FastBitmapDrawable extends Drawable {
+         private Bitmap mBitmap;
+         private int mWidth;
+         private int mHeight;
+
+         public FastBitmapDrawable(Bitmap b) {
+             mBitmap = b;
+             if (b != null) {
+                 mWidth = mBitmap.getWidth();
+                 mHeight = mBitmap.getHeight();
+             } else {
+                 mWidth = mHeight = 0;
+             }
+         }
+
+         @Override
+         public void draw(Canvas canvas) {
+             canvas.drawBitmap(mBitmap, 0.0f, 0.0f, null);
+         }
+
+         @Override
+         public int getOpacity() {
+             return PixelFormat.TRANSLUCENT;
+         }
+
+         @Override
+         public void setAlpha(int alpha) {
+         }
+
+         @Override
+         public void setColorFilter(ColorFilter cf) {
+         }
+
+         @Override
+         public int getIntrinsicWidth() {
+             return mWidth;
+         }
+
+         @Override
+         public int getIntrinsicHeight() {
+             return mHeight;
+         }
+
+         @Override
+         public int getMinimumWidth() {
+             return mWidth;
+         }
+
+         @Override
+         public int getMinimumHeight() {
+             return mHeight;
+         }
+
+         public void setBitmap(Bitmap b) {
+             mBitmap = b;
+             if (b != null) {
+                 mWidth = mBitmap.getWidth();
+                 mHeight = mBitmap.getHeight();
+             } else {
+                 mWidth = mHeight = 0;
+             }
+         }
+
+         public Bitmap getBitmap() {
+             return mBitmap;
+         }
+     }
+
 }

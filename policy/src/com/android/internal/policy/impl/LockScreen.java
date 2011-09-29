@@ -319,32 +319,15 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
         
         if (DBG) Log.v(TAG, "Creation orientation = " + mCreationOrientation);
-        if (mCreationOrientation == Configuration.ORIENTATION_PORTRAIT) {
-	    if (mUseTab) {
-               inflater.inflate(R.layout.keyguard_screen_tab_unlock, this, true);
-	    } else if (mUseHoney) {
-               inflater.inflate(R.layout.keyguard_screen_honey_unlock, this, true);
-	    } else if (mUseRotary) {
-               inflater.inflate(R.layout.keyguard_screen_rotary_unlock, this, true);
-	    } else if (mUseCircular) {
-		inflater.inflate(R.layout.keyguard_screen_circular_unlock, this, true);
-	    } else if (mUseSenseLike) {
-                inflater.inflate(R.layout.keyguard_screen_senselike_unlock, this, true);
-	    }
-        } else {
-            if (mUseTab) {
-               inflater.inflate(R.layout.keyguard_screen_tab_unlock_land, this, true);
-            } else if (mUseHoney) {
-               inflater.inflate(R.layout.keyguard_screen_honey_unlock_land, this, true);
-            } else if (mUseRotary) {
-               inflater.inflate(R.layout.keyguard_screen_rotary_unlock_land, this, true);
-            } else if (mUseCircular) {
-                inflater.inflate(R.layout.keyguard_screen_circular_unlock_land, this, true);
-            } else if (mUseSenseLike) {
-                inflater.inflate(R.layout.keyguard_screen_senselike_unlock_land, this, true);
-            }
-        }
-
+		Log.d(TAG, "VIEWS REMOVED!");
+		removeAllViews();
+	
+		mManager = new LockScreenManager(getContext().getContentResolver(), this);
+		final LayoutInflater inflater = LayoutInflater.from(context);
+		mManager.inflateLockscreen(inflater, mCreationOrientation == Configuration.ORIENTATION_PORTRAIT);
+		mManager.setCallbackInterface(this);
+		mManager.setupActiveLockscreen(this.getContext());
+		mUnlocker = mManager.retreiveActiveLockscreen();
         mCarrier = (TextView) findViewById(R.id.carrier);
         // Required for Marquee to work
         mCarrier.setSelected(true);
@@ -355,7 +338,8 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mStatus2 = (TextView) findViewById(R.id.status2);
 
         mScreenLocked = (TextView) findViewById(R.id.screenLocked);
-
+        //setUpShortCuts();
+        setUpMusicControls();
         
         // Set up the selectors
         if (mUseTab) {
@@ -423,10 +407,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private void setUpShortCuts() {
 
         mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
-	mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
-
-	mLockSMS.setVisibility(View.GONE);
-	mLockPhone.setVisibility(View.GONE);
+        mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
     	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
 	        mCallback.pokeWakelock();

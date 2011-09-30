@@ -2061,7 +2061,12 @@ public final class Settings {
 		 * @hide
 		 */
 		public static final String USE_SCREENOFF_ANIM = "use_screenoff_anim"; 
-
+		/**
+		 * Custom lockscreen apps enabled
+		 * @hide
+		 */
+		public static final String USE_CUSTOM_LOCK_APPS= "use_custom_lock_apps"; 
+		
 		/** @hide */
 		public static String LOCKSCREEN_CUSTOM_APP_HONEY_1 = "lockscreen_quadrant_1_uri";
 

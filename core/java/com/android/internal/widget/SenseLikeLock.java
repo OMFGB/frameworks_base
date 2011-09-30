@@ -244,7 +244,7 @@ public class SenseLikeLock extends View{
             	int i = OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED;
             	int ar[] = {(width - mLockIcon.getWidth())/2, (height -(2*(mLockIcon.getHeight()/3))) };
             
-            if(isShortTriggered( eventX, eventY)){
+            if((mGrabbedState == OnSenseLikeSelectorTriggerListener.ICON_SHORTCUT_GRABBED_STATE_GRABBED ) && isShortTriggered( eventX, eventY)){
             	Log.d(TAG, "Shortcut Triggered");
             
             	switch(this.mShortCutSelected){
@@ -273,7 +273,7 @@ public class SenseLikeLock extends View{
             else{
             	
             	if(isLockIconTriggered()){
-            		reset();
+            	
             		mTriggering = true;
             		
             	}
@@ -286,8 +286,12 @@ public class SenseLikeLock extends View{
             break;
         case MotionEvent.ACTION_UP:
             if (DBG) log("touch-up");
-            reset();
-            invalidate();
+      
+    		if(mTriggering)dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
+    		else{
+    			reset();
+    			invalidate();
+    		}
             break;
         case MotionEvent.ACTION_CANCEL:
             if (DBG) log("touch-cancel");
@@ -311,13 +315,12 @@ public class SenseLikeLock extends View{
     		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
     		return true;
     		
-    	}// dispatch the trigger event
-    	if( (mLockY <= (heighth/4)) || (mLockY >= (heighth - padding )) ){
+    	}
+    	if( (mLockY <= (heighth/2)) || (mLockY >= (heighth - padding )) ){
 
-    		Log.d(TAG, "Dispatching vertical lock trigger event");
-    		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
+    		Log.d(TAG, "Setting Dispatch for vertical lock trigger event");
     		return true;
-    	}// dispatch the trigger event
+    	}
     	return false;
 	}
 	private boolean isShortTriggered(int x, int y) {

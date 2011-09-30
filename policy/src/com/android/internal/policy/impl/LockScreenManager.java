@@ -15,12 +15,14 @@ import android.graphics.ColorFilter;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
+import android.os.Vibrator;
 import android.provider.Settings;
 import android.provider.Settings.System;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 
 import com.android.internal.R;
@@ -54,7 +56,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 	private static final boolean DBG = false;
 	private String TAG = this.getClass().getSimpleName();
 	private ContentResolver mResolver;
-	private int mType;
+	private final int mType;
 	private ViewGroup mLockscreen;
 	private View mUnlocker;
 	private LockscreenManagerCallback mLockscreenManagerCallback;
@@ -65,7 +67,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     private Intent[] mCustomApps = new Intent[4];
 
     private boolean mLockscreenShortcuts;
-	private String[] mCustomQuandrants = new String[4];
+	 private String[] mCustomQuandrants = new String[4];
 
 	
 	/**
@@ -94,57 +96,6 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 	            Settings.System.LOCKSCREEN_CUSTOM_APP_HONEY_4));
 		
 		
-	}
-	
-	/**
-	 * Set the callback interface from which to respond the 
-	 * the lockscreen with
-	 * 
-	 * @param l The interfcae to set
-	 * @return True if succeful
-	 */
-	public boolean setCallbackInterface(LockscreenManagerCallback l){
-		
-		if(l != null){
-			mLockscreenManagerCallback = l;
-			return true;
-		}
-		
-		return false;
-	}
-	
-	/**
-	 * Querys the active lockscreen
-	 * 
-	 * @return the lockscreen type in integer format
-	 */
-	private  int queryActiveLockscreen(){
-		
-		int i = Settings.System.getInt(mResolver, Settings.System.LOCKSCREEN_TYPE, Settings.System.USE_TAB_LOCKSCREEN);
-		
-		switch(i)
-		{
-		case Settings.System.USE_HONEYCOMB_LOCKSCREEN:
-			return Settings.System.USE_HONEYCOMB_LOCKSCREEN;
-		
-		case Settings.System.USE_ROTARY_LOCKSCREEN:
-			return Settings.System.USE_ROTARY_LOCKSCREEN;
-
-		case Settings.System.USE_SENSELIKE_LOCKSCREEN:
-			return Settings.System.USE_SENSELIKE_LOCKSCREEN;
-
-		case Settings.System.USE_TAB_LOCKSCREEN:
-			return Settings.System.USE_TAB_LOCKSCREEN;
-			
-		case Settings.System.USE_HCC_LOCKSCREEN:
-			return Settings.System.USE_HCC_LOCKSCREEN;
-
-
-		}
-
-
-		// Always return the system default lockcsreen
-		return Settings.System.USE_TAB_LOCKSCREEN;
 	}
 	
 	/**
@@ -183,7 +134,6 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 			
 			}
 			
-			
 		}
 		else{
 			
@@ -210,18 +160,6 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 				}
 			
 		}
-	}
-	
-	/**
-	 * You must call {@link inflateLockscreen} and {@link aetupActiveLocksreen}
-	 * before using this function.
-	 * 
-	 * @return The active initialized lockscreen that is selected
-	 */
-	public View retreiveActiveLockscreen(){
-		
-
-		return mUnlocker;
 	}
 	
 	/**
@@ -263,6 +201,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 		                R.drawable.jog_tab_bar_left_unlock,
 		                R.drawable.jog_tab_left_unlock);
 				mUnlocker = (View) tmp;
+				setUpShortCuts(context);
 				break;
 			}case Settings.System.USE_HCC_LOCKSCREEN:{
 					  CircularSelector circularselector = (CircularSelector) mLockscreen.findViewById(R.id.circular_selector);
@@ -274,9 +213,53 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 		}
 	}
 
-	
+	/**
+	 * You must call {@link inflateLockscreen} and {@link aetupActiveLocksreen}
+	 * before using this function.
+	 * 
+	 * @return The active initialized lockscreen that is selected
+	 */
+	public View retreiveActiveLockscreen(){
+		
 
-    /** {@inheritDoc} */
+		return mUnlocker;
+	}
+	
+	/**
+	 * Querys the active lockscreen
+	 * 
+	 * @return the lockscreen type in integer format
+	 */
+	private  int queryActiveLockscreen(){
+		
+		int i = Settings.System.getInt(mResolver, Settings.System.LOCKSCREEN_TYPE, Settings.System.USE_TAB_LOCKSCREEN);
+		Log.d(TAG, "The integer type is" + i);
+		switch(i)
+		{
+		case Settings.System.USE_HONEYCOMB_LOCKSCREEN:
+			return Settings.System.USE_HONEYCOMB_LOCKSCREEN;
+		
+		case Settings.System.USE_ROTARY_LOCKSCREEN:
+			return Settings.System.USE_ROTARY_LOCKSCREEN;
+	
+		case Settings.System.USE_SENSELIKE_LOCKSCREEN:
+			return Settings.System.USE_SENSELIKE_LOCKSCREEN;
+	
+		case Settings.System.USE_TAB_LOCKSCREEN:
+			return Settings.System.USE_TAB_LOCKSCREEN;
+			
+		case Settings.System.USE_HCC_LOCKSCREEN:
+			return Settings.System.USE_HCC_LOCKSCREEN;
+	
+	
+		}
+	
+	
+		// Always return the system default lockcsreen
+		return Settings.System.USE_TAB_LOCKSCREEN;
+	}
+
+	/** {@inheritDoc} */
     @Override
     public void onTrigger(View v, int whichHandle) {
 
@@ -298,7 +281,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
                 mAudioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
             }
 
-            updateRightTabResources();
+            updateResources();
 
             String message = mSilentMode ?
             		mLockscreenManagerCallback.getStringWithContext(R.string.global_action_silent_mode_on_status) :
@@ -319,27 +302,172 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     }
 
     /** {@inheritDoc} */
+	 public void onDialTrigger(View v, int whichHandle) {
+	
+	   v.getClass().getSimpleName();
+	     boolean mUnlockTrigger=false;
+	     boolean mCustomAppTrigger=false;
+	
+	     if(whichHandle == RotarySelector.OnDialTriggerListener.LEFT_HANDLE){
+	         mUnlockTrigger=true;
+	     }
+	
+	     if (mUnlockTrigger) {
+	         this.mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	     } 
+	     
+	     if (whichHandle == RotarySelector.OnDialTriggerListener.RIGHT_HANDLE) {
+	    	 // toggle silent mode
+	    	 toggleSilentMode();
+	    	 updateResources();
+	
+	    	 String message = mSilentMode ?  mLockscreenManagerCallback.getStringWithContext(R.string.global_action_silent_mode_on_status) :
+	    		 mLockscreenManagerCallback.getStringWithContext(R.string.global_action_silent_mode_off_status);
+	
+	    	 final int toastIcon = mSilentMode ? R.drawable.ic_lock_ringer_off
+	    			 : R.drawable.ic_lock_ringer_on;
+	
+	
+	    	 final int toastColor = mSilentMode ? mLockscreenManagerCallback.getColorResource(
+	    			 R.color.keyguard_text_color_soundoff) : mLockscreenManagerCallback.getColorResource(
+	    					 R.color.keyguard_text_color_soundon);
+	
+	
+	    			 mLockscreenManagerCallback.toastMessageFromManager( message, toastColor, toastIcon);
+	    			 mLockscreenManagerCallback.pokeWakeLockFromManager();
+	     }
+	 }
+
+	/** {@inheritDoc} */
     @Override
     public void onGrabbedStateChange(View v, int grabbedState) {
-    	SlidingTab selector = (SlidingTab) mUnlocker;
     	
- 	   v.getClass().getSimpleName();
-        if (grabbedState == SlidingTab.OnTriggerListener.RIGHT_HANDLE) {
-            mSilentMode = isSilentMode();
-            selector.setRightHintText(mSilentMode ? R.string.lockscreen_sound_on_label
-                    : R.string.lockscreen_sound_off_label);
-        }
-        // Don't poke the wake lock when returning to a state where the handle is
-        // not grabbed since that can happen when the system (instead of the user)
-        // cancels the grab.
-        if (grabbedState != SlidingTab.OnTriggerListener.NO_HANDLE) {
-        	mLockscreenManagerCallback.pokeWakeLockFromManager();
-        }
+    	switch(mType){
+		
+		
+		case Settings.System.USE_HONEYCOMB_LOCKSCREEN:
+			break;
+		case Settings.System.USE_ROTARY_LOCKSCREEN:{
+			RotarySelector selector = (RotarySelector) mUnlocker;
+		        if (grabbedState == RotarySelector.OnDialTriggerListener.RIGHT_HANDLE) {
+			        mLockscreenManagerCallback.pokeWakeLockFromManager();
+		        }
+		        if (grabbedState == RotarySelector.OnDialTriggerListener.LEFT_HANDLE) {
+		            mLockscreenManagerCallback.pokeWakeLockFromManager();
+		        }
+	        break;
+	        }
+		case Settings.System.USE_SENSELIKE_LOCKSCREEN:
+			break;
+		case Settings.System.USE_TAB_LOCKSCREEN:{
+			SlidingTab selector = (SlidingTab) mUnlocker;
+		        if (grabbedState == SlidingTab.OnTriggerListener.RIGHT_HANDLE) {
+		            mSilentMode = isSilentMode();
+		            selector.setRightHintText(mSilentMode ? R.string.lockscreen_sound_on_label
+		                    : R.string.lockscreen_sound_off_label);
+		            mUnlocker = (View) selector;
+		        }
+		        // Don't poke the wake lock when returning to a state where the handle is
+		        // not grabbed since that can happen when the system (instead of the user)
+		        // cancels the grab.
+			    if (grabbedState != SlidingTab.OnTriggerListener.NO_HANDLE) {
+		        	mLockscreenManagerCallback.pokeWakeLockFromManager();
+		        }
+				break;
+			}
+		case Settings.System.USE_HCC_LOCKSCREEN:
+			break;
+        
+		
+		}
+    	
+    	
+ 	   
     }
-    @Override
+    public void onHoneyTrigger(View v, int trigger) {
+	
+		UnlockRing selector = (UnlockRing) mUnlocker;
+	   v.getClass().getSimpleName();
+	     final String TOGGLE_SILENT = "silent_mode";
+	     
+	     if (trigger == UnlockRing.OnHoneyTriggerListener.UNLOCK_HANDLE) {
+	         mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	
+	     } else if (mCustomQuandrants[0] != null
+	             && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_1) {
+	         if (mCustomQuandrants[0].equals(TOGGLE_SILENT)) {
+	             toggleSilentMode();
+	             mLockscreenManagerCallback.pokeWakeLockFromManager();
+	             selector.reset(false);
+	         } else {
+	             try {
+	                 Intent i = Intent.parseUri(mCustomQuandrants[0], 0);
+	                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+	                         | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+	                 mLockscreenManagerCallback.startActivityFromManager(i);
+	                 mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	             } catch (Exception e) {
+	            	 selector.reset(false);
+	             }
+	         }
+	     } else if (mCustomQuandrants[1] != null
+	             && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_2) {
+	         if (mCustomQuandrants[1].equals(TOGGLE_SILENT)) {
+	             toggleSilentMode();
+	             selector.reset(false);
+	             mLockscreenManagerCallback.pokeWakeLockFromManager();
+	         } else {
+	             try {
+	                 Intent i = Intent.parseUri(mCustomQuandrants[1], 0);
+	                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+	                         | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+	                 mLockscreenManagerCallback.startActivityFromManager(i);
+	                 mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	             } catch (Exception e) {
+	            	 selector.reset(false);
+	             }
+	         }
+	     } else if (mCustomQuandrants[2] != null
+	             && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_3) {
+	         if (mCustomQuandrants[2].equals(TOGGLE_SILENT)) {
+	             toggleSilentMode();
+	             selector.reset(false);
+	             mLockscreenManagerCallback.pokeWakeLockFromManager();
+	         } else {
+	             try {
+	                 Intent i = Intent.parseUri(mCustomQuandrants[2], 0);
+	                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+	                         | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+	                 mLockscreenManagerCallback.startActivityFromManager(i);
+	                 mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	             } catch (Exception e) {
+	                 selector.reset(false);
+	             }
+	         }
+	     } else if (mCustomQuandrants[3] != null
+	             && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_4) {
+	         if (mCustomQuandrants[3].equals(TOGGLE_SILENT)) {
+	             toggleSilentMode();
+	             selector.reset(false);
+	             mLockscreenManagerCallback.pokeWakeLockFromManager();
+	         } else {
+	             try {
+	                 Intent i = Intent.parseUri(mCustomQuandrants[3], 0);
+	                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+	                         | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+	                 mLockscreenManagerCallback.startActivityFromManager(i);
+	                 mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	             } catch (Exception e) {
+	                 selector.reset(false);
+	             }
+	         }
+	     }
+	     mUnlocker = (View) selector;
+	 }
+
+	@Override
     public void onHoneyGrabbedStateChange(View v, int grabbedState) {
 
- 	   v.getClass().getSimpleName();
         if (grabbedState != UnlockRing.OnHoneyTriggerListener.NO_HANDLE) {
             
         	mLockscreenManagerCallback.pokeWakeLockFromManager();
@@ -349,13 +477,13 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     @Override
     public void OnSenseLikeSelectorGrabbedStateChanged(View v, int GrabState) {
 
- 	   v.getClass().getSimpleName();
+ 	  
  	   mLockscreenManagerCallback.pokeWakeLockFromManager();
 
     }
     @Override
     public void onSenseLikeSelectorTrigger(View v, int Trigger) {
- 	   v.getClass().getSimpleName();
+ 	 
  	  mLockscreenManagerCallback.goToUnlockScreenFromManager();
  	  
  	  switch(Trigger){
@@ -387,175 +515,20 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
  
     }
     
-    public boolean setAudioManager(AudioManager am){
-    	
-    	if(am != null){
-    		mAudioManager = am;
-    		return true;
-    	}
-    	
-    	return false;
-    	
-    }
-    
-    
-    private boolean isSilentMode() {
-        return mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;
-    }
-    
-    public interface LockscreenManagerCallback{
-    	
-    	
-    	void pokeWakeLockFromManager();
-    	void pokeWakeLockFromManager(int i);
-    	void goToUnlockScreenFromManager();
-    	void toastMessageFromManager(final String text, final int color, final int iconResourceId);
-    	void startActivityFromManager(Intent i);
-    	String getStringWithContext(int rid);
-    	int getColorResource(int rid);
-    	
-    }
-
-    public void destroyManager(){
-    	
-    	mResolver = null;
-    	mCustomQuandrants = null;
-    	mLockscreenManagerCallback = null;
-    	mUnlocker = null;
-    	
-    }
     public void OnCircularSelectorGrabbedStateChanged(View v, int GrabState) {
+	
+	  
+	   mLockscreenManagerCallback.pokeWakeLockFromManager();
+	
+	 }
 
-  	   v.getClass().getSimpleName();
-  	   mLockscreenManagerCallback.pokeWakeLockFromManager();
+	public void onCircularSelectorTrigger(View v, int Trigger) {
+	    mLockscreenManagerCallback.goToUnlockScreenFromManager();
+	     //
+	
+	 }
 
-     }
-     
-     public void onHoneyTrigger(View v, int trigger) {
-
-    	UnlockRing selector = (UnlockRing) mUnlocker;
-  	   v.getClass().getSimpleName();
-         final String TOGGLE_SILENT = "silent_mode";
-         
-         if (trigger == UnlockRing.OnHoneyTriggerListener.UNLOCK_HANDLE) {
-             mLockscreenManagerCallback.goToUnlockScreenFromManager();
-
-         } else if (mCustomQuandrants[0] != null
-                 && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_1) {
-             if (mCustomQuandrants[0].equals(TOGGLE_SILENT)) {
-                 toggleSilentMode();
-                 mLockscreenManagerCallback.pokeWakeLockFromManager();
-                 selector.reset(false);
-             } else {
-                 try {
-                     Intent i = Intent.parseUri(mCustomQuandrants[0], 0);
-                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                     mLockscreenManagerCallback.startActivityFromManager(i);
-                     mLockscreenManagerCallback.goToUnlockScreenFromManager();
-                 } catch (Exception e) {
-                	 selector.reset(false);
-                 }
-             }
-         } else if (mCustomQuandrants[1] != null
-                 && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_2) {
-             if (mCustomQuandrants[1].equals(TOGGLE_SILENT)) {
-                 toggleSilentMode();
-                 selector.reset(false);
-                 mLockscreenManagerCallback.pokeWakeLockFromManager();
-             } else {
-                 try {
-                     Intent i = Intent.parseUri(mCustomQuandrants[1], 0);
-                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                     mLockscreenManagerCallback.startActivityFromManager(i);
-                     mLockscreenManagerCallback.goToUnlockScreenFromManager();
-                 } catch (Exception e) {
-                	 selector.reset(false);
-                 }
-             }
-         } else if (mCustomQuandrants[2] != null
-                 && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_3) {
-             if (mCustomQuandrants[2].equals(TOGGLE_SILENT)) {
-                 toggleSilentMode();
-                 selector.reset(false);
-                 mLockscreenManagerCallback.pokeWakeLockFromManager();
-             } else {
-                 try {
-                     Intent i = Intent.parseUri(mCustomQuandrants[2], 0);
-                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                     mLockscreenManagerCallback.startActivityFromManager(i);
-                     mLockscreenManagerCallback.goToUnlockScreenFromManager();
-                 } catch (Exception e) {
-                     selector.reset(false);
-                 }
-             }
-         } else if (mCustomQuandrants[3] != null
-                 && trigger == UnlockRing.OnHoneyTriggerListener.QUADRANT_4) {
-             if (mCustomQuandrants[3].equals(TOGGLE_SILENT)) {
-                 toggleSilentMode();
-                 selector.reset(false);
-                 mLockscreenManagerCallback.pokeWakeLockFromManager();
-             } else {
-                 try {
-                     Intent i = Intent.parseUri(mCustomQuandrants[3], 0);
-                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                     mLockscreenManagerCallback.startActivityFromManager(i);
-                     mLockscreenManagerCallback.goToUnlockScreenFromManager();
-                 } catch (Exception e) {
-                     selector.reset(false);
-                 }
-             }
-         }
-         mUnlocker = (View) selector;
-     }
-
-     public void onCircularSelectorTrigger(View v, int Trigger) {
-        mLockscreenManagerCallback.goToUnlockScreenFromManager();
-         //
-
-     }
-     
-     /** {@inheritDoc} */
-     public void onDialTrigger(View v, int whichHandle) {
-
-  	   v.getClass().getSimpleName();
-         boolean mUnlockTrigger=false;
-         boolean mCustomAppTrigger=false;
-
-         if(whichHandle == RotarySelector.OnDialTriggerListener.LEFT_HANDLE){
-             mUnlockTrigger=true;
-         }
-
-         if (mUnlockTrigger) {
-             this.mLockscreenManagerCallback.goToUnlockScreenFromManager();
-         } 
-         
-         if (whichHandle == RotarySelector.OnDialTriggerListener.RIGHT_HANDLE) {
-        	 // toggle silent mode
-        	 toggleSilentMode();
-        	 updateRightTabResources();
-
-        	 String message = mSilentMode ?  mLockscreenManagerCallback.getStringWithContext(R.string.global_action_silent_mode_on_status) :
-        		 mLockscreenManagerCallback.getStringWithContext(R.string.global_action_silent_mode_off_status);
-
-        	 final int toastIcon = mSilentMode ? R.drawable.ic_lock_ringer_off
-        			 : R.drawable.ic_lock_ringer_on;
-
-
-        	 final int toastColor = mSilentMode ? mLockscreenManagerCallback.getColorResource(
-        			 R.color.keyguard_text_color_soundoff) : mLockscreenManagerCallback.getColorResource(
-        					 R.color.keyguard_text_color_soundon);
-
-
-        			 mLockscreenManagerCallback.toastMessageFromManager( message, toastColor, toastIcon);
-        			 mLockscreenManagerCallback.pokeWakeLockFromManager();
-         }
-     }
-
-     public void updateRightTabResources() {
+	public void updateResources() {
          boolean vibe = mSilentMode
              && (mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_VIBRATE);
 
@@ -566,6 +539,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 		            .setRightHandleResource(mSilentMode ? (vibe ? R.drawable.ic_jog_dial_vibrate_on
 		                    : R.drawable.ic_jog_dial_sound_off) : R.drawable.ic_jog_dial_sound_on);
 	        	  mUnlocker = (View) selector;
+	        	  break;
 	         }
 	         case Settings.System.USE_TAB_LOCKSCREEN:{
 	        	 SlidingTab selector = (SlidingTab) mUnlocker;
@@ -580,6 +554,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 		                    mSilentMode ? R.drawable.jog_tab_right_sound_on
 		                                : R.drawable.jog_tab_right_sound_off);
 	             mUnlocker = (View) selector;
+	        	 break;
 	         }
          }
      }
@@ -688,7 +663,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	            }
     	 }
 
-    	 // Finnally set the image
+    	 // Finnally set the images
     	 senseringselector.setShortCutsDrawables(shortcutsicons[0], shortcutsicons[1], shortcutsicons[2], shortcutsicons[3]);
     	    
 
@@ -724,14 +699,136 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 		  }
 		  
   }
-     public void setVisibility(int vis){
+     private boolean isSilentMode() {
+	    return mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;
+	}
+
+	public boolean setAudioManager(AudioManager am){
+		
+		if(am != null){
+			mAudioManager = am;
+			return true;
+		}
+		
+		return false;
+		
+	}
+
+private void setUpShortCuts(final Context context) {
+    	
+    	Log.d(TAG, "Setting up the shortcuts");
+
+        mLockSMS = (ImageButton) mLockscreen.findViewById(R.id.smsShortcutButton);
+        mLockPhone = (ImageButton) mLockscreen.findViewById(R.id.phoneShortcutButton);
+
+        mLockSMS.setVisibility(View.GONE);
+        mLockPhone.setVisibility(View.GONE);
+        
+        mLockSMS.setLongClickable(true);
+        mLockPhone.setLongClickable(true);
+        
+    	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+    	    	Log.d(TAG,"Long click activated");
+            	mLockscreenManagerCallback.pokeWakeLockFromManager();
+		Vibrator vibe = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                long[] pattern = {
+                                0, 100
+		};
+		vibe.vibrate(pattern, -1);
+                Intent i = new Intent();
+                Intent intent = new Intent(Intent.ACTION_DIAL); 
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mLockscreenManagerCallback.startActivityFromManager(intent);
+                mLockscreenManagerCallback.goToUnlockScreenFromManager();
+		return true;
+	    }
+	});
+
+	mLockSMS.setOnLongClickListener(new View.OnLongClickListener() {
+	    public boolean onLongClick(View v) {
+	    	Log.d(TAG,"Long click activated");
+            mLockscreenManagerCallback.pokeWakeLockFromManager();
+		Vibrator vibe = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                long[] pattern = {
+                                0, 100
+		};
+		vibe.vibrate(pattern, -1);
+                Intent i = new Intent();
+                Intent mmsIntent = new Intent(Intent.ACTION_VIEW);
+		mmsIntent.setClassName("com.android.mms","com.android.mms.ui.ConversationList");
+                mmsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mLockscreenManagerCallback.startActivityFromManager(mmsIntent);
+                mLockscreenManagerCallback.goToUnlockScreenFromManager();
+		return true;
+	    }
+	});
+	
+	mLockscreenShortcuts = (Settings.System.getInt(context.getContentResolver(),
+		    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
+	Log.d(TAG, "The shortcuts should be shown = "  + Boolean.toString(mLockscreenShortcuts));
+	
+    	if(mLockscreenShortcuts) {
+    	   mLockPhone.setVisibility(View.VISIBLE);
+    	    mLockSMS.setVisibility(View.VISIBLE);
+    	} else {
+    	    mLockPhone.setVisibility(View.GONE);
+    	    mLockSMS.setVisibility(View.GONE);
+    	}
+    }
+	
+	
+	
+	
+	/**
+	 * Set the callback interface from which to respond the 
+	 * the lockscreen with
+	 * 
+	 * @param l The interfcae to set
+	 * @return True if succeful
+	 */
+	public boolean setCallbackInterface(LockscreenManagerCallback l){
+		
+		if(l != null){
+			mLockscreenManagerCallback = l;
+			return true;
+		}
+		
+		return false;
+	}
+
+	public void setVisibility(int vis){
     	 
     	 mUnlocker.setVisibility(vis);
     	 
      }
      
 
-     public class FastBitmapDrawable extends Drawable {
+     public void destroyManager(){
+		
+		mResolver = null;
+		mCustomQuandrants = null;
+		mLockscreenManagerCallback = null;
+		mUnlocker = null;
+		mLockPhone = null;
+		mLockSMS = null;
+		
+	}
+
+	public interface LockscreenManagerCallback{
+		
+		
+		void pokeWakeLockFromManager();
+		void pokeWakeLockFromManager(int i);
+		void goToUnlockScreenFromManager();
+		void toastMessageFromManager(final String text, final int color, final int iconResourceId);
+		void startActivityFromManager(Intent i);
+		String getStringWithContext(int rid);
+		int getColorResource(int rid);
+		
+	}
+
+	public class FastBitmapDrawable extends Drawable {
          private Bitmap mBitmap;
          private int mWidth;
          private int mHeight;
@@ -800,3 +897,32 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
      }
 
 }
+/*
+ * 
+ * Default lockcsreen switch statement
+ * 
+ * 
+ * 	switch(mType){
+				
+				
+				case Settings.System.USE_HONEYCOMB_LOCKSCREEN:
+					break;
+				case Settings.System.USE_ROTARY_LOCKSCREEN:
+					break;
+				case Settings.System.USE_SENSELIKE_LOCKSCREEN:
+					break;
+				case Settings.System.USE_TAB_LOCKSCREEN:
+					break;
+				case Settings.System.USE_HCC_LOCKSCREEN:
+					break;
+		        
+				
+				}
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */

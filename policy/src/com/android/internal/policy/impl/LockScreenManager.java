@@ -672,7 +672,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	 }
 
     	 shortcutsicons = new Drawable[numapps];
-    	 float iconScale =0.70f;
+    	 float iconScale =0.60f;
 
     	 for(int i = 0; i < numapps ; i++){
     	 try {

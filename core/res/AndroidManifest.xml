@@ -58,7 +58,6 @@
     <protected-broadcast android:name="android.intent.action.DOCK_EVENT" />
     <protected-broadcast android:name="android.intent.action.MASTER_CLEAR_NOTIFICATION" />
     <protected-broadcast android:name="android.intent.action.SCREENSHOT" />
-    <protected-broadcast android:name="android.intent.action.POKE_WAKE_LOCK" />
 
     <protected-broadcast android:name="android.app.action.ENTER_CAR_MODE" />
     <protected-broadcast android:name="android.app.action.EXIT_CAR_MODE" />

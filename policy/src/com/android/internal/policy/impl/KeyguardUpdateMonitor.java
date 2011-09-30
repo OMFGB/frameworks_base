@@ -95,7 +95,6 @@ public class KeyguardUpdateMonitor {
     private static final int MSG_SIM_STATE_CHANGE = 304;
     private static final int MSG_RINGER_MODE_CHANGED = 305;
     private static final int MSG_PHONE_STATE_CHANGED = 306;
-    private static final int MSG_MUSIC_SONG_CHANGE = 307;
 
     /**
      * When we receive a
@@ -163,9 +162,6 @@ public class KeyguardUpdateMonitor {
                         break;
                     case MSG_PHONE_STATE_CHANGED:
                         handlePhoneStateChanged((String)msg.obj);
-                        break;
-	            case MSG_MUSIC_SONG_CHANGE:
-                        handleSongUpdate();
                         break;
                 }
             }
@@ -256,8 +252,6 @@ public class KeyguardUpdateMonitor {
                 } else if (TelephonyManager.ACTION_PHONE_STATE_CHANGED.equals(action)) {
                     String state = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
                     mHandler.sendMessage(mHandler.obtainMessage(MSG_PHONE_STATE_CHANGED, state));
-		} else if ("internal.policy.impl.updateSongStatus".equals(action)){
-                    mHandler.sendMessage(mHandler.obtainMessage(MSG_MUSIC_SONG_CHANGE));
                 }
             }
         }, filter);
@@ -334,16 +328,6 @@ public class KeyguardUpdateMonitor {
         }
     }
 
-    /**
-     * Handle {@link #MSG_MUSIC_SONG_CHANGED}
-     */
-    private void handleSongUpdate() {
- 	        for (int i = 0; i< mInfoCallbacks.size(); i++) {
- 	            mInfoCallbacks.get(i).onMusicChanged();
- 	        }
- 	    }
- 	
- 	
     /**     * @param status One of the statuses of {@link android.os.BatteryManager}
      * @return Whether the status maps to a status for being plugged in.
      */
@@ -428,7 +412,6 @@ public class KeyguardUpdateMonitor {
     interface InfoCallback {
         void onRefreshBatteryInfo(boolean showBatteryInfo, boolean pluggedIn, int batteryLevel);
         void onTimeChanged();
-	void onMusicChanged();
 
         /**
          * @param plmn The operator name of the registered network.  May be null if it shouldn't

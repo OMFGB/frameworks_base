@@ -21,13 +21,24 @@
   state of the device, as well as instructions on how to get past it
   depending on the state of the device.  It is the same for landscape
   and portrait.-->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout android:id="@+id/root" 
+    android:layout_width="fill_parent" 
+    android:layout_height="fill_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android" 
+    xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
+    >
+
+<RelativeLayout     
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/root">
-<RelativeLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:gravity="center_horizontal" >
+  
+      <LinearLayout 
+        android:gravity="top" 
+        android:layout_alignParentTop="true" 
+        android:id="@+id/musicwidget_top" 
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" />
 
     <TextView
         android:id="@+id/carrier"
@@ -169,14 +180,4 @@
         />
 
 </RelativeLayout>
-
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
-
 </FrameLayout>
-

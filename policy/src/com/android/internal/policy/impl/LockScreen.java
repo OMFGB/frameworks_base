@@ -19,20 +19,14 @@ package com.android.internal.policy.impl;
 
 import com.android.internal.R;
 import com.android.internal.telephony.IccCard;
-import com.android.internal.widget.CircularSelector;
 import com.android.internal.widget.LockPatternUtils;
-import com.android.internal.widget.RotarySelector;
-import com.android.internal.widget.SenseLikeLock;
-import com.android.internal.widget.SlidingTab;
-import com.android.internal.widget.UnlockRing;
-import com.android.internal.policy.impl.MusicControlsPanel;
 import com.android.internal.policy.impl.LockScreenManager.LockscreenManagerCallback;
-import android.content.BroadcastReceiver;
+import com.android.internal.policy.impl.MusicWidget;
+
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -48,7 +42,6 @@ import android.os.Vibrator;
 import android.provider.Settings;
 import android.text.format.DateFormat;
 import android.util.Log;
-import android.util.Slog;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -57,7 +50,6 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RemoteViews;
 import android.widget.TextView;
 
 import java.io.File;
@@ -84,28 +76,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     private LockPatternUtils mLockPatternUtils;
     private KeyguardUpdateMonitor mUpdateMonitor;
-    public KeyguardScreenCallback mCallback;
+    private KeyguardScreenCallback mCallback;
 
     private TextView mCarrier;
 
-    /* Unlockers */
-    private SlidingTab mSelector = null;
-    private RotarySelector mRotarySelector = null;
-    private CircularSelector mCircularSelector = null;
-    private UnlockRing mUnlockRing = null;
-    private SenseLikeLock mSenseRingSelector = null;
     
-    /* Music Controls */
-    private MusicControlsPanel mMusicPanel;
-    public ImageView mPPIcon;
-    private ImageView mPreviousIcon;
-    private ImageView mNextIcon;
-    private ImageView mAlbumArt;
-    private TextView mNowPlayingInfo;
-    private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
-    private boolean mWasMusicActive = false;
-    private boolean mIsMusicActive = am.isMusicActive();
-
 	/* Other views */
     private TextView mTime;
     private TextView mDate;
@@ -115,8 +90,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private TextView mEmergencyCallText;
     private String mCarrierCap;
     private Button mEmergencyCallButton;
+    
     private ImageButton mLockSMS;
     private ImageButton mLockPhone;
+
+    private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+    private boolean mIsMusicActive = am.isMusicActive();
+    private LinearLayout mMusicLayoutTop;
+    private MusicWidget mMusicWidget;
 
     // current configuration state of keyboard and display
     private int mKeyboardHidden;
@@ -136,15 +117,14 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private String mCharging = null;
     private Drawable mChargingIcon = null;
 
-    private AudioManager mAudioManager;
     private boolean mSilentMode;
+    private AudioManager mAudioManager;
     private String mDateFormatString;
     private java.text.DateFormat mTimeFormat;
     private boolean mEnableMenuKeyInLockScreen;
 
     private LockScreenManager mManager;
     private View mUnlocker;
-
 
     private boolean mLockAlwaysBattery = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.LOCKSCREEN_ALWAYS_BATTERY, 1) == 1);
@@ -154,10 +134,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     private boolean mMenuUnlockScreen = (Settings.System.getInt(mContext.getContentResolver(),
 	    Settings.System.MENU_UNLOCK_SCREEN, 0) == 1);
-
-    private boolean mLockscreenShortcuts = (Settings.System.getInt(mContext.getContentResolver(),
-	    Settings.System.LOCKSCREEN_SHORTCUTS, 0) == 1);
     
+    // Default to show
+    private boolean mShouldShowMusicControls = (Settings.System.getInt(mContext.getContentResolver(),
+    	    Settings.System.LOCKSCREEN_MUSIC_ON, 1) == 1);
+
 
     /**
      * The status of this lock screen.
@@ -240,7 +221,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockPatternUtils = lockPatternUtils;
         mUpdateMonitor = updateMonitor;
         mCallback = callback;
-
         mEnableMenuKeyInLockScreen = shouldEnableMenuKey();
 
         mCreationOrientation = configuration.orientation;
@@ -265,7 +245,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 		mManager.setCallbackInterface(this);
 		mManager.setupActiveLockscreen(this.getContext());
 		mUnlocker = mManager.retreiveActiveLockscreen();
-	
+
         mCarrier = (TextView) findViewById(R.id.carrier);
         // Required for Marquee to work
         mCarrier.setSelected(true);
@@ -276,9 +256,16 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mStatus2 = (TextView) findViewById(R.id.status2);
 
         mScreenLocked = (TextView) findViewById(R.id.screenLocked);
-        //setUpShortCuts();
-        setUpMusicControls();
-        
+
+
+        mMusicWidget = new MusicWidget(context,callback,updateMonitor);
+        mMusicLayoutTop = (LinearLayout) findViewById(R.id.musicwidget_top);
+	
+		if (am.isMusicActive()) {
+	          mMusicWidget.setTopLayout();
+	          mMusicLayoutTop.addView(mMusicWidget);
+		}
+
 
         mEmergencyCallText = (TextView) findViewById(R.id.emergencyCallText);
         mEmergencyCallButton = (Button) findViewById(R.id.emergencyCallButton);
@@ -302,135 +289,13 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mSilentMode = isSilentMode();
         
         mManager.setAudioManager(mAudioManager);
-        mManager.updateRightTabResources();
+        mManager.updateResources();
 
-	IntentFilter filter = new IntentFilter();
-	filter.addAction("android.intent.action.POKE_WAKE_LOCK");
-        getContext().registerReceiver(mIntentReceiver, filter);
 
+        resetStatusInfo(updateMonitor);
     }
-
-    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-           try {
-		mCallback.pokeWakelock();
-	   } catch (Exception ex) {
-		//Do nothing
-	   }
-	}
-    };
-
-    private void setUpShortCuts() {
-        mLockSMS = (ImageButton) findViewById(R.id.smsShortcutButton);
-        mLockPhone = (ImageButton) findViewById(R.id.phoneShortcutButton);
-    	mLockPhone.setOnLongClickListener(new View.OnLongClickListener() {
-            public boolean onLongClick(View v) {
-	        mCallback.pokeWakelock();
-		Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
-                long[] pattern = {
-                                0, 30
-		};
-		vibe.vibrate(pattern, -1);
-                Intent i = new Intent();
-                Intent intent = new Intent(Intent.ACTION_DIAL); 
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                getContext().startActivity(intent);
-                mCallback.goToUnlockScreen();
-		return true;
-	    }
-	});
-
-	mLockSMS.setOnLongClickListener(new View.OnLongClickListener() {
-	    public boolean onLongClick(View v) {
-		mCallback.pokeWakelock();
-		Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
-                long[] pattern = {
-                                0, 30
-		};
-		vibe.vibrate(pattern, -1);
-                Intent i = new Intent();
-                Intent mmsIntent = new Intent(Intent.ACTION_VIEW);
-		mmsIntent.setClassName("com.android.mms","com.android.mms.ui.ConversationList");
-                mmsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-	        getContext().startActivity(mmsIntent);
-                mCallback.goToUnlockScreen();
-		return true;
-	    }
-	});
-
-    	if(!mLockscreenShortcuts) {
-    	    mLockPhone.setVisibility(View.GONE);
-    	    mLockSMS.setVisibility(View.GONE);
-    	} else {
-    	    mLockPhone.setVisibility(View.VISIBLE);
-    	    mLockSMS.setVisibility(View.VISIBLE);
-    	}
-    }
-
-    private void setUpMusicControls() {
-        mPPIcon = (ImageView) findViewById(R.id.musicControlPP);
-        mPreviousIcon = (ImageView) findViewById(R.id.musicControlPrevious);
-        mNextIcon = (ImageView) findViewById(R.id.musicControlNext);
-        mAlbumArt = (ImageView) findViewById(R.id.albumArt);
-        
-        mNowPlayingInfo = (TextView) findViewById(R.id.musicNowPlayingInfo);
-        mNowPlayingInfo.setSelected(true); // set focus to TextView to allow scrolling
-        mNowPlayingInfo.setTextColor(0xffffffff);
-
-	if (mIsMusicActive) {
-		mPPIcon.setImageResource(R.drawable.lock_ic_media_pause);
-                // Set album art
-                Uri uri = getArtworkUri(getContext(), KeyguardViewMediator.SongId(),
-                KeyguardViewMediator.AlbumId());
-                if (uri != null) {
-                    mAlbumArt.setImageURI(uri); 
-                }
-                String nowPlayingInfo = KeyguardViewMediator.NowPlayingInfo();
-                mNowPlayingInfo.setText(nowPlayingInfo);
-	} else {
-                mPPIcon.setImageResource(R.drawable.lock_ic_media_play);
-        }
-    	
-        mPPIcon.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mCallback.pokeWakelock();
-                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-            }
-        });
-
-        mPreviousIcon.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mCallback.pokeWakelock();
-                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
-            }
-        });
-
-        mNextIcon.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mCallback.pokeWakelock();
-                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
-	    }
-        });
-    }
-
-    private void refreshMusicPanel() {
-        String nowPlayingInfo = KeyguardViewMediator.NowPlayingInfo();
-        mNowPlayingInfo.setText(nowPlayingInfo);
-	if (nowPlayingInfo.equals("PAUSED")) {
-     	    mPPIcon.setImageResource(R.drawable.lock_ic_media_play);
-	} else {
-            mPPIcon.setImageResource(R.drawable.lock_ic_media_pause);
- 	}
-        // Set album art
-        Uri uri = getArtworkUri(getContext(), KeyguardViewMediator.SongId(),
-        KeyguardViewMediator.AlbumId());
-        if (uri != null) {
-        	mAlbumArt.setImageURI(uri); 
-        } else {
-		mAlbumArt.setImageResource(R.drawable.default_artwork);
-	}
-    }
+    
+    
 
     private boolean isSilentMode() {
         return mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;
@@ -446,8 +311,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
         refreshBatteryStringAndIcon();
         refreshAlarmDisplay();
-
-        refreshMusicPanel();
 
         mTimeFormat = DateFormat.getTimeFormat(getContext());
         mDateFormatString = getContext().getString(R.string.full_wday_month_day_no_year);
@@ -572,17 +435,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     }
 
     /** {@inheritDoc} */
-    public void onMusicChanged() {
-        refreshMusicPanel();
-    }
-
-    /** {@inheritDoc} */
     public void onTimeChanged() {
         refreshTimeAndDateDisplay();
     }
 
     private void refreshTimeAndDateDisplay() {
-        //mRotarySelector.invalidate();
         mDate.setText(DateFormat.format(mDateFormatString, new Date()));
     }
 
@@ -660,9 +517,11 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
     private void updateLayout(Status status) {
         // The emergency call button no longer appears on this screen.
         if (DBG) Log.d(TAG, "updateLayout: status=" + status);
+
         if (DBG) Log.d(TAG, "the lockscreen type is " + Settings.System.getInt(mContext.getContentResolver() , Settings.System.LOCKSCREEN_TYPE,1 ));
+
         mEmergencyCallButton.setVisibility(View.GONE); // in almost all cases
-    
+
         
         switch (status) {
             case Normal:
@@ -678,6 +537,9 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
                 // Empty now, but used for sliding tab feedback
                 mScreenLocked.setText("");
                 mScreenLocked.setVisibility(View.VISIBLE);
+                
+                // layout
+                
                 // Set lock visibility
                 mEmergencyCallText.setVisibility(View.GONE);
                 break;
@@ -811,13 +673,20 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
     /** {@inheritDoc} */
     public void onPause() {
-
+	if(am.isMusicActive())mMusicWidget.onPause();
     }
 
     /** {@inheritDoc} */
     public void onResume() {
         resetStatusInfo(mUpdateMonitor);
         mLockPatternUtils.updateEmergencyCallButtonState(mEmergencyCallButton);
+	if(am.isMusicActive()) {
+	    mMusicWidget.onResume();
+	    mMusicWidget.setVisibility(View.VISIBLE);
+	    mMusicWidget.setControllerVisibility(true,mMusicWidget.isControllerShowing());  
+        }else if(!am.isMusicActive()){
+	    mMusicWidget.setVisibility(View.GONE);
+        }
     }
 
     /** {@inheritDoc} */
@@ -829,6 +698,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         removeAllViewsInLayout();
         mManager.destroyManager();
         mManager = null;
+        mMusicWidget.cleanUp();
     }
 
     /** {@inheritDoc} */
@@ -836,7 +706,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         boolean silent = AudioManager.RINGER_MODE_NORMAL != state;
         if (silent != mSilentMode) {
             mSilentMode = silent;
-            mManager.updateRightTabResources();
+            mManager.updateResources();
         }
     }
 
@@ -844,67 +714,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
         mLockPatternUtils.updateEmergencyCallButtonState(mEmergencyCallButton);
     }
 
-   
-    // shameless kang of music widgets
-    public Uri getArtworkUri(Context context, long song_id, long album_id) {
-
-        if (album_id < 0) {
-            // This is something that is not in the database, so get the album art directly
-            // from the file.
-            if (song_id >= 0) {
-                return getArtworkUriFromFile(context, song_id, -1);
-            }
-            return null;
-        }
-
-       ContentResolver res = context.getContentResolver();
-        Uri uri = ContentUris.withAppendedId(sArtworkUri, album_id);
-        if (uri != null) {
-            InputStream in = null;
-            try {
-                in = res.openInputStream(uri);
-                return uri;
-            } catch (FileNotFoundException ex) {
-                // The album art thumbnail does not actually exist. Maybe the user deleted it, or
-                // maybe it never existed to begin with.
-                return getArtworkUriFromFile(context, song_id, album_id);
-            } finally {
-                try {
-                    if (in != null) {
-                        in.close();
-                    }
-                } catch (IOException ex) {
-                }
-            }
-        }
-        return null;
-    }
-
-   private Uri getArtworkUriFromFile(Context context, long songid, long albumid) {
-
-        if (albumid < 0 && songid < 0) {
-            return null;
-        }
-
-        try {
-            if (albumid < 0) {
-                Uri uri = Uri.parse("content://media/external/audio/media/" + songid + "/albumart");
-                ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(uri, "r");
-                if (pfd != null) {
-                    return uri;
-               }
-            } else {
-                Uri uri = ContentUris.withAppendedId(sArtworkUri, albumid);
-                ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(uri, "r");
-                if (pfd != null) {
-                    return uri;
-                }
-            }
-        } catch (FileNotFoundException ex) {
-        }
-        return null;
-    }
-	
 	@Override
 	public void goToUnlockScreenFromManager() {
 		mCallback.goToUnlockScreen();	

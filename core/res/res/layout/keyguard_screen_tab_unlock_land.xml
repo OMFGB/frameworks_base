@@ -20,13 +20,24 @@
 <!-- This is the general lock screen which shows information about the
   state of the device, as well as instructions on how to get past it
   depending on the state of the device.-->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout android:id="@+id/root" 
+    android:layout_width="fill_parent" 
+    android:layout_height="fill_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android" 
     xmlns:tabunlock="http://schemas.android.com/apk/res/com.android.tabunlock"
+    >
+
+<RelativeLayout     
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
-    android:background="#70000000"
-    android:id="@+id/root">
+    android:gravity="center_horizontal" >
+  
+      <LinearLayout 
+        android:gravity="top" 
+        android:layout_alignParentTop="true" 
+        android:id="@+id/musicwidget_top" 
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" />
 
     <!-- left side -->
     <RelativeLayout
@@ -152,20 +163,7 @@
         android:layout_marginRight="80dip"
         />
 
-    <!-- emergency call button shown when sim is PUKd and tab_selector is
-         hidden -->
-    <Button
-        android:id="@+id/emergencyCallButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableLeft="@drawable/ic_emergency"
-        style="@style/Widget.Button.Transparent"
-        android:drawablePadding="8dip"
-        android:layout_marginRight="80dip"
-        android:visibility="gone"
-        />
-
-       <ImageButton 
+        <ImageButton 
             android:id="@+id/smsShortcutButton"
             android:src="@drawable/lock_sms_button"
             android:layout_alignParentBottom="true"
@@ -189,13 +187,18 @@
             android:background="@color/transparent"
             />
 
-    <com.android.internal.policy.impl.MusicControlsPanel 
-       android:id="@+id/musicControlsPanel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:layout_gravity="top"
-       android:src="@drawable/bottom_dock_handle"
-       />
+    <!-- emergency call button shown when sim is PUKd and tab_selector is
+         hidden -->
+    <Button
+        android:id="@+id/emergencyCallButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:drawableLeft="@drawable/ic_emergency"
+        style="@style/Widget.Button.Transparent"
+        android:drawablePadding="8dip"
+        android:layout_marginRight="80dip"
+        android:visibility="gone"
+        />
 
-</LinearLayout>
-
+</RelativeLayout>
+</FrameLayout>

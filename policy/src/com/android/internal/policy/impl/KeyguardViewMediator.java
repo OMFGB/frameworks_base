@@ -1168,30 +1168,33 @@ public class KeyguardViewMediator implements KeyguardViewCallback,
             mPlaying = intent.getBooleanExtra("playing", false);
             mSongId = intent.getLongExtra("songid", 0);
             mAlbumId = intent.getLongExtra("albumid", 0);
-	    intent = new Intent("internal.policy.impl.updateSongStatus");
+            intent = new Intent("internal.policy.impl.updateSongStatus");
             context.sendBroadcast(intent);
         }
     };
-
-    public static String NowPlayingInfo() {
+    public static String NowPlaying() {
         if (mArtist != null && mPlaying) {
-            return (mArtist + " -- " + mTrack);
-        } else if (mArtist != null && !mPlaying) {
-	    return "PAUSED";
-	    //mLockscreen.PPIcon.set
-	} else {
-            return "UNKNOWN";
+            return (mArtist + " - " + mTrack);
+        } else {
+            return "";
         }
+    }
+
+    public static String TrackId() {
+        return mTrack;
     }
 
     public static long SongId() {
         return mSongId;
     }
 
+    public static String Artist() {
+        return mArtist;
+    }
+
     public static long AlbumId() {
         return mAlbumId;
     }
-
 }
 
 

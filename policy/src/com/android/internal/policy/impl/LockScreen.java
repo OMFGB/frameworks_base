@@ -734,7 +734,6 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
         // layout
         mScreenLocked.setVisibility(View.VISIBLE);
-        mSelector.setVisibility(View.VISIBLE);
         mEmergencyCallButton.setVisibility(View.GONE);
     }
 

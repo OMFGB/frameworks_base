@@ -26,6 +26,7 @@ import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Vibrator;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -87,7 +88,9 @@ public class UnlockRing extends ViewGroup {
 
     private static final long VIBRATE_LONG = 40;
 
-    private boolean mEnableAppLauncherMode = false;
+    private boolean mEnableAppLauncherMode = (Settings.System.getInt(getContext().getContentResolver(),
+    	    Settings.System.USE_CUSTOM_LOCK_APPS, 0) == 1);
+
 
     /**
      * unlocks when hitting outer ring if true, otherwise it will launch an app

@@ -746,6 +746,7 @@ class LockScreen extends LinearLayout implements KeyguardScreen, KeyguardUpdateM
 
 	@Override
 	public void startActivityFromManager(Intent i) {
+		i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // Make sure that every intent has this call
 		getContext().startActivity(i);
 	}
 	

@@ -64,6 +64,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
 	private AudioManager mAudioManager;
 	private ImageButton mLockSMS;
 	private ImageButton mLockPhone;
+    private Intent[] mCustomApps = new Intent[4];
 
     private boolean mLockscreenShortcuts;
 	 private String[] mCustomQuandrants = new String[4];
@@ -484,6 +485,33 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     public void onSenseLikeSelectorTrigger(View v, int Trigger) {
  	 
  	  mLockscreenManagerCallback.goToUnlockScreenFromManager();
+ 	  
+ 	  switch(Trigger){
+ 	  
+ 	  case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED:{
+ 		  mLockscreenManagerCallback.startActivityFromManager(new Intent(mCustomApps[0]));
+ 		  mLockscreenManagerCallback.goToUnlockScreenFromManager();
+ 		  break;}
+ 	  case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_TWO_TRIGGERED:{
+ 		  mLockscreenManagerCallback.startActivityFromManager(new Intent(mCustomApps[1]));
+  		  mLockscreenManagerCallback.goToUnlockScreenFromManager();
+ 		  break;}
+ 	  case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_THREE_TRIGGERED:{
+ 		  mLockscreenManagerCallback.startActivityFromManager(new Intent(mCustomApps[2]));
+  		  mLockscreenManagerCallback.goToUnlockScreenFromManager();
+ 		  
+ 		  break;}
+ 	  case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_FOUR_TRIGGERED:{
+ 		  mLockscreenManagerCallback.startActivityFromManager(new Intent(mCustomApps[3]));
+  		  mLockscreenManagerCallback.goToUnlockScreenFromManager(); 		  
+ 		  break;}
+ 	  case SenseLikeLock.OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED:{
+  		  mLockscreenManagerCallback.goToUnlockScreenFromManager(); 		  
+ 		  break;}
+ 	  
+ 	  
+ 	  
+ 	  }
  
     }
     
@@ -559,7 +587,6 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	 int numapps = 0;
     	 Intent intent = new Intent();
     	 PackageManager pm = context.getPackageManager();
-    	 Intent[] customApps = new Intent[4];
     	 Drawable[] shortcutsicons;
 
     	 Log.d(TAG,"Seting up sense ring");
@@ -572,7 +599,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	 Log.d(TAG,"Setting intents");
     	 if(numapps != 4){
     	 Log.d(TAG,"Seting defaults");
-    	 customApps = senseringselector.setDefaultIntents();
+    	 mCustomApps = senseringselector.setDefaultIntents();
     	 for(int i = 0; i < 4; i++){
     	 if(mCustomQuandrants[i] != null){
     	 Log.d(TAG,"Setting custom intent #" + i);
@@ -612,7 +639,7 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	 bestMatch.activityInfo.applicationInfo.packageName,
     	 bestMatch.activityInfo.name);
 
-    	 customApps[i] = new Intent(Intent.ACTION_MAIN).setComponent(com);
+    	 mCustomApps[i] = new Intent(Intent.ACTION_MAIN).setComponent(com);
 
 
 
@@ -620,11 +647,11 @@ OnCircularSelectorTriggerListener, OnHoneyTriggerListener, OnSenseLikeSelectorTr
     	 }
 
     	 shortcutsicons = new Drawable[numapps];
-    	 float iconScale =0.80f;
+    	 float iconScale =0.70f;
 
     	 for(int i = 0; i < numapps ; i++){
     	 try {
-    	 shortcutsicons[i] = pm.getActivityIcon(customApps[i]);
+    	 shortcutsicons[i] = pm.getActivityIcon(mCustomApps[i]);
     	 shortcutsicons[i] = scaledDrawable(shortcutsicons[i], context, iconScale);
     	            } catch (ArrayIndexOutOfBoundsException ex) {
     	                Log.w(TAG, "Missing shortcut_icons array item #" + i);

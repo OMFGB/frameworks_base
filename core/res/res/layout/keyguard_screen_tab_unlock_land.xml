@@ -31,13 +31,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center_horizontal" >
-  
-      <LinearLayout 
-        android:gravity="top" 
-        android:layout_alignParentTop="true" 
-        android:id="@+id/musicwidget_top" 
-        android:layout_width="fill_parent" 
-        android:layout_height="wrap_content" />
 
     <!-- left side -->
     <RelativeLayout
@@ -201,4 +194,10 @@
         />
 
 </RelativeLayout>
+      <LinearLayout 
+        android:gravity="top" 
+        android:layout_alignParentTop="true" 
+        android:id="@+id/musicwidget_top" 
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" />
 </FrameLayout>

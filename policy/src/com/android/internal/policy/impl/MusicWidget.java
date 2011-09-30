@@ -35,6 +35,7 @@ import android.graphics.drawable.Drawable;
 import android.content.ContentUris;
 import android.content.Intent;
 import android.os.SystemClock;
+import android.os.Vibrator;
 import android.media.AudioManager;
 import android.content.BroadcastReceiver;
 import android.view.animation.*;
@@ -116,7 +117,6 @@ public class MusicWidget extends RelativeLayout {
 		    handleStopMarquee();
 		  case MSG_MEDIA_UPDATE:
 		   handleMediaUpdate();
-		   resetMinTimer();
 		  case STREAMING_MEDIA_UPDATE:
 		   handleMediaUpdate();
 		  case SHRINK_ANIMATION_START:
@@ -163,21 +163,26 @@ public class MusicWidget extends RelativeLayout {
 	init();
       }
 
-      private void addMinTimer(){
-	if(isMaxLayout){
-	  Message msg = mHandler.obtainMessage(SHRINK_ANIMATION_START);
-	  mHandler.sendMessageDelayed(msg,0xdac);
-	}
-      }
-
       private void init(){
-	mMusicInfoTextInMax = (TextView) findViewById(R.id.MusicInfoTextInMax);
-	mMusicInfoTextInMax.setMarqueeRepeatLimit(-0x1);
-	mMusicInfoTextInMax.setSelected(true);
 	
+        mMusicInfoTextInMax = (TextView) findViewById(R.id.MusicInfoTextInMax);
+        mMusicInfoTextInMax.setMarqueeRepeatLimit(-0x1);
+        mMusicInfoTextInMax.setSelected(true);
+        mMusicInfoTextInMax.setOnClickListener(new View.OnClickListener() {  
+          public void onClick(View arg0){
+              Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+              long[] pattern = {0, 30};
+              vibe.vibrate(pattern, -1);
+    	      Message msg = mHandler.obtainMessage(SHRINK_ANIMATION_START);
+	      mHandler.sendMessage(msg);
+	      mCallback.pokeWakelock();
+          }
+        });
+
 	mMusicInfoTextInMin = (TextView) findViewById(R.id.MusicInfoTextInMin);
 	mMusicInfoTextInMin.setMarqueeRepeatLimit(-0x1);
 	mMusicInfoTextInMin.setSelected(true);
+
 	mMaxMusicController = (FrameLayout) findViewById(R.id.MaxMusicController);
 	mBoxInMaxMusicController = (LinearLayout) findViewById(R.id.BoxInMaxMusicController);
 	mMinMusicControllerHandle = (LinearLayout) findViewById(R.id.MinMusicControllerHandle);
@@ -188,7 +193,6 @@ public class MusicWidget extends RelativeLayout {
 	mMainLayout.setOnClickListener(new View.OnClickListener() {  
 	  public void onClick(View arg0){
 	    mCallback.pokeWakelock();
-	    resetMinTimer();
 	  }
 	});
 
@@ -201,6 +205,12 @@ public class MusicWidget extends RelativeLayout {
 	  public boolean onTouch(View v, MotionEvent event){
 	    int rawY = (int) event.getY();
 	    mCallback.pokeWakelock();
+            Vibrator vibe = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+            long[] pattern = {
+                             0, 30
+             };
+             vibe.vibrate(pattern, -1);
+
 
 	    switch(event.getAction()) {
 	      case MotionEvent.ACTION_UP:
@@ -252,7 +262,6 @@ public class MusicWidget extends RelativeLayout {
             public void onClick(View v) {
                 mCallback.pokeWakelock();
                 sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
-		resetMinTimer();
 		handleMediaUpdate();
             }
         });
@@ -261,7 +270,6 @@ public class MusicWidget extends RelativeLayout {
             public void onClick(View v) {
                 mCallback.pokeWakelock();
                 sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
-		resetMinTimer();
 		handleMediaUpdate();
             }
         });
@@ -273,7 +281,6 @@ public class MusicWidget extends RelativeLayout {
 		  mPauseButton.setVisibility(View.GONE);
                   mPlayButton.setVisibility(View.VISIBLE);
 		  sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-		  resetMinTimer();
 		}   
             }
         });
@@ -285,17 +292,11 @@ public class MusicWidget extends RelativeLayout {
 		  mPauseButton.setVisibility(View.VISIBLE);
                   mPlayButton.setVisibility(View.GONE);
 		  sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-		  resetMinTimer();
 		  handleMediaUpdate();
 		}            
             }
         });
 
-      resetMinTimer();
-      if (!am.isMusicActive()) {
-           mPauseButton.setVisibility(View.GONE);
-           mPlayButton.setVisibility(View.VISIBLE);
-      } 
       if(am.isMusicActive()){
 	mMaxMusicController.setVisibility(View.VISIBLE);
 	mVisibleLayout = true;
@@ -303,17 +304,6 @@ public class MusicWidget extends RelativeLayout {
       }else{
 	mVisibleLayout = false;
       }      
-    }
-
-    private void removeMinTimer(){
-      if(mHandler.hasMessages(SHRINK_ANIMATION_START)){
-	mHandler.removeMessages(SHRINK_ANIMATION_START);
-      }
-    }
-
-    private void resetMinTimer(){
-      removeMinTimer();
-      addMinTimer();
     }
 
     private void setMaxLayout(int value){
@@ -332,7 +322,6 @@ public class MusicWidget extends RelativeLayout {
       mMusicInfoTextInMax.setSelected(true);
       mMusicInfoTextInMax.invalidate();
       isMaxLayout = true;
-      resetMinTimer();
       refreshMusicStatus();
     }
 
@@ -348,9 +337,9 @@ public class MusicWidget extends RelativeLayout {
 	mHeightDifference = mMaxMusicController.getHeight() - mMinMusicControllerHandle.getHeight();
       }
       if(isTopLayout){
-	startTranslateAnimation(0x0,-mHeightDifference,0xc8);
+	startTranslateAnimation(0x0,-mHeightDifference,0x190);
       }else{
-	startTranslateAnimation(0x0,mHeightDifference,0xc8);
+	startTranslateAnimation(0x0,mHeightDifference,0x190);
       }
       mMusicInfoTextInMax.setVisibility(View.INVISIBLE);
       mMusicInfoTextInMax.setSelected(true);
@@ -391,8 +380,7 @@ public class MusicWidget extends RelativeLayout {
 	  mMaxMusicController.setVisibility(View.GONE);
   	  mVisibleLayout = false;	  
       }
-
-	updateMediaPlayer();
+      updateMediaPlayer();
     }
 
     public void handleStopMarquee(){
@@ -491,7 +479,7 @@ public class MusicWidget extends RelativeLayout {
 
     public void setBottomLayout(){
       isTopLayout = false;
-      mMaxMusicController.setBackgroundResource(R.drawable.unlock_music_bg_bottom);
+      mMaxMusicController.setBackgroundResource(R.drawable.screen_background_dark_transparent);
 
       FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mMinMusicControllerHandle.getLayoutParams();
       lp.gravity = Gravity.BOTTOM;
@@ -514,8 +502,6 @@ public class MusicWidget extends RelativeLayout {
 	if(mVisibleLayout){
 	  mMaxMusicController.setVisibility(View.GONE);
 	  mVisibleLayout = false;
-	}else{
-	  removeMinTimer();
 	}
       }
     }
@@ -530,11 +516,12 @@ public class MusicWidget extends RelativeLayout {
 
     public void setTopLayout(){
       isTopLayout = true;
-      mMaxMusicController.setBackgroundResource(R.drawable.unlock_music_bg_top);
+      mMaxMusicController.setBackgroundResource(R.drawable.screen_background_dark_transparent);
 
       FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mMinMusicControllerHandle.getLayoutParams();
       lp.gravity = Gravity.TOP;;
       mMinMusicControllerHandle.setLayoutParams(lp);
+
       lp = (FrameLayout.LayoutParams) mMusicInfoTextInMin.getLayoutParams();
       lp.gravity = Gravity.BOTTOM;
       mMusicInfoTextInMin.setLayoutParams(lp);
@@ -543,7 +530,6 @@ public class MusicWidget extends RelativeLayout {
     public void startControllerAnimation(){
        Log.d("LockScreenMusicWidget","startControllerAnimation()");
 
-      removeMinTimer();
       if(isMaxLayout){
 	setMinLayout();
       }else if(isTopLayout){

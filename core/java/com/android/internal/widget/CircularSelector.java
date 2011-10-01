@@ -31,12 +31,15 @@ import android.view.Display;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import com.android.internal.view.LockScreenView;
+import com.android.internal.view.LockScreenView.onLockViewSelectorListener;
+
 import android.view.WindowManager;
 
 import com.android.internal.R;
 
 
-public class CircularSelector extends View {
+public class CircularSelector extends LockScreenView {
 	
 	
 	// ********************* Debug Variables
@@ -50,13 +53,7 @@ public class CircularSelector extends View {
 	
     
     // ***********Rotation constants and variables
-    /**
-     * Either {@link #HORIZONTAL} or {@link #VERTICAL}.
-     */	
-	 private int mOrientation;
 
-	 public static final int HORIZONTAL = 0;
-	 public static final int VERTICAL = 1;
     
 	 
 	 // ********************* UI Elements
@@ -76,9 +73,6 @@ public class CircularSelector extends View {
 	   
 	   private float mDensity;
 	   
-	   // ***************
-	   private OnCircularSelectorTriggerListener mCircularTriggerListener;
-	   private int  mGrabbedState = OnCircularSelectorTriggerListener.ICON_GRABBED_STATE_NONE;
 	 
 	   Boolean mSlideisSensitive = false;
 	 
@@ -87,14 +81,12 @@ public class CircularSelector extends View {
 	//
 	public CircularSelector(Context context) {
 		this(context,null);
-		// TODO Auto-generated constructor stub
 	}
 	public CircularSelector(Context context, AttributeSet attrs) {
 		super(context,attrs);
 		
 		   TypedArray a =
 	            context.obtainStyledAttributes(attrs, R.styleable.CircularSelector);
-		   // TODO obtain proper orientaion
 		   
 	        mOrientation = a.getInt(R.styleable.CircularSelector_orientation, VERTICAL);
 
@@ -146,7 +138,7 @@ public class CircularSelector extends View {
 			if (DBG) log("touch-down within the arc or circle");
 			setLockXY(eventX, eventY);
 		 	mIsTouchInCircle = true;
-			setGrabbedState(OnCircularSelectorTriggerListener.ICON_GRABBED_STATE_GRABBED);
+			setGrabbedState(onLockViewSelectorListener.LOCK_ICON_ONE);
 		    	invalidate();
 		   	
 		
@@ -166,7 +158,7 @@ public class CircularSelector extends View {
             	if (DBG) log("touch-move within the arc or circle");
             	setLockXY(eventX, eventY);
             	if(mSlideisSensitive)mIsTouchInCircle = true;
-            	setGrabbedState(OnCircularSelectorTriggerListener.ICON_GRABBED_STATE_GRABBED);
+            	setGrabbedState(onLockViewSelectorListener.LOCK_ICON_ONE);
             	invalidate();
             	
             }
@@ -174,7 +166,7 @@ public class CircularSelector extends View {
             	// If the lock moved out of the area when moving then we need 
             	// to dispatch the trigger and reset our variables.
             	
-            	dispatchTriggerEvent(OnCircularSelectorTriggerListener.LOCK_ICON_TRIGGERED);	// TODO: Set propper trigger dispenser
+            	dispatchTriggerEvent(this,onLockViewSelectorListener.LOCK_ICON_ONE);
             	reset();
             	invalidate();
             	
@@ -403,76 +395,9 @@ public class CircularSelector extends View {
     	
     }
     
-    /**
-     * This is the interface for creating the is-a
-     * relationship with another class. In this context
-     * it is used to allow the trigger for the widget
-     * to be application dependent. The trigger can be 
-     * in one of two state either
-     *  {@link ICON_GRABBED_STATE_NONE} or {@link ICON_GRABBED_STATE_GRABBED}
-     */
-    
-    public interface OnCircularSelectorTriggerListener{
-    	
-    	static final int ICON_GRABBED_STATE_NONE = 0;
-    	static final int ICON_GRABBED_STATE_GRABBED = 1;
-    	
-    	static final int LOCK_ICON_TRIGGERED = 10;
-    	
-    	public void OnCircularSelectorGrabbedStateChanged(View v, int GrabState);
-    	
-    	public void onCircularSelectorTrigger(View v, int Trigger);
-
-    	
-    }
-    
-    // *********************** Callbacks
-    
-    /**
-     * Registers a callback to be invoked when the music controls
-     * are "triggered" by sliding the view one way or the other
-     * or pressing the music control buttons.
-     *
-     * @param l the OnMusicTriggerListener to attach to this view
-     */
-    public void setOnCircularSelectorTriggerListener(OnCircularSelectorTriggerListener l) {
-    	 if (DBG) log("Setting the listners");
-    	this.mCircularTriggerListener = l;
-    }
-    
-    /**
-     * Sets the current grabbed state, and dispatches a grabbed state change
-     * event to our listener.
-     */
-    private void setGrabbedState(int newState) {
-        if (newState != mGrabbedState) {
-            mGrabbedState = newState;
-            if (mCircularTriggerListener != null) {
-                mCircularTriggerListener.OnCircularSelectorGrabbedStateChanged(this, mGrabbedState);
-            }
-        }
-    }
-    
-    
-    /**
-     * Dispatches a trigger event to our listener.
-     */
-    private void dispatchTriggerEvent(int whichTrigger) {
-    	
-    	 if (IDBG) log("Dispatching a trigered event");
-        //vibrate(VIBRATE_LONG);
-        if (mCircularTriggerListener != null) {
-            
-        		mCircularTriggerListener.onCircularSelectorTrigger(this, whichTrigger);
-            
-        }
-    }
     
     
     //************************** Misc Function***********************
-    private boolean isVertical() {
-        return (mOrientation == VERTICAL);
-    }
     
     
     private void log(String msg) {
@@ -484,7 +409,7 @@ public class CircularSelector extends View {
     }
     private void reset(){
     	
-    	setGrabbedState(OnCircularSelectorTriggerListener.ICON_GRABBED_STATE_NONE);
+    	setGrabbedState(onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
     	mIsTouchInCircle = false;
     	
     }

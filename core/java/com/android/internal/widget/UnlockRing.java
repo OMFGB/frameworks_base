@@ -40,7 +40,9 @@ import android.view.animation.TranslateAnimation;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 
-public class UnlockRing extends ViewGroup {
+import com.android.internal.view.LockScreenViewGroup;
+
+public class UnlockRing extends LockScreenViewGroup {
     private static final String TAG = "UnlockRing";
 
     private static Context mContext;
@@ -57,26 +59,15 @@ public class UnlockRing extends ViewGroup {
 
     private static final int TRACKING_MARGIN = 50;
 
-    private static final int ANIM_DURATION = 250; // Time for most animations
-                                                  // (in ms)
+    private static final int ANIM_DURATION = 250; // Time for most animations(in ms)
 
-    private static final int ANIM_TARGET_TIME = 500; // Time to show targets (in
-                                                     // ms)
-
-    private OnHoneyTriggerListener mOnTriggerListener;
-
-    private int mGrabbedState = OnHoneyTriggerListener.NO_HANDLE;
+    private static final int ANIM_TARGET_TIME = 500; // Time to show targets (in ms)
 
     private boolean mTriggered = false;
 
     private Vibrator mVibrator;
 
     private float mDensity; // used to scale dimensions for bitmaps.
-
-    /**
-     * Either {@link #HORIZONTAL} or {@link #VERTICAL}.
-     */
-    private int mOrientation;
 
     private Ring ring;
 
@@ -124,50 +115,6 @@ public class UnlockRing extends ViewGroup {
         }
     };
 
-    /**
-     * Interface definition for a callback to be invoked when a tab is triggered
-     * by moving it beyond a threshold.
-     */
-    public interface OnHoneyTriggerListener {
-        /**
-         * The interface was triggered because the user let go of the handle
-         * without reaching the threshold.
-         */
-        public static final int NO_HANDLE = 0;
-
-        /**
-         * The interface was triggered because the user grabbed the left handle
-         * and moved it past the threshold.
-         */
-        public static final int UNLOCK_HANDLE = 1;
-
-        public static final int POKE_LOCK = 2;
-
-        public static final int QUADRANT_1 = 3;
-
-        public static final int QUADRANT_2 = 4;
-
-        public static final int QUADRANT_3 = 5;
-
-        public static final int QUADRANT_4 = 6;
-
-        /**
-         * Called when the user moves a handle beyond the threshold.
-         * 
-         * @param v The view that was triggered.
-         * @param whichHandle Which "dial handle" the user grabbed, either
-         *            {@link #UNLOCK_HANDLE}, {@link #RIGHT_HANDLE}.
-         */
-        void onHoneyTrigger(View v, int whichHandle);
-
-        /**
-         * Called when the "grabbed state" changes (i.e. when the user either
-         * grabs or releases one of the handles.)
-         * 
-         * @param v the view that was triggered
-         */
-        void onHoneyGrabbedStateChange(View v, int grabbedState);
-    }
 
     /**
      * Simple container class for all things pertinent to a slider. A slider
@@ -501,7 +448,7 @@ public class UnlockRing extends ViewGroup {
                 mTriggered = false;
                 vibrate(VIBRATE_LONG);
                 if (unlockerHit) {
-                    setGrabbedState(OnHoneyTriggerListener.UNLOCK_HANDLE);
+                    setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_ONE);
                 }
 
                 ring.setState(Ring.STATE_PRESSED);
@@ -623,30 +570,30 @@ public class UnlockRing extends ViewGroup {
                             if (!mUnlockMode && mEnableAppLauncherMode) {
                                 switch (mQuadrant) {
                                     case 1:
-                                        dispatchTriggerEvent(OnHoneyTriggerListener.QUADRANT_1);
+                                        dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_EXTRA_ONE);
                                         break;
                                     case 2:
-                                        dispatchTriggerEvent(OnHoneyTriggerListener.QUADRANT_2);
+                                        dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_EXTRA_TWO);
                                         break;
                                     case 3:
-                                        dispatchTriggerEvent(OnHoneyTriggerListener.QUADRANT_3);
+                                        dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_EXTRA_THREE);
                                         break;
                                     case 4:
-                                        dispatchTriggerEvent(OnHoneyTriggerListener.QUADRANT_4);
+                                        dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_EXTRA_FOUR);
                                         break;
                                     default:
-                                        dispatchTriggerEvent(OnHoneyTriggerListener.NO_HANDLE);
+                                        dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
                                         break;
 
                                 }
                             } else {
-                                dispatchTriggerEvent(OnHoneyTriggerListener.UNLOCK_HANDLE);
+                                dispatchTriggerEvent(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_ONE);
                             }
 
                             mTriggered = true;
                             mTracking = false;
                             enableUnlockMode();
-                            setGrabbedState(OnTriggerListener.NO_HANDLE);
+                            setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
                         }
                         break;
                     }
@@ -662,7 +609,7 @@ public class UnlockRing extends ViewGroup {
                     this.refreshDrawableState();
                     ring.unlockRing.refreshDrawableState();
                     // ring = null;
-                    setGrabbedState(OnTriggerListener.NO_HANDLE);
+                    setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
 
                     break;
 
@@ -789,25 +736,15 @@ public class UnlockRing extends ViewGroup {
         ring.updateDrawableStates();
     }
 
-    /**
-     * Registers a callback to be invoked when the user triggers an event.
-     * 
-     * @param listener the OnDialTriggerListener to attach to this view
-     */
-    public void setOnHoneyTriggerListener(OnHoneyTriggerListener listener) {
-        mOnTriggerListener = listener;
-    }
 
     /**
-     * Dispatches a trigger event to listener. Ignored if a listener is not set.
+     * Dispatches a trigger event.
      * 
      * @param whichHandle the handle that triggered the event.
      */
     private void dispatchTriggerEvent(int whichHandle) {
         vibrate(VIBRATE_LONG);
-        if (mOnTriggerListener != null) {
-            mOnTriggerListener.onHoneyTrigger(this, whichHandle);
-        }
+        super.dispatchTriggerEvent(this, whichHandle);
     }
 
     /**
@@ -819,19 +756,6 @@ public class UnlockRing extends ViewGroup {
                     Context.VIBRATOR_SERVICE);
         }
         mVibrator.vibrate(duration);
-    }
-
-    /**
-     * Sets the current grabbed state, and dispatches a grabbed state change
-     * event to our listener.
-     */
-    private void setGrabbedState(int newState) {
-        if (newState != mGrabbedState) {
-            mGrabbedState = newState;
-            if (mOnTriggerListener != null) {
-                mOnTriggerListener.onHoneyGrabbedStateChange(this, mGrabbedState);
-            }
-        }
     }
 
     private void log(String msg) {

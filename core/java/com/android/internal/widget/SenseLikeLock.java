@@ -18,11 +18,8 @@
 
 package com.android.internal.widget;
 
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -32,24 +29,17 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.Display;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
-import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.view.animation.RotateAnimation;
 import android.view.animation.ScaleAnimation;
-import android.view.animation.TranslateAnimation;
-import android.widget.ImageView;
+
+import com.android.internal.view.LockScreenView;
 
 import com.android.internal.R;
-
 
 
 
@@ -61,7 +51,7 @@ import com.android.internal.R;
  * reverse engineering of the HTC unlocker for sense 3.0 > 
  * 
  */
-public class SenseLikeLock extends View{
+public class SenseLikeLock extends LockScreenView{
 
 	private String TAG = "SenseLikeLock";
 	private static final boolean DBG = true;
@@ -71,14 +61,7 @@ public class SenseLikeLock extends View{
 	
     private Animation mUnlockAnimation;
     
-    // ***********Rotation constants and variables
-    /**
-     * Either {@link #HORIZONTAL} or {@link #VERTICAL}.
-     */	
-	 private int mOrientation;
-
-	 public static final int HORIZONTAL = 0;
-	 public static final int VERTICAL = 1;
+    
     
 	 
 	 // ********************* UI Elements
@@ -113,9 +96,6 @@ public class SenseLikeLock extends View{
 	   
 	   private float mDensity;
 	   
-	   // ***************
-	   private OnSenseLikeSelectorTriggerListener mSenseLikeTriggerListener;
-	   private int  mGrabbedState = OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE;
 	 
 	  
 	
@@ -217,7 +197,7 @@ public class SenseLikeLock extends View{
 			
 			if(whichShortcutSelected()){
 				
-				setGrabbedState(OnSenseLikeSelectorTriggerListener.ICON_SHORTCUT_GRABBED_STATE_GRABBED);
+				setGrabbedState(LockScreenView.onLockViewSelectorListener.LOCK_ICON_OTHER);
 				invalidate();
 				mUsingShortcuts = true;
 				
@@ -226,7 +206,7 @@ public class SenseLikeLock extends View{
 				// shortcut was not grabbed
 				
 				mIsTouchInCircle = true;
-				setGrabbedState(OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_GRABBED);
+				setGrabbedState(LockScreenView.onLockViewSelectorListener.LOCK_ICON_ONE);
 				invalidate();
 			}
 			
@@ -241,28 +221,27 @@ public class SenseLikeLock extends View{
             setLockXY(eventX, eventY);
             if(mUsingShortcuts){
             
-            	int i = OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED;
             	int ar[] = {(width - mLockIcon.getWidth())/2, (height -(2*(mLockIcon.getHeight()/3))) };
             
-            if((mGrabbedState == OnSenseLikeSelectorTriggerListener.ICON_SHORTCUT_GRABBED_STATE_GRABBED ) && isShortTriggered( eventX, eventY)){
+            if((mGrabbedState ==  LockScreenView.onLockViewSelectorListener.LOCK_ICON_OTHER ) && isShortTriggered( eventX, eventY)){
             	Log.d(TAG, "Shortcut Triggered");
             
             	switch(this.mShortCutSelected){
             		
             	case 1:
-            		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_ONE_TRIGGERED);
+            		dispatchTriggerEvent(this, LockScreenView.onLockViewSelectorListener.LOCK_ICON_EXTRA_ONE);
             		reset();
             		break;
             	case 2:
-            		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_TWO_TRIGGERED);
+            		dispatchTriggerEvent(this, LockScreenView.onLockViewSelectorListener.LOCK_ICON_EXTRA_TWO);
             		reset();
             		break;
             	case 3:
-            		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_THREE_TRIGGERED);
+            		dispatchTriggerEvent(this, LockScreenView.onLockViewSelectorListener.LOCK_ICON_EXTRA_THREE);
             		reset();
             		break;
             	case 4:
-            		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_SHORTCUT_FOUR_TRIGGERED);
+            		dispatchTriggerEvent(this, LockScreenView.onLockViewSelectorListener.LOCK_ICON_EXTRA_FOUR);
             		reset();
             		break;
             	}
@@ -287,7 +266,7 @@ public class SenseLikeLock extends View{
         case MotionEvent.ACTION_UP:
             if (DBG) log("touch-up");
       
-    		if(mTriggering)dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
+    		if(mTriggering)dispatchTriggerEvent(this,LockScreenView.onLockViewSelectorListener.LOCK_ICON_ONE);
     		else{
     			reset();
     			invalidate();
@@ -304,7 +283,11 @@ public class SenseLikeLock extends View{
 		
 	}
 	
-	
+	/**
+	 * 
+	 * 
+	 * @return True if the lock is being triggered
+	 */
 	private boolean isLockIconTriggered() {
 		
 		int padding = 15;
@@ -312,7 +295,7 @@ public class SenseLikeLock extends View{
 		int heighth = getHeight();
 		if((mLockX >= (width - padding) || mLockX <= padding ) ){
     		Log.d(TAG, "Dispatching horizontal lock trigger event");
-    		dispatchTriggerEvent(OnSenseLikeSelectorTriggerListener.LOCK_ICON_TRIGGERED);
+    		dispatchTriggerEvent(this, LockScreenView.onLockViewSelectorListener.LOCK_ICON_ONE);
     		return true;
     		
     	}
@@ -615,122 +598,17 @@ public class SenseLikeLock extends View{
     	
     }
     
-    /**
-     * This is the interface for creating the is-a
-     * relationship with another class. In this context
-     * it is used to allow the trigger for the widget
-     * to be application dependent. The trigger can be 
-     * in one of three states but no more than one at a time.
-     * 
-     *  {@link ICON_GRABBED_STATE_NONE},  {@link ICON_GRABBED_STATE_GRABBED}, {@link ICON_SHORTCUT_GRABBED_STATE_GRABBED}
-     */
     
-    public interface OnSenseLikeSelectorTriggerListener{
-    	
-    	// Grabbed state
-    	/**
-    	 * Nothing is being grabbed
-    	 */
-    	static final int ICON_GRABBED_STATE_NONE = 0;
-    	/**
-    	 * the lock icon has been grabbed
-    	 */
-    	static final int ICON_GRABBED_STATE_GRABBED = 1;
-    	/**
-    	 * One of the shortcut icons have been grabbed
-    	 */
-    	static final int ICON_SHORTCUT_GRABBED_STATE_GRABBED = 2;
-    	
-    	// Trigger for the lock icon
-    	/**
-    	 * The lock has been triggered
-    	 */
-    	static final int LOCK_ICON_TRIGGERED = 10;
-    	
-    	// Tigger const for the shortcut icons
-    	/**
-    	 * Thefirst shortcut has been triggered
-    	 */
-    	static final int LOCK_ICON_SHORTCUT_ONE_TRIGGERED   = 11;
-    	/**
-    	 * The second shortcut has been triggered
-    	 */
-    	static final int LOCK_ICON_SHORTCUT_TWO_TRIGGERED   = 12;
-    	/**
-    	 * The third shortcut has been triggered
-    	 */
-    	static final int LOCK_ICON_SHORTCUT_THREE_TRIGGERED = 13;
-    	/**
-    	 * The fourth shortcut has been triggered
-    	 */
-    	static final int LOCK_ICON_SHORTCUT_FOUR_TRIGGERED  = 14;
-    	
-    	// Sets the grabbed state
-    	
-    	/**
-    	 * What happens when the grabbed state changes.
-    	 * Many times this is used to poke the wake lock.
-    	 * 
-    	 */
-    	public void OnSenseLikeSelectorGrabbedStateChanged(View v, int GrabState);
-    	
-    	// Trigger interface methods
-    	/**
-    	 * When the shortcut icons or the lock icon is triggered
-    	 * this function will be executed. Many times this 
-    	 * is used to unlock the device but can be set so that
-    	 * is answers a users call.
-    	 * 
-    	 */
-    	public void onSenseLikeSelectorTrigger(View v, int Trigger);
-
-    	
-    }
-    
-    // *********************** Callbacks
-    
-    /**
-     * Registers a callback to be invoked when the unlocker
-     * is "triggered" by moving the shortcuts  into the ring
-     * or by moving the ring past a specified point
-     *
-     * @param l the {@link OnSenseLikeSelectorTriggerListener} to attach to this view
-     */
-    public void setOnSenseLikeSelectorTriggerListener(OnSenseLikeSelectorTriggerListener l) {
-    	 if (DBG) log("Setting the listners");
-    	this.mSenseLikeTriggerListener = l;
-    }
-    
-    /**
-     * Sets the current grabbed state, and dispatches a grabbed state change
-     * event to our listener.
-     */
-    private void setGrabbedState(int newState) {
-        if (newState != mGrabbedState) {
-            mGrabbedState = newState;
-            if (mSenseLikeTriggerListener != null) {
-                mSenseLikeTriggerListener.OnSenseLikeSelectorGrabbedStateChanged(this, mGrabbedState);
-            }
-        }
-    }
-    
-    
-    /**
-     * Dispatches a trigger event to our listener.
-     */
-    private void dispatchTriggerEvent(int whichTrigger) {
+    @Override
+    protected void dispatchTriggerEvent(View v, int whichTrigger) {
     	
     	 if (IDBG) log("Dispatching a trigered event");
     	 doUnlockAnimation();
-    	 mSenseLikeTriggerListener.onSenseLikeSelectorTrigger(this, whichTrigger);
+    	 super.dispatchTriggerEvent(v, whichTrigger);
         
     }
     
     
-    //************************** Misc Function***********************
-    private boolean isVertical() {
-        return (mOrientation == VERTICAL);
-    }
     
     
     private void log(String msg) {
@@ -771,7 +649,7 @@ public class SenseLikeLock extends View{
     }
     private void reset(){
     	
-    	setGrabbedState(OnSenseLikeSelectorTriggerListener.ICON_GRABBED_STATE_NONE);
+    	setGrabbedState(LockScreenView.onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
     	mIsTouchInCircle = false;
     	mUsingShortcuts = false;
     	mTriggering = false;

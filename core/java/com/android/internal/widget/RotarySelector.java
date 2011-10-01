@@ -35,6 +35,8 @@ import android.view.ViewConfiguration;
 import android.view.animation.DecelerateInterpolator;
 import static android.view.animation.AnimationUtils.currentAnimationTimeMillis;
 import com.android.internal.R;
+import com.android.internal.view.LockScreenView;
+import com.android.internal.view.LockScreenView.onLockViewSelectorListener;
 
 
 /**
@@ -42,7 +44,7 @@ import com.android.internal.R;
  * left to right, or right to left.  Used by incoming call screen, and the lock screen when no
  * security pattern is set.
  */
-public class RotarySelector extends View {
+public class RotarySelector extends LockScreenView {
     public static final int HORIZONTAL = 0;
     public static final int VERTICAL = 1;
 
@@ -50,8 +52,6 @@ public class RotarySelector extends View {
     private static final boolean DBG = false;
     private static final boolean VISUAL_DEBUG = false;
 
-    // Listener for onDialTrigger() callbacks.
-    private OnDialTriggerListener mOnDialTriggerListener;
 
     private float mDensity;
 
@@ -90,13 +90,7 @@ public class RotarySelector extends View {
     final Matrix mBgMatrix = new Matrix();
     final Matrix mArrowMatrix = new Matrix();
 
-    /**
-     * If the user is currently dragging something.
-     */
-    private int mGrabbedState = NOTHING_GRABBED;
-    public static final int NOTHING_GRABBED = 0;
-    public static final int LEFT_HANDLE_GRABBED = 1;
-    public static final int RIGHT_HANDLE_GRABBED = 2;
+  
 
     /**
      * Whether the user has triggered something (e.g dragging the left handle all the way over to
@@ -311,10 +305,10 @@ public class RotarySelector extends View {
         // Draw the correct arrow(s) depending on the current state:
         mArrowMatrix.reset();
         switch (mGrabbedState) {
-            case NOTHING_GRABBED:
+            case onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE:
                 //mArrowShortLeftAndRight;
                 break;
-            case LEFT_HANDLE_GRABBED:
+            case onLockViewSelectorListener.LOCK_ICON_ONE:
                 mArrowMatrix.setTranslate(0, 0);
                 if (!isHoriz()) {
                     mArrowMatrix.preRotate(-90, 0, 0);
@@ -322,7 +316,7 @@ public class RotarySelector extends View {
                 }
                 canvas.drawBitmap(mArrowLongLeft, mArrowMatrix, mPaint);
                 break;
-            case RIGHT_HANDLE_GRABBED:
+            case onLockViewSelectorListener.LOCK_ICON_TWO:
                 mArrowMatrix.setTranslate(0, 0);
                 if (!isHoriz()) {
                     mArrowMatrix.preRotate(-90, 0, 0);
@@ -362,7 +356,7 @@ public class RotarySelector extends View {
                     xOffset);
             final int x = isHoriz() ? xOffset : drawableY + bgTop;
             final int y = isHoriz() ? drawableY + bgTop : height - xOffset;
-            if (mGrabbedState != RIGHT_HANDLE_GRABBED) {
+            if (mGrabbedState != onLockViewSelectorListener.LOCK_ICON_TWO) {
                 drawCentered(mDimple, canvas, x, y);
                 drawCentered(mLeftHandleIcon, canvas, x, y);
             } else {
@@ -400,7 +394,7 @@ public class RotarySelector extends View {
 
             final int x = isHoriz() ? xOffset : drawableY + bgTop;
             final int y = isHoriz() ? drawableY + bgTop : height - xOffset;
-            if (mGrabbedState != LEFT_HANDLE_GRABBED) {
+            if (mGrabbedState != onLockViewSelectorListener.LOCK_ICON_ONE) {
                 drawCentered(mDimple, canvas, x, y);
                 drawCentered(mRightHandleIcon, canvas, x, y);
             } else {
@@ -508,18 +502,18 @@ public class RotarySelector extends View {
             case MotionEvent.ACTION_DOWN:
                 if (DBG) log("touch-down");
                 mTriggered = false;
-                if (mGrabbedState != NOTHING_GRABBED) {
+                if (mGrabbedState != onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE) {
                     reset();
                     invalidate();
                 }
                 if (eventX < mLeftHandleX + hitWindow) {
                     mRotaryOffsetX = eventX - mLeftHandleX;
-                    setGrabbedState(LEFT_HANDLE_GRABBED);
+                    setGrabbedState(onLockViewSelectorListener.LOCK_ICON_ONE);
                     invalidate();
                     vibrate(VIBRATE_SHORT);
                 } else if (eventX > mRightHandleX - hitWindow) {
                     mRotaryOffsetX = eventX - mRightHandleX;
-                    setGrabbedState(RIGHT_HANDLE_GRABBED);
+                    setGrabbedState(onLockViewSelectorListener.LOCK_ICON_TWO);
                     invalidate();
                     vibrate(VIBRATE_SHORT);
                 }
@@ -527,13 +521,13 @@ public class RotarySelector extends View {
 
             case MotionEvent.ACTION_MOVE:
                 if (DBG) log("touch-move");
-                if (mGrabbedState == LEFT_HANDLE_GRABBED) {
+                if (mGrabbedState == onLockViewSelectorListener.LOCK_ICON_ONE) {
                     mRotaryOffsetX = eventX - mLeftHandleX;
                     invalidate();
                     final int rightThresh = isHoriz() ? getRight() : height;
                     if (eventX >= rightThresh - mEdgeTriggerThresh && !mTriggered) {
                         mTriggered = true;
-                        dispatchTriggerEvent(OnDialTriggerListener.LEFT_HANDLE);
+                        dispatchTriggerEvent(this, onLockViewSelectorListener.LOCK_ICON_ONE);
                         final VelocityTracker velocityTracker = mVelocityTracker;
                         velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                         final int rawVelocity = isHoriz() ?
@@ -548,12 +542,12 @@ public class RotarySelector extends View {
                                 mDimplesOfFling * mDimpleSpacing,
                                 velocity);
                     }
-                } else if (mGrabbedState == RIGHT_HANDLE_GRABBED) {
+                } else if (mGrabbedState == onLockViewSelectorListener.LOCK_ICON_TWO) {
                     mRotaryOffsetX = eventX - mRightHandleX;
                     invalidate();
                     if (eventX <= mEdgeTriggerThresh && !mTriggered) {
                         mTriggered = true;
-                        dispatchTriggerEvent(OnDialTriggerListener.RIGHT_HANDLE);
+                        dispatchTriggerEvent(this, onLockViewSelectorListener.LOCK_ICON_TWO);
                         final VelocityTracker velocityTracker = mVelocityTracker;
                         velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                         final int rawVelocity = isHoriz() ?
@@ -573,17 +567,17 @@ public class RotarySelector extends View {
             case MotionEvent.ACTION_UP:
                 if (DBG) log("touch-up");
                 // handle animating back to start if they didn't trigger
-                if (mGrabbedState == LEFT_HANDLE_GRABBED
+                if (mGrabbedState == onLockViewSelectorListener.LOCK_ICON_ONE
                         && Math.abs(eventX - mLeftHandleX) > 5) {
                     // set up "snap back" animation
                     startAnimation(eventX - mLeftHandleX, 0, SNAP_BACK_ANIMATION_DURATION_MILLIS);
-                } else if (mGrabbedState == RIGHT_HANDLE_GRABBED
+                } else if (mGrabbedState == onLockViewSelectorListener.LOCK_ICON_TWO
                         && Math.abs(eventX - mRightHandleX) > 5) {
                     // set up "snap back" animation
                     startAnimation(eventX - mRightHandleX, 0, SNAP_BACK_ANIMATION_DURATION_MILLIS);
                 }
                 mRotaryOffsetX = 0;
-                setGrabbedState(NOTHING_GRABBED);
+                setGrabbedState(onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
                 invalidate();
                 if (mVelocityTracker != null) {
                     mVelocityTracker.recycle(); // wishin' we had generational GC
@@ -609,7 +603,7 @@ public class RotarySelector extends View {
         mAnimationDuration = duration;
         mAnimatingDeltaXStart = startX;
         mAnimatingDeltaXEnd = endX;
-        setGrabbedState(NOTHING_GRABBED);
+        setGrabbedState(onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
         mDimplesOfFling = 0;
         invalidate();
     }
@@ -620,7 +614,7 @@ public class RotarySelector extends View {
         mAnimationDuration = 1000 * (endX - startX) / pixelsPerSecond;
         mAnimatingDeltaXStart = startX;
         mAnimatingDeltaXEnd = endX;
-        setGrabbedState(NOTHING_GRABBED);
+        setGrabbedState(onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
         invalidate();
     }
 
@@ -659,7 +653,7 @@ public class RotarySelector extends View {
         mAnimating = false;
         mRotaryOffsetX = 0;
         mDimplesOfFling = 0;
-        setGrabbedState(NOTHING_GRABBED);
+        setGrabbedState(onLockViewSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
         mTriggered = false;
     }
 
@@ -684,77 +678,6 @@ public class RotarySelector extends View {
         int h = d.getHeight();
 
         c.drawBitmap(d, x - (w / 2), y - (h / 2), mPaint);
-    }
-
-
-    /**
-     * Registers a callback to be invoked when the dial
-     * is "triggered" by rotating it one way or the other.
-     *
-     * @param l the OnDialTriggerListener to attach to this view
-     */
-    public void setOnDialTriggerListener(OnDialTriggerListener l) {
-        mOnDialTriggerListener = l;
-    }
-
-    /**
-     * Dispatches a trigger event to our listener.
-     */
-    private void dispatchTriggerEvent(int whichHandle) {
-        vibrate(VIBRATE_LONG);
-        if (mOnDialTriggerListener != null) {
-            mOnDialTriggerListener.onDialTrigger(this, whichHandle);
-        }
-    }
-
-    /**
-     * Sets the current grabbed state, and dispatches a grabbed state change
-     * event to our listener.
-     */
-    private void setGrabbedState(int newState) {
-        if (newState != mGrabbedState) {
-            mGrabbedState = newState;
-            if (mOnDialTriggerListener != null) {
-                mOnDialTriggerListener.onGrabbedStateChange(this, mGrabbedState);
-            }
-        }
-    }
-
-    /**
-     * Interface definition for a callback to be invoked when the dial
-     * is "triggered" by rotating it one way or the other.
-     */
-    public interface OnDialTriggerListener {
-        /**
-         * The dial was triggered because the user grabbed the left handle,
-         * and rotated the dial clockwise.
-         */
-        public static final int LEFT_HANDLE = 1;
-
-        /**
-         * The dial was triggered because the user grabbed the right handle,
-         * and rotated the dial counterclockwise.
-         */
-        public static final int RIGHT_HANDLE = 2;
-
-        /**
-         * Called when the dial is triggered.
-         *
-         * @param v The view that was triggered
-         * @param whichHandle  Which "dial handle" the user grabbed,
-         *        either {@link #LEFT_HANDLE}, {@link #RIGHT_HANDLE}.
-         */
-        void onDialTrigger(View v, int whichHandle);
-
-        /**
-         * Called when the "grabbed state" changes (i.e. when
-         * the user either grabs or releases one of the handles.)
-         *
-         * @param v the view that was triggered
-         * @param grabbedState the new state: either {@link #NOTHING_GRABBED},
-         * {@link #LEFT_HANDLE_GRABBED}, or {@link #RIGHT_HANDLE_GRABBED}.
-         */
-        void onGrabbedStateChange(View v, int grabbedState);
     }
 
 

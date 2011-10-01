@@ -40,6 +40,8 @@ import android.widget.TextView;
 import android.widget.ImageView.ScaleType;
 import com.android.internal.R;
 
+import com.android.internal.view.LockScreenViewGroup;
+
 /**
  * A special widget containing two Sliders and a threshold for each.  Moving either slider beyond
  * the threshold will cause the registered OnTriggerListener.onTrigger() to be called with
@@ -49,11 +51,9 @@ import com.android.internal.R;
  * the tab will result in whichHandle being {@link OnTriggerListener#NO_HANDLE}.
  *
  */
-public class SlidingTab extends ViewGroup {
+public class SlidingTab extends LockScreenViewGroup {
     private static final String LOG_TAG = "SlidingTab";
     private static final boolean DBG = false;
-    private static final int HORIZONTAL = 0; // as defined in attrs.xml
-    private static final int VERTICAL = 1;
 
     // TODO: Make these configurable
     private static final float THRESHOLD = 2.0f / 3.0f;
@@ -65,16 +65,10 @@ public class SlidingTab extends ViewGroup {
     private boolean mHoldLeftOnTransition = true;
     private boolean mHoldRightOnTransition = true;
 
-    private OnTriggerListener mOnTriggerListener;
-    private int mGrabbedState = OnTriggerListener.NO_HANDLE;
     private boolean mTriggered = false;
     private Vibrator mVibrator;
     private float mDensity; // used to scale dimensions for bitmaps.
 
-    /**
-     * Either {@link #HORIZONTAL} or {@link #VERTICAL}.
-     */
-    private int mOrientation;
 
     private Slider mLeftSlider;
     private Slider mRightSlider;
@@ -102,49 +96,7 @@ public class SlidingTab extends ViewGroup {
         }
     };
 
-    /**
-     * Interface definition for a callback to be invoked when a tab is triggered
-     * by moving it beyond a threshold.
-     */
-    public interface OnTriggerListener {
-        /**
-         * The interface was triggered because the user let go of the handle without reaching the
-         * threshold.
-         */
-        public static final int NO_HANDLE = 0;
-
-        /**
-         * The interface was triggered because the user grabbed the left handle and moved it past
-         * the threshold.
-         */
-        public static final int LEFT_HANDLE = 1;
-
-        /**
-         * The interface was triggered because the user grabbed the right handle and moved it past
-         * the threshold.
-         */
-        public static final int RIGHT_HANDLE = 2;
-
-        /**
-         * Called when the user moves a handle beyond the threshold.
-         *
-         * @param v The view that was triggered.
-         * @param whichHandle  Which "dial handle" the user grabbed,
-         *        either {@link #LEFT_HANDLE}, {@link #RIGHT_HANDLE}.
-         */
-        void onTrigger(View v, int whichHandle);
-
-        /**
-         * Called when the "grabbed state" changes (i.e. when the user either grabs or releases
-         * one of the handles.)
-         *
-         * @param v the view that was triggered
-         * @param grabbedState the new state: {@link #NO_HANDLE}, {@link #LEFT_HANDLE},
-         * or {@link #RIGHT_HANDLE}.
-         */
-        void onGrabbedStateChange(View v, int grabbedState);
-    }
-
+    
     /**
      * Simple container class for all things pertinent to a slider.
      * A slider consists of 3 Views:
@@ -530,12 +482,12 @@ public class SlidingTab extends ViewGroup {
                     mCurrentSlider = mLeftSlider;
                     mOtherSlider = mRightSlider;
                     mThreshold = isHorizontal() ? THRESHOLD : 1.0f - THRESHOLD;
-                    setGrabbedState(OnTriggerListener.LEFT_HANDLE);
+                    setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_ONE);
                 } else {
                     mCurrentSlider = mRightSlider;
                     mOtherSlider = mLeftSlider;
                     mThreshold = isHorizontal() ? 1.0f - THRESHOLD : THRESHOLD;
-                    setGrabbedState(OnTriggerListener.RIGHT_HANDLE);
+                    setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_TWO);
                 }
                 mCurrentSlider.setState(Slider.STATE_PRESSED);
                 mCurrentSlider.showTarget();
@@ -597,10 +549,11 @@ public class SlidingTab extends ViewGroup {
                             mCurrentSlider.setState(Slider.STATE_ACTIVE);
                             boolean isLeft = mCurrentSlider == mLeftSlider;
                             dispatchTriggerEvent(isLeft ?
-                                OnTriggerListener.LEFT_HANDLE : OnTriggerListener.RIGHT_HANDLE);
+                            		LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_ONE :
+                            			LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_TWO);
 
                             startAnimating(isLeft ? mHoldLeftOnTransition : mHoldRightOnTransition);
-                            setGrabbedState(OnTriggerListener.NO_HANDLE);
+                            setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
                         }
                         break;
                     }
@@ -615,7 +568,7 @@ public class SlidingTab extends ViewGroup {
                     mCurrentSlider.hideTarget();
                     mCurrentSlider = null;
                     mOtherSlider = null;
-                    setGrabbedState(OnTriggerListener.NO_HANDLE);
+                    setGrabbedState(LockScreenViewGroup.onLockViewGroupSelectorListener.LOCK_ICON_GRABBED_STATE_NONE);
                     break;
             }
         }
@@ -810,39 +763,6 @@ public class SlidingTab extends ViewGroup {
                     getContext().getSystemService(Context.VIBRATOR_SERVICE);
         }
         mVibrator.vibrate(duration);
-    }
-
-    /**
-     * Registers a callback to be invoked when the user triggers an event.
-     *
-     * @param listener the OnDialTriggerListener to attach to this view
-     */
-    public void setOnTriggerListener(OnTriggerListener listener) {
-        mOnTriggerListener = listener;
-    }
-
-    /**
-     * Dispatches a trigger event to listener. Ignored if a listener is not set.
-     * @param whichHandle the handle that triggered the event.
-     */
-    private void dispatchTriggerEvent(int whichHandle) {
-        vibrate(VIBRATE_LONG);
-        if (mOnTriggerListener != null) {
-            mOnTriggerListener.onTrigger(this, whichHandle);
-        }
-    }
-
-    /**
-     * Sets the current grabbed state, and dispatches a grabbed state change
-     * event to our listener.
-     */
-    private void setGrabbedState(int newState) {
-        if (newState != mGrabbedState) {
-            mGrabbedState = newState;
-            if (mOnTriggerListener != null) {
-                mOnTriggerListener.onGrabbedStateChange(this, mGrabbedState);
-            }
-        }
     }
 
     private void log(String msg) {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -722,6 +723,18 @@ public class ToneGenerator
      * @see #ToneGenerator(int, int)
      */
     public static final int TONE_CDMA_SIGNAL_OFF = 98;
+    /**
+     * TONE_CMAS - tone: 853Hz+960Hz 2000ms ON, 500ms OFF,
+     *                   853Hz+960Hz 1000ms ON, 500ms OFF,
+     *                   853Hz+960Hz 1000ms ON, 500ms OFF,
+     *                   853Hz+960Hz 2000ms ON, 500ms OFF,
+     *                   853Hz+960Hz 1000ms ON, 500ms OFF,
+     *                   853Hz+960Hz 1000ms ON as defined in ATIS-TIA-J-STD-100
+     *
+     * @see #ToneGenerator(int, int)
+     * @hide
+     */
+    public static final int TONE_CMAS = 99;
 
     /** Maximum volume, for use with {@link #ToneGenerator(int,int)} */
     public static final int MAX_VOLUME = 100;

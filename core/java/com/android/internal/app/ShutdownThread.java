@@ -319,8 +319,8 @@ public final class ShutdownThread extends Thread {
         }
 
         Log.i(TAG, "Waiting for Bluetooth and Radio...");
-
-        // Wait a max of 32 seconds for clean shutdown
+        
+        // Wait a max of 8 seconds for clean shutdown
         for (int i = 0; i < MAX_NUM_PHONE_STATE_READS; i++) {
             if (!bluetoothOff) {
                 try {
@@ -344,6 +344,14 @@ public final class ShutdownThread extends Thread {
                 break;
             }
             SystemClock.sleep(PHONE_STATE_POLL_SLEEP_MSEC);
+        }
+
+        // Send power off command to RIL
+        try {
+            Log.w(TAG, "Sending ril power off ...");
+            phone.setRilPowerOff();
+        } catch (RemoteException ex) {
+            Log.e(TAG, "RemoteException during Phone Power-off", ex);
         }
 
         // Shutdown MountService to ensure media is in a safe state

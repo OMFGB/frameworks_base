@@ -18,13 +18,23 @@ package android.net;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
+import com.android.internal.telephony.Phone.IPVersion;
+
+import android.net.NetworkInfo.DetailedState;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.os.RemoteException;
+import android.os.ServiceManager;
+import android.os.IBinder;
+import android.os.INetworkManagementService;
 import android.content.Context;
 import android.text.TextUtils;
-import android.util.Config;
 import android.util.Log;
 
 
@@ -41,10 +51,7 @@ public abstract class NetworkStateTracker extends Handler {
     protected NetworkInfo mNetworkInfo;
     protected Context mContext;
     protected Handler mTarget;
-    protected String mInterfaceName;
-    protected String[] mDnsPropNames;
-    private boolean mPrivateDnsRouteSet;
-    protected int mDefaultGatewayAddr;
+    protected String interfaceName;
     private boolean mTeardownRequested;
 
     private int mCachedGatewayAddr = 0;
@@ -99,9 +106,23 @@ public abstract class NetworkStateTracker extends Handler {
      * network interface.
      * @return a list of DNS addresses, with no holes.
      */
-    public String[] getNameServers() {
-        return getNameServerList(mDnsPropNames);
-    }
+    abstract public String[] getNameServers();
+
+    /*
+     * Return the interface name that supports the specified IP Version.
+     */
+    abstract public String getInterfaceName(IPVersion ipv);
+
+    /*
+     * return the gateway associated with this interface.
+     */
+    abstract public InetAddress getGateway(IPVersion ipv);
+
+    /*
+     * TODO: This should come from native space, rather than relying on
+     * telephony.
+     */
+    abstract public InetAddress getIpAdress(IPVersion ipv);
 
     /**
      * Return the IP addresses of the DNS servers available for this
@@ -128,98 +149,113 @@ public abstract class NetworkStateTracker extends Handler {
         return dnsAddresses;
     }
 
+    protected INetworkManagementService getNetworkManagementService () {
+        IBinder b = ServiceManager.getService(Context.NETWORKMANAGEMENT_SERVICE);
+        return INetworkManagementService.Stub.asInterface(b);
+    }
+
+    boolean mPrivateDnsRouteSet[] = new boolean[] {false, false};
+
     public void addPrivateDnsRoutes() {
-        if (DBG) {
-            Log.d(TAG, "addPrivateDnsRoutes for " + this +
-                    "(" + mInterfaceName + ") - mPrivateDnsRouteSet = "+mPrivateDnsRouteSet);
-        }
-        if (mInterfaceName != null && !mPrivateDnsRouteSet) {
+        addPrivateDnsRoutes(IPVersion.IPV4);
+        addPrivateDnsRoutes(IPVersion.IPV6);
+    }
+
+    public void addPrivateDnsRoutes(IPVersion ipv) {
+        String interfaceName = getInterfaceName(ipv);
+        int index = ipv == IPVersion.IPV4 ? 0 : 1;
+
+        if (interfaceName != null && mPrivateDnsRouteSet[index] == false) {
             for (String addrString : getNameServers()) {
-                int addr = NetworkUtils.lookupHost(addrString);
-                if (addr != -1 && addr != 0) {
-                    if (DBG) Log.d(TAG, "  adding "+addrString+" ("+addr+")");
-                    NetworkUtils.addHostRoute(mInterfaceName, addr);
+                if (addrString != null) {
+                    try {
+                        InetAddress inetAddress = InetAddress.getByName(addrString);
+                        INetworkManagementService nms = getNetworkManagementService();
+                        if (nms == null) {
+                            Log.w(TAG, "could not acquire NetworkManagementService.");
+                            return;
+                        } else {
+                            if (ipv == IPVersion.IPV4 && inetAddress instanceof Inet4Address) {
+                                Log.v(TAG, "adding ipv4 dns " + addrString + " through "
+                                        + interfaceName);
+                                nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
+                            } else if (ipv == IPVersion.IPV6 && inetAddress instanceof Inet6Address) {
+                                Log.v(TAG, "adding ipv6 dns " + addrString + " through "
+                                        + interfaceName);
+                                nms.addDstRoute(interfaceName, inetAddress.getHostAddress(), null);
+                            }
+                        }
+                    } catch (UnknownHostException e) {
+                        Log.w(TAG, " DNS address " + addrString + " : Exception " + e);
+                    } catch (RemoteException e) {
+                        Log.w(TAG, " DNS address " + addrString + " : Exception " + e);
+                    }
                 }
             }
-            mPrivateDnsRouteSet = true;
+            mPrivateDnsRouteSet[index] = true;
         }
     }
 
     public void removePrivateDnsRoutes() {
+        removePrivateDnsRoutes(IPVersion.IPV4);
+        removePrivateDnsRoutes(IPVersion.IPV6);
+    }
+
+    public void removePrivateDnsRoutes(IPVersion ipv) {
         // TODO - we should do this explicitly but the NetUtils api doesnt
-        // support this yet - must remove all.  No worse than before
-        if (mInterfaceName != null && mPrivateDnsRouteSet) {
-            if (DBG) {
-                Log.d(TAG, "removePrivateDnsRoutes for " + mNetworkInfo.getTypeName() +
-                        " (" + mInterfaceName + ")");
-            }
-            NetworkUtils.removeHostRoutes(mInterfaceName);
-            mPrivateDnsRouteSet = false;
+        // support this yet - must remove all. No worse than before
+
+        String interfaceName = getInterfaceName(ipv);
+        int index = ipv == IPVersion.IPV4 ? 0 : 1;
+
+        if (interfaceName != null && mPrivateDnsRouteSet[index]) {
+            Log.v(TAG, "remove " + ipv + " dns routes for " + mNetworkInfo.getTypeName() + " ("
+                    + interfaceName + ")");
+            NetworkUtils.removeHostRoutes(interfaceName);
         }
+        mPrivateDnsRouteSet[index] = false;
     }
 
     public void addDefaultRoute() {
-        if (mInterfaceName != null) {
-            if (DBG) {
-                Log.d(TAG, "addDefaultRoute for " + mNetworkInfo.getTypeName() +
-                        " (" + mInterfaceName + "), GatewayAddr=" + mDefaultGatewayAddr +
-                        ", CachedGatewayAddr=" + mCachedGatewayAddr);
-            }
+        addDefaultRoute(IPVersion.IPV4);
+        addDefaultRoute(IPVersion.IPV6);
+    }
 
-            if (mDefaultGatewayAddr != 0) {
-                NetworkUtils.addHostRoute(mInterfaceName, mDefaultGatewayAddr);
-                NetworkUtils.setDefaultRoute(mInterfaceName, mDefaultGatewayAddr);
-            } else if (mCachedGatewayAddr != 0) {
-                /*
-                 * We don't have a default gateway set, so check if we have one cached due to
-                 * a previous suspension.  If we do, then restore that one
-                 */
-                if (DBG) {
-                    Log.d(TAG, "addDefaultRoute: no default gateway, attempting to use cached gateway");
-                }
-                int r1 = NetworkUtils.addHostRoute(mInterfaceName, mCachedGatewayAddr);
-                int r2 = NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
-                if (r1 < 0 || r2 < 0) {
-                    // something went wrong... restart the network
-                    if (DBG) {
-                        Log.d(TAG, "addDefaultRoute: something went terribly wrong... restart the network");
+    public void addDefaultRoute(IPVersion ipv) {
+
+        String interfaceName = getInterfaceName(ipv);
+        InetAddress gateway = getGateway(ipv);
+        int index = ipv == IPVersion.IPV4 ? 0 : 1;
+        String gwString = (gateway == null) ? "0" : gateway.getHostAddress();
+
+        if (interfaceName != null) {
+                Log.i(TAG, "addDefaultRoute (" + ipv + ") for " + mNetworkInfo.getTypeName() +
+                    " ("+ interfaceName + "), GatewayAddr=" + gwString);
+            boolean result = false;
+            try {
+                INetworkManagementService nms = getNetworkManagementService();
+                if (nms == null) {
+                    Log.w(TAG, "could not acquire NetworkManagementService.");
+                    return;
+                } else {
+                    if (index == 0) {
+                            result = nms.replaceV4DefaultRoute(interfaceName, gwString);
+                    } else {
+                            result = nms.replaceV6DefaultRoute(interfaceName, gwString);
                     }
-                    teardown();
-                    reconnect();
                 }
+            } catch (RemoteException e) {
+                Log.w(TAG, "  NetworkManagementService was unable to add default route. Exception: " + e);
             }
 
-            /*
-             * Clear our cached value regardless of which of the above two situations
-             * were hit.
-             */
-            mCachedGatewayAddr = 0;
+            if (!result) {
+                Log.e(TAG, "  Unable to add default route.");
+            }
         }
     }
 
     public void removeDefaultRoute() {
-        if (mInterfaceName != null) {
-            if (DBG) {
-                Log.d(TAG, "removeDefaultRoute for " + mNetworkInfo.getTypeName() + " (" +
-                        mInterfaceName + ")");
-            }
-
-            /*
-             * Some devices don't use the android system to set their default gateway, in
-             * which case the gateway is removed and never restored during data suspension.
-             * In order to solve this, we check if the current gateway is 0 and if it is, we
-             * call natively to cache the gateway before suspension.
-             */
-            if ((mNetworkInfo.getDetailedState() == NetworkInfo.DetailedState.SUSPENDED) &&
-                    (mDefaultGatewayAddr == 0)) {
-                if (DBG) {
-                    Log.d(TAG, "removeDefaultRoute on suspended connection, saving current gateway for when we come out of suspension");
-                }
-                mCachedGatewayAddr = NetworkUtils.getDefaultRoute(mInterfaceName);
-            }
-
-            NetworkUtils.removeDefaultRoute(mInterfaceName);
-        }
+        // do nothing since add is essentially replacing
     }
 
     /**
@@ -259,7 +295,7 @@ public abstract class NetworkStateTracker extends Handler {
     /**
      * Writes TCP buffer sizes to /sys/kernel/ipv4/tcp_[r/w]mem_[min/def/max]
      * which maps to /proc/sys/net/ipv4/tcp_rmem and tcpwmem
-     * 
+     *
      * @param bufferSizes in the format of "readMin, readInitial, readMax,
      *        writeMin, writeInitial, writeMax"
      */
@@ -285,7 +321,7 @@ public abstract class NetworkStateTracker extends Handler {
 
     /**
      * Writes string to file. Basically same as "echo -n $string > $filename"
-     * 
+     *
      * @param filename
      * @param string
      * @throws IOException
@@ -306,7 +342,16 @@ public abstract class NetworkStateTracker extends Handler {
      * @param state the new @{code DetailedState}
      */
     public void setDetailedState(NetworkInfo.DetailedState state) {
-        setDetailedState(state, null, null);
+        if (state == DetailedState.CONNECTED) {
+            /*
+             * TODO: this function is called by wifi. We assume that if wifi
+             * says CONNECTED, both v4 and v6 is connected. This may not be true
+             * always but no other way of knowing this now.
+             */
+            setDetailedState(state, true, true, null, null);
+        } else {
+            setDetailedState(state, false, false, null, null);
+        }
     }
 
     /**
@@ -318,27 +363,37 @@ public abstract class NetworkStateTracker extends Handler {
      * if one was supplied. May be {@code null}.
      * @param extraInfo optional {@code String} providing extra information about the state change
      */
-    public void setDetailedState(NetworkInfo.DetailedState state, String reason, String extraInfo) {
+    public void setDetailedState(NetworkInfo.DetailedState state, boolean isIpv4Connected,
+            boolean isIpv6Connected, String reason, String extraInfo) {
         if (DBG) Log.d(TAG, "setDetailed state, old ="+mNetworkInfo.getDetailedState()+" and new state="+state);
-        if (state != mNetworkInfo.getDetailedState()) {
-            boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
-            String lastReason = mNetworkInfo.getReason();
-            /*
-             * If a reason was supplied when the CONNECTING state was entered, and no
-             * reason was supplied for entering the CONNECTED state, then retain the
-             * reason that was supplied when going to CONNECTING.
-             */
-            if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
-                    && lastReason != null)
-                reason = lastReason;
-            mNetworkInfo.setDetailedState(state, reason, extraInfo);
-            Message msg = mTarget.obtainMessage(EVENT_STATE_CHANGED, mNetworkInfo);
-            msg.sendToTarget();
-        }
+
+        boolean wasConnecting = (mNetworkInfo.getState() == NetworkInfo.State.CONNECTING);
+        String lastReason = mNetworkInfo.getReason();
+        /*
+         * If a reason was supplied when the CONNECTING state was entered, and no
+         * reason was supplied for entering the CONNECTED state, then retain the
+         * reason that was supplied when going to CONNECTING.
+         */
+        if (wasConnecting && state == NetworkInfo.DetailedState.CONNECTED && reason == null
+                && lastReason != null)
+            reason = lastReason;
+        mNetworkInfo.setDetailedState(state, isIpv4Connected, isIpv6Connected, reason, extraInfo);
+        Message msg = mTarget.obtainMessage(EVENT_STATE_CHANGED, mNetworkInfo);
+        msg.sendToTarget();
     }
 
     protected void setDetailedStateInternal(NetworkInfo.DetailedState state) {
-        mNetworkInfo.setDetailedState(state, null, null);
+
+        if (state == DetailedState.CONNECTED) {
+            /*
+             * TODO: this function is called by wifi. We assume that if wifi
+             * says CONNECTED, both v4 and v6 is connected. This may not be true
+             * always but no other way of knowing this now.
+             */
+            mNetworkInfo.setDetailedState(state, true, true, null, null);
+        } else {
+            mNetworkInfo.setDetailedState(state, false, false, null, null);
+        }
     }
 
     public void setTeardownRequested(boolean isRequested) {
@@ -399,6 +454,11 @@ public abstract class NetworkStateTracker extends Handler {
     public abstract boolean reconnect();
 
     /**
+     * Reset torn-down by Connection Manager flag.
+     */
+    public abstract void resetTornDownbyConnMgr();
+
+    /**
      * Turn the wireless radio off for a network.
      * @param turnOn {@code true} to turn the radio on, {@code false}
      */
@@ -445,7 +505,7 @@ public abstract class NetworkStateTracker extends Handler {
      * @param hostAddress the IP address of the host to which the route is desired
      * @return {@code true} on success, {@code false} on failure
      */
-    public boolean requestRouteToHost(int hostAddress) {
+    public boolean requestRouteToHost(InetAddress hostAddress) {
         return false;
     }
 
@@ -457,6 +517,6 @@ public abstract class NetworkStateTracker extends Handler {
     }
 
     public String getInterfaceName() {
-        return mInterfaceName;
+	return interfaceName;
     }
 }

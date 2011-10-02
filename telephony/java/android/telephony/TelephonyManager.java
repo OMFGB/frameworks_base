@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
+import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.IPhoneSubInfo;
 import com.android.internal.telephony.ITelephony;
@@ -31,6 +34,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.Phone.IPVersion;
 
 import java.util.List;
 
@@ -76,6 +80,10 @@ public class TelephonyManager {
         return sInstance;
     }
 
+
+    public static boolean isDsdsEnabled() {
+        return false;
+    }
 
     //
     // Broadcast Intent actions
@@ -394,9 +402,9 @@ public class TelephonyManager {
     /** Current network is EVDO revision B*/
     public static final int NETWORK_TYPE_EVDO_B = 12;
     /** @hide */
-    public static final int NETWORK_TYPE_LTE = 13;
-    /** @hide */
-    public static final int NETWORK_TYPE_EHRPD = 14;
+    public static final int NETWORK_TYPE_EHRPD = 13;
+	/** @hide */
+    public static final int NETWORK_TYPE_LTE = 14;
     /** @hide */
     public static final int NETWORK_TYPE_HSPAP = 15;
 
@@ -502,6 +510,50 @@ public class TelephonyManager {
     public static final int SIM_STATE_NETWORK_LOCKED = 4;
     /** SIM card state: Ready */
     public static final int SIM_STATE_READY = 5;
+    /** SIM card state: SIM Card Error, Sim Card is present but faulty
+     *@hide
+     */
+    public static final int SIM_STATE_CARD_IO_ERROR = 6;
+    /** SIM card state: Locked: requries a network subset PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_NETWORK_SUBSET_LOCKED = 7;
+    /** ICC card state: Locked: requries a SIM corporate PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_CORPORATE_LOCKED = 8;
+    /** ICC card state: Locked: requries a SIM service provider PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED = 9;
+    /** ICC card state: Locked: requries a SIM SIM PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_SIM_SIM_LOCKED = 10;
+    /** ICC card state: Locked: requries a RUIM network1 PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_NETWORK1_LOCKED = 11;
+    /** ICC card state: Locked: requries a RUIM network2 PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_NETWORK2_LOCKED = 12;
+    /** ICC card state: Locked: requries a RUIM hrpd PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_HRPD_LOCKED = 13;
+    /** ICC card state: Locked: requries a RUIM corporate PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_CORPORATE_LOCKED = 14;
+    /** ICC card state: Locked: requries a RUIM service provider PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED = 15;
+    /** ICC card state: Locked: requries a RUIM RUIM PIN to unlock
+     * @hide
+     */
+    public static final int ICC_STATE_RUIM_RUIM_LOCKED = 16;
 
     /**
      * @return true if a ICC card is present
@@ -518,6 +570,85 @@ public class TelephonyManager {
         }
     }
 
+    /** {@hide} */
+    public String getActiveInterfaceName(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String ifName = telephony.getActiveInterfaceName(apnType, ipv.toString());
+                if(TextUtils.isEmpty(ifName)){
+                    Log.i(TAG,"interface name is null or empty");
+                    return null;
+                } else {
+                    return ifName;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
+        }
+    }
+
+
+    /** {@hide} */
+    public String getActiveIpAddress(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String ipAddr = telephony.getActiveIpAddress(apnType, ipv.toString());
+                if(TextUtils.isEmpty(ipAddr)){
+                    Log.i(TAG,"ipAddr is null or empty");
+                    return null;
+                } else {
+                    return ipAddr;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
+        }
+    }
+
+    /** {@hide} */
+    public String getActiveGateway(String apnType, IPVersion ipv) {
+        try{
+            ITelephony telephony = getITelephony();
+            if (telephony != null) {
+                String gatewayAddr = telephony.getActiveGateway(apnType, ipv.toString());
+                if(TextUtils.isEmpty(gatewayAddr)){
+                    Log.i(TAG,"gatewayAddr is null or empty");
+                    return null;
+                } else {
+                    return gatewayAddr;
+                }
+            } else {
+                // This can happen when the ITelephony interface is not up yet.
+                return null;
+            }
+        } catch(RemoteException ex) {
+            // This shouldn't happen in the normal case
+            return null;
+        } catch (NullPointerException ex) {
+            // This could happen before phone restarts due to crashing
+            Log.i(TAG,"null pointer access");
+            return null;
+        }
+    }
+
     /**
      * Returns a constant indicating the state of the
      * device SIM card.
@@ -528,6 +659,17 @@ public class TelephonyManager {
      * @see #SIM_STATE_PUK_REQUIRED
      * @see #SIM_STATE_NETWORK_LOCKED
      * @see #SIM_STATE_READY
+     * @see #SIM_STATE_CARD_IO_ERROR
+     * @see #ICC_STATE_SIM_NETWORK_SUBSET_LOCKED
+     * @see #ICC_STATE_SIM_CORPORATE_LOCKED
+     * @see #ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED
+     * @see #ICC_STATE_SIM_SIM_LOCKED
+     * @see #ICC_STATE_RUIM_NETWORK1_LOCKED
+     * @see #ICC_STATE_RUIM_NETWORK2_LOCKED
+     * @see #ICC_STATE_RUIM_HRPD_LOCKED
+     * @see #ICC_STATE_RUIM_CORPORATE_LOCKED
+     * @see #ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED
+     * @see #ICC_STATE_RUIM_RUIM_LOCKED
      */
     public int getSimState() {
         String prop = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
@@ -545,6 +687,39 @@ public class TelephonyManager {
         }
         else if ("READY".equals(prop)) {
             return SIM_STATE_READY;
+        }
+        else if ("CARD_IO_ERROR".equals(prop)) {
+            return SIM_STATE_CARD_IO_ERROR;
+        }
+        else if ("SIM_NETWORK_SUBSET_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_NETWORK_SUBSET_LOCKED;
+        }
+        else if ("SIM_CORPORATE_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_CORPORATE_LOCKED;
+        }
+        else if ("SIM_SERVICE_PROVIDER_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_SERVICE_PROVIDER_LOCKED;
+        }
+        else if ("SIM_SIM_LOCKED".equals(prop)) {
+            return ICC_STATE_SIM_SIM_LOCKED;
+        }
+        else if ("RUIM_NETWORK1_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_NETWORK1_LOCKED;
+        }
+        else if ("RUIM_NETWORK2_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_NETWORK2_LOCKED;
+        }
+        else if ("RUIM_HRPD_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_HRPD_LOCKED;
+        }
+        else if ("RUIM_CORPORATE_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_CORPORATE_LOCKED;
+        }
+        else if ("RUIM_SERVICE_PROVIDER_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_SERVICE_PROVIDER_LOCKED;
+        }
+        else if ("RUIM_RUIM_LOCKED".equals(prop)) {
+            return ICC_STATE_RUIM_RUIM_LOCKED;
         }
         else {
             return SIM_STATE_UNKNOWN;

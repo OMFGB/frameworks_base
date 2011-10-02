@@ -1,5 +1,6 @@
 /*
 ** Copyright 2007, The Android Open Source Project
+** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -171,31 +172,32 @@ interface ISms {
     boolean disableCellBroadcast(int messageIdentifier);
 
     /**
-     * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable
-     * a message identifier range, they must both disable it for the device
-     * to stop receiving those messages.
+     * Enable reception of cdma broadcast messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages. All received messages will be broadcast in an
+     * intent with the action "android.provider.telephony.SMS_CDMA_BROADCAST_RECEIVED".
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
      * @return true if successful, false otherwise
-     *
-     * @see #disableCellBroadcastRange(int, int)
+     * @see #disableCdmaBroadcast(int)
      */
-    boolean enableCellBroadcastRange(int startMessageId, int endMessageId);
+    boolean enableCdmaBroadcast(int messageIdentifier);
 
     /**
-     * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable
-     * a message identifier range, they must both disable it for the device
-     * to stop receiving those messages.
+     * Disable reception of cdma broadcast messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages.
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in C.R1001-G
      * @return true if successful, false otherwise
      *
-     * @see #enableCellBroadcastRange(int, int)
+     * @see #enableCdmaBroadcast(int)
      */
-    boolean disableCellBroadcastRange(int startMessageId, int endMessageId);
-
+    boolean disableCdmaBroadcast(int messageIdentifier);
 }

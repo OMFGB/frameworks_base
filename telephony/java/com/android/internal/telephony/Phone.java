@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +29,6 @@ import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.gsm.NetworkInfo;
-import com.android.internal.telephony.gsm.GsmDataConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 
 import java.util.List;
@@ -44,7 +44,6 @@ public interface Phone {
 
     /** used to enable additional debug messages */
     static final boolean DEBUG_PHONE = true;
-
 
     /**
      * The phone state. One of the following:<p>
@@ -90,23 +89,28 @@ public interface Phone {
          */
         NONE, DATAIN, DATAOUT, DATAINANDOUT, DORMANT;
     };
-
     enum SuppService {
       UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP;
     };
 
+    public enum IPVersion {
+        IPV4, IPV6
+    }
     static final String STATE_KEY = "state";
     static final String PHONE_NAME_KEY = "phoneName";
+
     static final String FAILURE_REASON_KEY = "reason";
     static final String STATE_CHANGE_REASON_KEY = "reason";
+    static final String DATA_DISABLED_ON_BOOT_KEY = "disabled_on_boot_key";
     static final String DATA_APN_TYPES_KEY = "apnType";
     static final String DATA_APN_KEY = "apn";
-
+    static final String DATA_IPVERSION_KEY = "ipVersion";
+    static final String DATA_APN_TYPE_STATE = "apnTypeState";
+    static final String DATA_IP_ADDRESS_KEY = "ipaddress";
+    static final String DATA_GW_ADDRESS_KEY = "igwaddress";
     static final String DATA_IFACE_NAME_KEY = "iface";
-    static final String DATA_GATEWAY_KEY = "gateway";
     static final String NETWORK_UNAVAILABLE_KEY = "networkUnvailable";
     static final String PHONE_IN_ECM_STATE = "phoneinECMState";
-
     /**
      * APN types for data connections.  These are usage categories for an APN
      * entry.  One APN entry may support multiple APN types, eg, a single APN
@@ -164,6 +168,7 @@ public interface Phone {
     static final String REASON_PS_RESTRICT_ENABLED = "psRestrictEnabled";
     static final String REASON_PS_RESTRICT_DISABLED = "psRestrictDisabled";
     static final String REASON_SIM_LOADED = "simLoaded";
+    static final String REASON_RADIO_TECHNOLOGY_CHANGED = "radioTechnologyChanged";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
@@ -192,6 +197,11 @@ public interface Phone {
     int NT_MODE_CDMA_NO_EVDO = RILConstants.NETWORK_MODE_CDMA_NO_EVDO;
     int NT_MODE_EVDO_NO_CDMA = RILConstants.NETWORK_MODE_EVDO_NO_CDMA;
     int NT_MODE_GLOBAL       = RILConstants.NETWORK_MODE_GLOBAL;
+
+    int NT_MODE_CDMA_AND_LTE_EVDO = RILConstants.NETWORK_MODE_CDMA_AND_LTE_EVDO;
+    int NT_MODE_GSM_WCDMA_LTE     = RILConstants.NETWORK_MODE_GSM_WCDMA_LTE;
+    int NT_MODE_GLOBAL_LTE        = RILConstants.NETWORK_MODE_GLOBAL_LTE;
+    int NT_MODE_LTE_ONLY          = RILConstants.NETWORK_MODE_LTE_ONLY;
 
     int PREFERRED_NT_MODE    = RILConstants.PREFERRED_NETWORK_MODE;
 
@@ -243,11 +253,21 @@ public interface Phone {
     CellLocation getCellLocation();
 
     /**
-     * Get the current DataState. No change notification exists at this
+     * Get the current data connection state. Returns CONNECTED, if at least
+     * one data connection is active on either IPV4 or IPV6.
+     * No change notification exists at this
      * interface -- use
      * {@link android.telephony.PhoneStateListener} instead.
      */
     DataState getDataConnectionState();
+
+    /**
+     * Get the current DataState for the specified apn type, on the specified ip version.
+     * No change notification exists at this interface -- use
+     * {@link com.android.telephony.PhoneStateListener PhoneStateListener}
+     * instead.
+     */
+    DataState getDataConnectionState(String type, IPVersion ipv);
 
     /**
      * Get the current DataActivityState. No change notification exists at this
@@ -260,7 +280,6 @@ public interface Phone {
      * Gets the context for the phone, as set at initialization time.
      */
     Context getContext();
-
     /**
      * Disables the DNS check (i.e., allows "0.0.0.0").
      * Useful for lab testing environment.
@@ -310,7 +329,17 @@ public interface Phone {
      * Returns a string identifier for currently active or last connected APN.
      *  @return The string name.
      */
+    @Deprecated
     String getActiveApn();
+
+    /**
+     * Returns a string identifier for currently active APN on the specified apn
+     * type and ip version if any.
+     *
+     * @return The string name.
+     */
+
+    String getActiveApn(String type, IPVersion ipv);
 
     /**
      * Get current signal strength. No change notification available on this
@@ -858,7 +887,6 @@ public interface Phone {
      *
      */
     void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete);
-
     /**
      * Sets the radio power on/off state (off is sometimes
      * called "airplane mode"). Current state can be gotten via
@@ -872,6 +900,11 @@ public interface Phone {
      * @param power true means "on", false means "off".
      */
     void setRadioPower(boolean power);
+
+    /**
+     * Sets the ril power off
+     */
+    void setRilPowerOff();
 
     /**
      * Get voice message waiting indicator status. No change notification
@@ -1189,6 +1222,23 @@ public interface Phone {
     void invokeOemRilRequestRaw(byte[] data, Message response);
 
     /**
+     * Invokes invokeOemRilRequestRaw with data encoded for ICC
+     * De-Personalization.
+     *
+     * @param pin Pin for De-Personalization..
+     * @param type The De-Personalization type.
+     * @param response <strong>On success</strong>,
+     * (byte[])(((AsyncResult)response.obj).result)
+     * <strong>On failure</strong>,
+     * (((AsyncResult)response.obj).result) == null and
+     * (((AsyncResult)response.obj).exception) being an instance of
+     * com.android.internal.telephony.gsm.CommandException
+     *
+     * @see #invokeDepersonalization(String, int, android.os.Message)
+     */
+    void invokeDepersonalization(String pin, int type, Message response);
+
+    /**
      * Invokes RIL_REQUEST_OEM_HOOK_Strings on RIL implementation.
      *
      * @param strings The strings to make available as the request data.
@@ -1204,6 +1254,32 @@ public interface Phone {
      */
     void invokeOemRilRequestStrings(String[] strings, Message response);
 
+    /**
+     * Register for RIL_UNSOL_OEM_HOOK_EXT_APP responses from RIL
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void setOnUnsolOemHookExtApp(Handler h, int what, Object obj);
+
+    /**
+     * Unregister a RIL_UNSOL_OEM_HOOK_EXT_APP response handler
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    void unSetOnUnsolOemHookExtApp(Handler h);
+
+    /**
+     * Handlers for call re-establishment indications.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForCallReestablishInd(Handler h, int what, Object obj);
+
+    void unregisterForCallReestablishInd(Handler h);
     /**
      * Get the current active Data Call list
      *
@@ -1375,25 +1451,52 @@ public interface Phone {
     /**
      * Returns the name of the network interface used by the specified APN type.
      */
+    @Deprecated
     String getInterfaceName(String apnType);
+
+    /**
+     * Returns the name of the network interface used by the specified APN type.
+     */
+    String getInterfaceName(String apnType, IPVersion ipv);
 
     /**
      * Returns the IP address of the network interface used by the specified
      * APN type.
      */
+    @Deprecated
     String getIpAddress(String apnType);
+
+    /**
+     * Returns the IP address of the network interface used by the specified
+     * APN type on the specified IPVersion.
+     */
+    String getIpAddress(String apnType, IPVersion ipv);
 
     /**
      * Returns the gateway for the network interface used by the specified APN
      * type.
      */
+    @Deprecated
     String getGateway(String apnType);
+
+    /**
+     * Returns the gateway for the network interface used by the specified APN
+     * type on the specified IPVersion
+     */
+    String getGateway(String apnType, IPVersion ipv);
 
     /**
      * Returns the DNS servers for the network interface used by the specified
      * APN type.
      */
+    @Deprecated
     public String[] getDnsServers(String apnType);
+
+    /**
+     * Returns the DNS servers for the network interface used by the specified
+     * APN type on specified ip version
+     */
+    public String[] getDnsServers(String apnType, IPVersion ipv);
 
     /**
      * Retrieves the unique device ID, e.g., IMEI for GSM phones and MEID for CDMA phones.
@@ -1451,11 +1554,6 @@ public interface Phone {
     public PhoneSubInfo getPhoneSubInfo();
 
     /**
-     * Retrieves the IccSmsInterfaceManager of the Phone
-     */
-    public IccSmsInterfaceManager getIccSmsInterfaceManager();
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the Phone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();
@@ -1507,7 +1605,6 @@ public interface Phone {
      *            Callback message is empty on completion
      */
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response);
-
     public void notifyDataActivity();
 
     /**
@@ -1716,6 +1813,23 @@ public interface Phone {
      */
     void unsetOnEcbModeExitResponse(Handler h);
 
+    /**
+     * Checks whether the modem is in power save mode
+     * @return true if modem is in power save mode
+     */
+    boolean isModemPowerSave();
+
+    /**
+     * TODO: Adding a function for each property is not good.
+     * A fucntion of type getPhoneProp(propType) where propType is an
+     * enum of GSM+CDMA+LTE props would be a better approach.
+     *
+     * Get "Restriction of menu options for manual PLMN selection" bit
+     * status from EF_CSP data, this belongs to "Value Added Services Group".
+     * @return true if this bit is set or EF_CSP data is unavailable,
+     * false otherwise
+     */
+    boolean isCspPlmnEnabled();
 
     /**
      * TODO: Adding a function for each property is not good.

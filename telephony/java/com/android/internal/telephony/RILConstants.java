@@ -28,6 +28,7 @@ package com.android.internal.telephony;
  * {@hide}
  */
 public interface RILConstants {
+    int RIL_MAX_NETWORKS = 2;                 // (from ril.h)
     // From the top of ril.cpp
     int RIL_ERRNO_INVALID_RESPONSE = -1;
 
@@ -53,6 +54,7 @@ public interface RILConstants {
     int ILLEGAL_SIM_OR_ME = 15;               /* network selection failure due
                                                  to wrong SIM/ME and no
                                                  retries needed */
+    int SETUP_DATA_CALL_FAILURE = 16;         /* setup data call failure */
 
     /* NETWORK_MODE_* See ril.h RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE */
     int NETWORK_MODE_WCDMA_PREF     = 0; /* GSM/WCDMA (WCDMA preferred) */
@@ -66,6 +68,10 @@ public interface RILConstants {
     int NETWORK_MODE_EVDO_NO_CDMA   = 6; /* EvDo only */
     int NETWORK_MODE_GLOBAL         = 7; /* GSM/WCDMA, CDMA, and EvDo (auto mode, according to PRL)
                                             AVAILABLE Application Settings menu*/
+    int NETWORK_MODE_CDMA_AND_LTE_EVDO  = 8;  /* CDMA + LTE/EvDo auto */
+    int NETWORK_MODE_GSM_WCDMA_LTE      = 9;  /* GSM/WCDMA/LTE auto */
+    int NETWORK_MODE_GLOBAL_LTE         = 10; /* CDMA/EvDo/GSM/WCDMA/LTE auto */
+    int NETWORK_MODE_LTE_ONLY           = 11; /* LTE only */
     int PREFERRED_NETWORK_MODE      = NETWORK_MODE_WCDMA_PREF;
 
     /* CDMA subscription source. See ril.h RIL_REQUEST_CDMA_SET_SUBSCRIPTION */
@@ -139,6 +145,14 @@ cat include/telephony/ril.h | \
     static final int DATA_PROFILE_OEM_BASE  = 1000;
 
 
+    /** Tethered mode on/off indication for RIL_UNSOL_TETHERED_MODE_STATE_CHANGED */
+    int RIL_TETHERED_MODE_ON = 1;
+    int RIL_TETHERED_MODE_OFF = 0;
+
+    /** Deactivate data call reasons */
+    int DEACTIVATE_REASON_NONE      = 0;
+    int DEACTIVATE_REASON_RADIO_OFF = 1;
+
     int RIL_REQUEST_GET_SIM_STATUS = 1;
     int RIL_REQUEST_ENTER_SIM_PIN = 2;
     int RIL_REQUEST_ENTER_SIM_PUK = 3;
@@ -146,7 +160,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_ENTER_SIM_PUK2 = 5;
     int RIL_REQUEST_CHANGE_SIM_PIN = 6;
     int RIL_REQUEST_CHANGE_SIM_PIN2 = 7;
-    int RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION = 8;
+    int RIL_REQUEST_ENTER_DEPERSONALIZATION_CODE = 8;
     int RIL_REQUEST_GET_CURRENT_CALLS = 9;
     int RIL_REQUEST_DIAL = 10;
     int RIL_REQUEST_GET_IMSI = 11;
@@ -159,7 +173,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_LAST_CALL_FAIL_CAUSE = 18;
     int RIL_REQUEST_SIGNAL_STRENGTH = 19;
     int RIL_REQUEST_REGISTRATION_STATE = 20;
-    int RIL_REQUEST_GPRS_REGISTRATION_STATE = 21;
+    int RIL_REQUEST_DATA_REGISTRATION_STATE = 548;
     int RIL_REQUEST_OPERATOR = 22;
     int RIL_REQUEST_RADIO_POWER = 23;
     int RIL_REQUEST_DTMF = 24;
@@ -215,7 +229,7 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE = 74;
     int RIL_REQUEST_GET_NEIGHBORING_CELL_IDS = 75;
     int RIL_REQUEST_SET_LOCATION_UPDATES = 76;
-    int RIL_REQUEST_CDMA_SET_SUBSCRIPTION = 77;
+    int RIL_REQUEST_CDMA_SET_SUBSCRIPTION_SOURCE = 77;
     int RIL_REQUEST_CDMA_SET_ROAMING_PREFERENCE = 78;
     int RIL_REQUEST_CDMA_QUERY_ROAMING_PREFERENCE = 79;
     int RIL_REQUEST_SET_TTY_MODE = 80;
@@ -242,6 +256,12 @@ cat include/telephony/ril.h | \
     int RIL_REQUEST_SET_SMSC_ADDRESS = 101;
     int RIL_REQUEST_REPORT_SMS_MEMORY_STATUS = 102;
     int RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING = 103;
+    int RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE = 105;
+    int RIL_REQUEST_CDMA_PRL_VERSION = 106;
+    int RIL_REQUEST_VOICE_RADIO_TECH = 104;
+    int RIL_REQUEST_IMS_REGISTRATION_STATE = 107;
+    int RIL_REQUEST_IMS_SEND_SMS = 108;
+    int RIL_REQUEST_GET_DATA_CALL_PROFILE = 109;
     int RIL_UNSOL_RESPONSE_BASE = 1000;
     int RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED = 1000;
     int RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED = 1001;
@@ -274,4 +294,12 @@ cat include/telephony/ril.h | \
     int RIL_UNSOL_OEM_HOOK_RAW = 1028;
     int RIL_UNSOL_RINGBACK_TONE = 1029;
     int RIL_UNSOL_RESEND_INCALL_MUTE = 1030;
+    int RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 1034;
+    int RIL_UNSOL_CDMA_PRL_CHANGED = 1035;
+    int RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE = 1037;
+    int RIL_UNSOL_VOICE_RADIO_TECH_CHANGED = 1031;
+    int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 1036;
+    int RIL_UNSOL_TETHERED_MODE_STATE_CHANGED = 1032;
+    int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 1033;
+
 }

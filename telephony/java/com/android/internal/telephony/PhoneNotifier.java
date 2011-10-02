@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.Phone.IPVersion;
+
 /**
  * {@hide}
  */
@@ -33,7 +35,7 @@ public interface PhoneNotifier {
 
     public void notifyCallForwardingChanged(Phone sender);
 
-    public void notifyDataConnection(Phone sender, String reason);
+    public void notifyDataConnection(Phone sender, String type, IPVersion ipv, String reason);
 
     public void notifyDataConnectionFailed(Phone sender, String reason);
 

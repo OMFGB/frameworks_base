@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma;
 import android.os.Message;
 import android.util.Log;
 
+import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 
 /**
@@ -32,7 +33,9 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
 
     public RuimPhoneBookInterfaceManager(CDMAPhone phone) {
         super(phone);
-        adnCache = phone.mRuimRecords.getAdnCache();
+        if (phone.mRuimRecords != null) {
+            adnCache = phone.mRuimRecords.getAdnCache();
+        }
         //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
     }
 
@@ -49,6 +52,14 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
         if(DBG) Log.d(LOG_TAG, "RuimPhoneBookInterfaceManager finalized");
     }
 
+    public void updateRuimRecords(RuimRecords ruimRecords) {
+        if (ruimRecords != null) {
+            adnCache = ruimRecords.getAdnCache();
+        } else {
+            adnCache = null;
+        }
+    }
+
     public int[] getAdnRecordsSize(int efid) {
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
@@ -58,11 +69,15 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
             //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
             Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE);
 
-            phone.getIccFileHandler().getEFLinearRecordSize(efid, response);
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                logd("interrupted while trying to load from the RUIM");
+            IccFileHandler fh = phone.getIccFileHandler();
+            //IccFileHandler can be null if there is no icc card present.
+            if (fh != null) {
+                fh.getEFLinearRecordSize(efid, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to load from the RUIM");
+                }
             }
         }
 

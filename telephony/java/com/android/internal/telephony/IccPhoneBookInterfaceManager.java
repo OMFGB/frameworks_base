@@ -164,8 +164,16 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
-            waitForResult(status);
+            if (adnCache != null) {
+                adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to update by search");
+                }
+            } else {
+                logd("Failure while trying to update by search due to uninitialised adncache");
+            }
         }
         return success;
     }
@@ -207,8 +215,16 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
-            waitForResult(status);
+            if (adnCache != null) {
+                adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to update by index");
+                }
+            } else {
+                logd("Failure while trying to update by index due to uninitialised adncache");
+            }
         }
         return success;
     }
@@ -247,12 +263,19 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
 
         synchronized(mLock) {
             checkThread();
-            AtomicBoolean status = new AtomicBoolean(false);
-            Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, status);
-            adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
-            waitForResult(status);
+            Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE);
+            if (adnCache != null) {
+                adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    logd("interrupted while trying to load from the SIM");
+                }
+           } else {
+               logd("Failure while trying to load from SIM due to uninitialised adncache");
+           }
         }
-        return records;
+            return records;
     }
 
     protected void checkThread() {
@@ -279,7 +302,10 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
-            if (phone.getIccCard().isApplicationOnIcc(IccCardApplication.AppType.APPTYPE_USIM)) {
+            //getUiccCard() can return null, if there is no icc present.
+            if (phone.getUiccCard() != null
+                    && phone.getUiccCard().isApplicationOnIcc(
+                            UiccConstants.AppType.APPTYPE_USIM)) {
                 return IccConstants.EF_PBR;
             }
         }

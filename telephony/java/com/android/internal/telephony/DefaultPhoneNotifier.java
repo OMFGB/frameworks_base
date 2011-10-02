@@ -23,17 +23,20 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.ITelephonyRegistry;
+import com.android.internal.telephony.Phone.DataState;
+import com.android.internal.telephony.Phone.IPVersion;
 
 /**
  * broadcast intents
  */
 public class DefaultPhoneNotifier implements PhoneNotifier {
+    static final String LOG_TAG = "Phone";
 
-    static final String LOG_TAG = "GSM";
     private static final boolean DBG = true;
+
     private ITelephonyRegistry mRegistry;
 
-    /*package*/
+    /* package */
     DefaultPhoneNotifier() {
         mRegistry = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                     "telephony.registry"));
@@ -42,7 +45,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyPhoneState(Phone sender) {
         Call ringingCall = sender.getRingingCall();
         String incomingNumber = "";
-        if (ringingCall != null && ringingCall.getEarliestConnection() != null){
+        if (ringingCall != null && ringingCall.getEarliestConnection() != null) {
             incomingNumber = ringingCall.getEarliestConnection().getAddress();
         }
         try {
@@ -52,7 +55,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+
     public void notifyServiceState(Phone sender) {
+
         try {
             mRegistry.notifyServiceState(sender.getServiceState());
         } catch (RemoteException ex) {
@@ -92,18 +97,39 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
-    public void notifyDataConnection(Phone sender, String reason) {
+    public void notifyDataConnection(Phone sender, String apnType, IPVersion ipv, String reason) {
         TelephonyManager telephony = TelephonyManager.getDefault();
+
+        /*
+         * Notify Data Connection is called by DCT, whenever there is a change in data connection state
+         * associated with <data service type / apn type, ipv>. We then pass the following information
+         * to Telephony Registry.
+         * 1. data connection State of service type <type> on IP Version <ipv>
+         * 2. reason why data connection state changed
+         * 3. apn/data profile through which <type> is active on <ipv>
+         * 4. interface through which <type> is active on <ipv>
+         * 5. ipv
+         */
+
+        Log.v("DATA", "[DefaultPhoneNotifier] : "
+                + apnType + ", " + ipv + ", " + sender.getDataConnectionState(apnType, ipv));
+
+
+
         try {
             mRegistry.notifyDataConnection(
                     convertDataState(sender.getDataConnectionState()),
-                    sender.isDataConnectivityPossible(), reason,
-                    sender.getActiveApn(),
-                    sender.getActiveApnTypes(),
-                    sender.getInterfaceName(null),
-                    ((telephony!=null) ? telephony.getNetworkType() :
-                    TelephonyManager.NETWORK_TYPE_UNKNOWN),
-                    sender.getGateway(null));
+                    apnType,
+                    ipv.toString(),
+                    convertDataState(sender.getDataConnectionState(apnType, ipv)),
+                    sender.getActiveApn(apnType, ipv),
+                    sender.getInterfaceName(apnType, ipv),
+                    sender.getIpAddress(apnType, ipv),
+                    sender.getGateway(apnType, ipv),
+                    sender.isDataConnectivityPossible(),
+                    ((telephony != null) ? telephony.getNetworkType() :
+                        TelephonyManager.NETWORK_TYPE_UNKNOWN),
+                    reason);
         } catch (RemoteException ex) {
             // system process is dead
         }

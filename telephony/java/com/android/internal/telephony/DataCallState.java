@@ -17,12 +17,17 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.CommandsInterface.RadioTechnology;
+
+
 public class DataCallState {
     public int cid;
     public int active;
     public String type;
     public String apn;
     public String address;
+    RadioTechnology mRadioTech;
+    public int inactiveReason;
 
     @Override
     public String toString() {

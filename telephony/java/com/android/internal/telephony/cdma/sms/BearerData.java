@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +24,22 @@ import static android.telephony.SmsMessage.MAX_USER_DATA_BYTES_WITH_HEADER;
 import android.os.SystemProperties;
 
 import android.util.Log;
+import android.util.SparseIntArray;
 
 import android.telephony.SmsMessage;
+import android.telephony.EmergencyMessage.Severity;
+import android.telephony.EmergencyMessage.Urgency;
+import android.telephony.EmergencyMessage.Certainty;
 
 import android.text.format.Time;
 
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.SmsHeader;
+import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.SmsMessageBase.TextEncodingDetails;
 
+import com.android.internal.util.HexDump;
 import com.android.internal.util.BitwiseInputStream;
 import com.android.internal.util.BitwiseOutputStream;
 
@@ -195,6 +202,11 @@ public final class BearerData {
     /* undefined-status codes */
     public static final int ERROR_UNDEFINED              = 0xFF;
     public static final int STATUS_UNDEFINED             = 0xFF;
+
+    /* Cmas record types TIA 1149 4.3*/
+    public static final int CMAS_RECORD_TYPE_0           = 0x0;
+    public static final int CMAS_RECORD_TYPE_1           = 0x1;
+    public static final int CMAS_RECORD_TYPE_2           = 0x2;
 
     public boolean messageStatusSet = false;
     public int errorClass = ERROR_UNDEFINED;
@@ -503,7 +515,7 @@ public final class BearerData {
              * stringToGsm7BitPacked, and potentially directly support
              * access to the main bitwise stream from encode/decode.
              */
-            byte[] fullData = GsmAlphabet.stringToGsm7BitPacked(msg, septetOffset, !force, 0, 0);
+            byte[] fullData = GsmAlphabet.stringToGsm7BitPacked(msg, septetOffset, !force);
             Gsm7bitCodingResult result = new Gsm7bitCodingResult();
             result.data = new byte[fullData.length - 1];
             System.arraycopy(fullData, 1, result.data, 0, fullData.length - 1);
@@ -935,7 +947,7 @@ public final class BearerData {
     private static String decodeUtf16(byte[] data, int offset, int numFields)
         throws CodingException
     {
-        // Start reading from the next 16-bit aligned boundary after offset.
+        // Start reading from the next 16-bit aligned boundry after offset.
         int padding = offset % 2;
         numFields -= (offset + padding) / 2;
         try {
@@ -981,13 +993,12 @@ public final class BearerData {
     private static String decode7bitGsm(byte[] data, int offset, int numFields)
         throws CodingException
     {
-        // Start reading from the next 7-bit aligned boundary after offset.
+        // Start reading from the next 7-bit aligned boundry after offset.
         int offsetBits = offset * 8;
         int offsetSeptets = (offsetBits + 6) / 7;
         numFields -= offsetSeptets;
         int paddingBits = (offsetSeptets * 7) - offsetBits;
-        String result = GsmAlphabet.gsm7BitPackedToString(data, offset, numFields, paddingBits,
-                0, 0);
+        String result = GsmAlphabet.gsm7BitPackedToString(data, offset, numFields, paddingBits);
         if (result == null) {
             throw new CodingException("7bit GSM decoding failed");
         }
@@ -1001,6 +1012,127 @@ public final class BearerData {
             return new String(data, offset, numFields - offset, "ISO-8859-1");
         } catch (java.io.UnsupportedEncodingException ex) {
             throw new CodingException("ISO-8859-1 decode failed: " + ex);
+        }
+    }
+
+    private static boolean decodeCmaeRecordType0(UserData userData,
+            BitwiseInputStream inStream, int recordLen)
+    throws BitwiseInputStream.AccessException {
+        int bitsLeft = recordLen * 8;
+        // C.R1001 9.1-1
+        int cmaeCharSet = inStream.read(5);
+        bitsLeft -= 5;
+        byte[] cmaeAlertTextData = inStream.readByteArray(bitsLeft);
+
+        try {
+            switch(cmaeCharSet) {
+                case UserData.ENCODING_7BIT_ASCII:
+                    int numChars = cmaeAlertTextData.length * 8 / 7;
+                    userData.payloadStr = decode7bitAscii(cmaeAlertTextData, 0, numChars);
+                    break;
+                default:
+                    throw new CodingException("Cmae encoding not supported: " + cmaeCharSet);
+            }
+        } catch (CodingException e) {
+            Log.e(LOG_TAG, "Cmae record type 0 coding exception: " + e);
+        }
+        return true;
+    }
+
+    private static boolean decodeCmaeRecordType1(UserData userData,
+            BitwiseInputStream inStream, int recordLen)
+    throws BitwiseInputStream.AccessException {
+        int bitsLeft = recordLen * 8;
+        if (recordLen < 4) {
+            // This record has to be at least 4 bytes long
+            inStream.skip(bitsLeft);
+            return false;
+        }
+        // TIA 1149 4.3
+        int cmaeCategory = inStream.read(8);
+        bitsLeft -= 8;
+        int cmaeResponseType = inStream.read(8);
+        bitsLeft -= 8;
+        userData.severity = Severity.values()[inStream.read(4)];
+        bitsLeft -= 4;
+        userData.urgency = Urgency.values()[inStream.read(4)];
+        bitsLeft -= 4;
+        userData.certainty = Certainty.values()[inStream.read(4)];
+        bitsLeft -= 4;
+
+        inStream.skip(bitsLeft);
+        return true;
+    }
+
+    private static boolean decodeCmaeRecordType2(UserData userData,
+            BitwiseInputStream inStream, int recordLen)
+    throws BitwiseInputStream.AccessException {
+        int bitsLeft = recordLen * 8;
+        if (recordLen < 10) {
+            // This record has to be at least 10 bytes long
+            inStream.skip(bitsLeft);
+            return false;
+        }
+        // TIA 1149 4.3
+        int cmaeIdentifier = inStream.read(8) << 8 | inStream.read(8);
+        bitsLeft -= 16;
+        int cmaeAlertHandling = inStream.read(8);
+        bitsLeft -= 8;
+        // TIA 1149 4.3 Table 4-9
+        int cmaeExpiresYear = inStream.read(8);    //0 - 99 UTC
+        int cmaeExpiresMonth = inStream.read(8);   //1 - 12 UTC
+        int cmaeExpiresDay = inStream.read(8);     //1 - 31 UTC
+        int cmaeExpiresHours = inStream.read(8);   //0 - 23 UTC
+        int cmaeExpiresMinutes = inStream.read(8); //0 - 59 UTC
+        int cmaeExpiresSeconds = inStream.read(8); //0 - 59 UTC
+        bitsLeft -= 48;
+        userData.language = inStream.read(8); // can only be english
+        bitsLeft -= 8;
+
+        inStream.skip(bitsLeft);
+        return true;
+    }
+
+    private static void decodeCmasUserDataPayload(UserData userData)
+    throws CodingException
+    {
+        try {
+            BitwiseInputStream inStream = new BitwiseInputStream(userData.payload);
+            // Decode as per TIA 1149 4.3
+            int cmaeProtocolVersion = inStream.read(8);
+            if (cmaeProtocolVersion != 0) {
+                // Only version 0 supported
+                throw new CodingException("unsupported cmae protocol version ("
+                        + cmaeProtocolVersion + ")");
+            }
+
+            boolean typeZeroFound = false; // Cmas user data has to have type 0 record
+            while (inStream.available() > 2 * 8) {
+                int recordType = inStream.read(8);
+                int recordLen = inStream.read(8);
+                switch (recordType) {
+                    case CMAS_RECORD_TYPE_0:
+                        typeZeroFound = true;
+                        decodeCmaeRecordType0(userData, inStream, recordLen);
+                        break;
+                    case CMAS_RECORD_TYPE_1:
+                        decodeCmaeRecordType1(userData, inStream, recordLen);
+                        break;
+                    case CMAS_RECORD_TYPE_2:
+                        decodeCmaeRecordType2(userData, inStream, recordLen);
+                        break;
+                    default:
+                        throw new CodingException("unsupported cmas user data record type ("
+                                + recordType + ")");
+                }
+            }
+            if (!typeZeroFound) {
+                throw new CodingException("missing type 0 record");
+            }
+        } catch (BitwiseInputStream.AccessException ex) {
+            Log.e(LOG_TAG, "Cmae user data decode failed: " + ex);
+        } catch (CodingException ex) {
+            Log.e(LOG_TAG, "Cmae user data decode failed: " + ex);
         }
     }
 
@@ -1274,7 +1406,12 @@ public final class BearerData {
     private static boolean decodeCallbackNumber(BearerData bData, BitwiseInputStream inStream)
         throws BitwiseInputStream.AccessException, CodingException
     {
+        final int EXPECTED_PARAM_SIZE = 1 * 8; //at least
         int paramBits = inStream.read(8) * 8;
+        if (paramBits < EXPECTED_PARAM_SIZE) {
+            inStream.skip(paramBits);
+            return false;
+        }
         CdmaSmsAddress addr = new CdmaSmsAddress();
         addr.digitMode = inStream.read(1);
         byte fieldBits = 4;
@@ -1565,7 +1702,7 @@ public final class BearerData {
      *
      * @return an instance of BearerData.
      */
-    public static BearerData decode(byte[] smsData) {
+    public static BearerData decode(byte[] smsData, boolean isCmas) {
         try {
             BitwiseInputStream inStream = new BitwiseInputStream(smsData);
             BearerData bData = new BearerData();
@@ -1652,6 +1789,8 @@ public final class BearerData {
                               foundSubparamMask + ")");
                     }
                     decodeIs91(bData);
+                } else if (isCmas) {
+                    decodeCmasUserDataPayload(bData.userData);
                 } else {
                     decodeUserDataPayload(bData.userData, bData.hasUserDataHeader);
                 }

@@ -113,12 +113,14 @@
          USB interfaces.  If the device doesn't want to support tething over USB this should
          be empty.  An example would be "usb.*" -->
     <string-array translatable="false" name="config_tether_usb_regexs">
+            <item>"usb\\d"</item>
     </string-array>
 
     <!-- List of regexpressions describing the interface (if any) that represent tetherable
          Wifi interfaces.  If the device doesn't want to support tethering over Wifi this
          should be empty.  An example would be "softap.*" -->
     <string-array translatable="false" name="config_tether_wifi_regexs">
+            <item>"softap.*"</item>
     </string-array>
 
     <!-- Dhcp range (min, max) to use for tethering purposes -->
@@ -129,6 +131,7 @@
          tethering on a new interface called "foo2" add <item>"foo\\d"</item> to the array -->
     <!-- Interfaces will be prioritized according to the order listed -->
     <string-array translatable="false" name="config_tether_upstream_regexs">
+            <item>"rmnet\\d"</item>
     </string-array>
 
     <!-- Boolean indicating if we require the use of DUN on mobile for tethering.
@@ -375,7 +378,8 @@
 
     <!-- Boolean indicating if restoring network selection should be skipped -->
     <!-- The restoring is handled by modem if it is true-->
-    <bool translatable="false" name="skip_restoring_network_selection">false</bool>
+	<!-- Note that this may need to be overriden to true for some networks-->
+    <bool translatable="false" name="skip_restoring_network_selection">true</bool>
     <!-- Do not translate. Defines the slots is Two Digit Number for dialing normally not USSD -->
     <string-array name="config_twoDigitNumberPattern">
     </string-array>
@@ -484,4 +488,8 @@
              -SourcePortDestPort-SourcePortDestPort-OMADM PDU
          If false, not supported. -->
     <bool name="config_duplicate_port_omadm_wappush">false</bool>
+    <!-- Boolean indicating if RADIO POWER OFF should be skipped on receiving SIM
+         REFRESH with RESET-->
+    <!-- This will be handled by modem if it is true-->
+    <bool translatable="false" name="skip_radio_power_off_on_sim_refresh_reset">true</bool>
 </resources>

@@ -16,32 +16,32 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
 import android.util.Log;
 
-import com.android.internal.telephony.AdnRecord;
 import com.android.internal.telephony.AdnRecordCache;
-import com.android.internal.telephony.AdnRecordLoader;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.cdma.RuimCard;
+import com.android.internal.telephony.IccCard;
+import com.android.internal.telephony.IccConstants;
+import com.android.internal.telephony.IccRefreshResponse;
+import com.android.internal.telephony.UiccApplicationRecords;
+import com.android.internal.telephony.UiccRecords;
+import com.android.internal.telephony.UiccConstants.AppType;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.MccTable;
 
 // can't be used since VoiceMailConstants is not public
 //import com.android.internal.telephony.gsm.VoiceMailConstants;
 import com.android.internal.telephony.IccException;
-import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.IccUtils;
-import com.android.internal.telephony.PhoneProxy;
 
 
 /**
  * {@hide}
  */
-public final class RuimRecords extends IccRecords {
+public final class RuimRecords extends UiccApplicationRecords {
     static final String LOG_TAG = "CDMA";
 
     private static final boolean DBG = true;
@@ -49,16 +49,11 @@ public final class RuimRecords extends IccRecords {
 
     // ***** Instance Variables
 
-    private String mImsi;
     private String mMyMobileNumber;
     private String mMin2Min1;
 
-    private String mPrlVersion;
-
     // ***** Event Constants
 
-    private static final int EVENT_RUIM_READY = 1;
-    private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 2;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_DONE = 10;
@@ -70,35 +65,29 @@ public final class RuimRecords extends IccRecords {
     private static final int EVENT_SMS_ON_RUIM = 21;
     private static final int EVENT_GET_SMS_DONE = 22;
 
-    private static final int EVENT_RUIM_REFRESH = 31;
 
+    public RuimRecords(UiccCardApplication parent, UiccRecords ur, Context c, CommandsInterface ci) {
+        super(parent, c, ci, ur);
 
-    RuimRecords(CDMAPhone p) {
-        super(p);
-
-        adnCache = new AdnRecordCache(phone);
+        adnCache = new AdnRecordCache(mFh);
 
         recordsRequested = false;  // No load request is made till SIM ready
 
         // recordsToLoad is set to 0 because no requests are made yet
         recordsToLoad = 0;
 
-
-        p.mCM.registerForRUIMReady(this, EVENT_RUIM_READY, null);
-        p.mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         // NOTE the EVENT_SMS_ON_RUIM is not registered
-        p.mCM.setOnIccRefresh(this, EVENT_RUIM_REFRESH, null);
 
         // Start off by setting empty state
-        onRadioOffOrNotAvailable();
+        resetRecords();
 
     }
 
     public void dispose() {
+        Log.d(LOG_TAG, "Disposing RuimRecords " + this);
         //Unregister for all events
-        phone.mCM.unregisterForRUIMReady(this);
-        phone.mCM.unregisterForOffOrNotAvailable( this);
-        phone.mCM.unSetOnIccRefresh(this);
+        mCi.unregisterForOffOrNotAvailable( this);
+        resetRecords();
     }
 
     @Override
@@ -106,9 +95,7 @@ public final class RuimRecords extends IccRecords {
         if(DBG) Log.d(LOG_TAG, "RuimRecords finalized");
     }
 
-    @Override
-    protected void onRadioOffOrNotAvailable() {
-        countVoiceMessages = 0;
+    protected void resetRecords() {
         mncLength = UNINITIALIZED;
         iccid = null;
 
@@ -128,11 +115,6 @@ public final class RuimRecords extends IccRecords {
          return mMin2Min1;
     }
 
-    /** Returns null if RUIM is not yet ready */
-    public String getPrlVersion() {
-        return mPrlVersion;
-    }
-
     @Override
     public void setVoiceMailNumber(String alphaTag, String voiceNumber, Message onComplete){
         // In CDMA this is Operator/OEM dependent
@@ -140,6 +122,11 @@ public final class RuimRecords extends IccRecords {
                 new IccException("setVoiceMailNumber not implemented");
         onComplete.sendToTarget();
         Log.e(LOG_TAG, "method setVoiceMailNumber is not implemented");
+    }
+
+    public void setImsi(String imsi) {
+        mImsi = imsi;
+        mImsiReadyRegistrants.notifyRegistrants();
     }
 
     /**
@@ -187,13 +174,15 @@ public final class RuimRecords extends IccRecords {
 
         boolean isRecordLoadResponse = false;
 
-        try { switch (msg.what) {
-            case EVENT_RUIM_READY:
-                onRuimReady();
-            break;
+        if (mDestroyed) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
 
-            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
-                onRadioOffOrNotAvailable();
+        try { switch (msg.what) {
+            case EVENT_APP_READY:
+                onRuimReady();
             break;
 
             case EVENT_GET_DEVICE_IDENTITY_DONE:
@@ -211,8 +200,6 @@ public final class RuimRecords extends IccRecords {
 
                 mMyMobileNumber = localTemp[0];
                 mMin2Min1 = localTemp[3];
-                mPrlVersion = localTemp[4];
-
                 Log.d(LOG_TAG, "MDN: " + mMyMobileNumber + " MIN: " + mMin2Min1);
 
             break;
@@ -252,11 +239,11 @@ public final class RuimRecords extends IccRecords {
                 Log.d(LOG_TAG, "Event EVENT_GET_SST_DONE Received");
             break;
 
-            case EVENT_RUIM_REFRESH:
+            case EVENT_ICC_REFRESH:
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
-                    handleRuimRefresh((int[])(ar.result));
+                    handleRuimRefresh(ar);
                 }
                 break;
 
@@ -276,6 +263,7 @@ public final class RuimRecords extends IccRecords {
         // One record loaded successfully or failed, In either case
         // we need to update the recordsToLoad count
         recordsToLoad -= 1;
+        Log.v(LOG_TAG, "RuimRecords:onRecordLoaded " + recordsToLoad + " requested: " + recordsRequested);
 
         if (recordsToLoad == 0 && recordsRequested == true) {
             onAllRecordsLoaded();
@@ -293,22 +281,11 @@ public final class RuimRecords extends IccRecords {
 
         recordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
-        ((CDMAPhone) phone).mRuimCard.broadcastIccStateChangedIntent(
-                RuimCard.INTENT_VALUE_ICC_LOADED, null);
     }
 
     private void onRuimReady() {
-        /* broadcast intent ICC_READY here so that we can make sure
-          READY is sent before IMSI ready
-        */
-
-        ((CDMAPhone) phone).mRuimCard.broadcastIccStateChangedIntent(
-                RuimCard.INTENT_VALUE_ICC_READY, null);
-
         fetchRuimRecords();
-
-        phone.mCM.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_DONE));
-
+        mCi.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_DONE));
     }
 
 
@@ -317,10 +294,11 @@ public final class RuimRecords extends IccRecords {
 
         Log.v(LOG_TAG, "RuimRecords:fetchRuimRecords " + recordsToLoad);
 
-        phone.getIccFileHandler().loadEFTransparent(EF_ICCID,
+        mFh.loadEFTransparent(IccConstants.EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
         recordsToLoad++;
 
+        Log.d(LOG_TAG, "RuimRecords:fetchRuimRecords " + recordsToLoad + " requested: " + recordsRequested);
         // Further records that can be inserted are Operator/OEM dependent
     }
 
@@ -331,52 +309,45 @@ public final class RuimRecords extends IccRecords {
     }
 
     @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        if (line != 1) {
-            // only profile 1 is supported
-            return;
-        }
-
-        // range check
-        if (countWaiting < 0) {
-            countWaiting = -1;
-        } else if (countWaiting > 0xff) {
-            // C.S0015-B v2, 4.5.12
-            // range: 0-99
-            countWaiting = 0xff;
-        }
-        countVoiceMessages = countWaiting;
-
-        ((CDMAPhone) phone).notifyMessageWaitingIndicator();
+    public void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete) {
+        //Will be used in future to store voice mail count in UIM
+        //C.S0023-D_v1.0 does not have a file id in UIM for MWI
+        Log.d(LOG_TAG, "RuimRecords:setVoiceMessageWaiting - NOP for CDMA");
     }
 
-    private void handleRuimRefresh(int[] result) {
-        if (result == null || result.length == 0) {
-            if (DBG) log("handleRuimRefresh without input");
+    private void handleRuimRefresh(AsyncResult ar) {
+        IccRefreshResponse state = (IccRefreshResponse)ar.result;
+        if (state == null) {
+            if (DBG) log("handleRuimRefresh received without input");
             return;
         }
 
-        switch ((result[0])) {
-            case CommandsInterface.SIM_REFRESH_FILE_UPDATED:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_FILE_UPDATED");
+        switch (state.refreshResult) {
+            case SIM_FILE_UPDATE:
+                if (DBG) log("handleRuimRefresh with SIM_FILE_UPDATED");
                 adnCache.reset();
                 fetchRuimRecords();
                 break;
-            case CommandsInterface.SIM_REFRESH_INIT:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_INIT");
+            case SIM_INIT:
+                if (DBG) log("handleRuimRefresh with SIM_INIT");
                 // need to reload all files (that we care about)
                 fetchRuimRecords();
                 break;
-            case CommandsInterface.SIM_REFRESH_RESET:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_RESET");
-                phone.mCM.setRadioPower(false, null);
-                /* Note: no need to call setRadioPower(true).  Assuming the desired
-                * radio power state is still ON (as tracked by ServiceStateTracker),
-                * ServiceStateTracker will call setRadioPower when it receives the
-                * RADIO_STATE_CHANGED notification for the power off.  And if the
-                * desired power state has changed in the interim, we don't want to
-                * override it with an unconditional power on.
-                */
+            case SIM_RESET:
+                if (DBG) log("handleRuimRefresh with SIM_RESET");
+                boolean skipRadioPowerOff = mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
+
+                if (!skipRadioPowerOff) {
+                    mCi.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                     * radio power state is still ON (as tracked by ServiceStateTracker),
+                     * ServiceStateTracker will call setRadioPower when it receives the
+                     * RADIO_STATE_CHANGED notification for the power off.  And if the
+                     * desired power state has changed in the interim, we don't want to
+                     * override it with an unconditional power on.
+                     */
+                }
                 break;
             default:
                 // unknown refresh operation

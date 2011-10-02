@@ -124,14 +124,16 @@ public class PhoneFactory {
                 }
 
                 int phoneType = getPhoneType(networkMode);
+                DataConnectionTracker dct = new MMDataConnectionTracker(context, sPhoneNotifier,
+                        sCommandsInterface);
                 if (phoneType == Phone.PHONE_TYPE_GSM) {
-                    Log.i(LOG_TAG, "Creating GSMPhone");
                     sProxyPhone = new PhoneProxy(new GSMPhone(context,
-                            sCommandsInterface, sPhoneNotifier));
+                            sCommandsInterface, sPhoneNotifier, dct));
+                    Log.i(LOG_TAG, "Creating GSMPhone");
                 } else if (phoneType == Phone.PHONE_TYPE_CDMA) {
-                    Log.i(LOG_TAG, "Creating CDMAPhone");
                     sProxyPhone = new PhoneProxy(new CDMAPhone(context,
-                            sCommandsInterface, sPhoneNotifier));
+                            sCommandsInterface, sPhoneNotifier, dct));
+                    Log.i(LOG_TAG, "Creating CDMAPhone");
                 }
 
                 sMadeDefaults = true;
@@ -151,15 +153,19 @@ public class PhoneFactory {
         case RILConstants.NETWORK_MODE_CDMA:
         case RILConstants.NETWORK_MODE_CDMA_NO_EVDO:
         case RILConstants.NETWORK_MODE_EVDO_NO_CDMA:
+        case RILConstants.NETWORK_MODE_CDMA_AND_LTE_EVDO:
             return Phone.PHONE_TYPE_CDMA;
 
         case RILConstants.NETWORK_MODE_WCDMA_PREF:
         case RILConstants.NETWORK_MODE_GSM_ONLY:
         case RILConstants.NETWORK_MODE_WCDMA_ONLY:
         case RILConstants.NETWORK_MODE_GSM_UMTS:
+        case RILConstants.NETWORK_MODE_GSM_WCDMA_LTE:
             return Phone.PHONE_TYPE_GSM;
 
         case RILConstants.NETWORK_MODE_GLOBAL:
+        case RILConstants.NETWORK_MODE_GLOBAL_LTE:
+        case RILConstants.NETWORK_MODE_LTE_ONLY:
             return Phone.PHONE_TYPE_CDMA;
         default:
             return Phone.PHONE_TYPE_GSM;
@@ -178,16 +184,16 @@ public class PhoneFactory {
        return sProxyPhone;
     }
 
-    public static Phone getCdmaPhone() {
+    public static Phone getCdmaPhone(DataConnectionTracker dct) {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
+            Phone phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier, dct);
             return phone;
         }
     }
 
-    public static Phone getGsmPhone() {
+    public static Phone getGsmPhone(DataConnectionTracker dct) {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new GSMPhone(sContext, sCommandsInterface, sPhoneNotifier);
+            Phone phone = new GSMPhone(sContext, sCommandsInterface, sPhoneNotifier, dct);
             return phone;
         }
     }

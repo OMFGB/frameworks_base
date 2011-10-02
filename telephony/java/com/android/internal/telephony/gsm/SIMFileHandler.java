@@ -19,26 +19,24 @@ package com.android.internal.telephony.gsm;
 import android.os.Message;
 import android.util.Log;
 
-import com.android.internal.telephony.IccCard;
-import com.android.internal.telephony.IccCardApplication;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.UiccConstants.AppType;
 
 /**
  * {@hide}
  */
 public final class SIMFileHandler extends IccFileHandler implements IccConstants {
     static final String LOG_TAG = "GSM";
-    private Phone mPhone;
 
     //***** Instance Variables
 
     //***** Constructor
 
-    SIMFileHandler(GSMPhone phone) {
-        super(phone);
-        mPhone = phone;
+    public SIMFileHandler(UiccCardApplication app, int slotId, String aid, CommandsInterface ci) {
+        super(app, slotId, aid, ci);
     }
 
     public void dispose() {
@@ -60,6 +58,8 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         // TODO(): DF_GSM can be 7F20 or 7F21 to handle backward compatibility.
         // Implement this after discussion with OEMs.
         switch(efid) {
+        case EF_FDN:
+        case EF_MSISDN:
         case EF_SMS:
             return MF_SIM + DF_TELECOM;
 
@@ -70,6 +70,7 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_AD:
         case EF_MBDN:
         case EF_PNN:
+        case EF_OPL:
         case EF_SPDI:
         case EF_SST:
         case EF_CFIS:
@@ -83,20 +84,9 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
             return MF_SIM + DF_GSM;
-
-        case EF_PBR:
-            // we only support global phonebook.
-            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         }
         String path = getCommonIccEFPath(efid);
         if (path == null) {
-            // The EFids in USIM phone book entries are decided by the card manufacturer.
-            // So if we don't match any of the cases above and if its a USIM return
-            // the phone book path.
-            IccCard card = phone.getIccCard();
-            if (card != null && card.isApplicationOnIcc(IccCardApplication.AppType.APPTYPE_USIM)) {
-                return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
-            }
             Log.e(LOG_TAG, "Error: EF Path being returned in null");
         }
         return path;

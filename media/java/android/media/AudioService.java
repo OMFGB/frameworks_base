@@ -50,6 +50,8 @@ import android.view.VolumePanel;
 import android.os.SystemProperties;
 
 import com.android.internal.telephony.ITelephony;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.cdma.TtyIntent;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -307,6 +309,7 @@ public class AudioService extends IAudioService.Stub {
                 new IntentFilter(Intent.ACTION_HEADSET_PLUG);
         intentFilter.addAction(BluetoothA2dp.ACTION_SINK_STATE_CHANGED);
         intentFilter.addAction(BluetoothHeadset.ACTION_STATE_CHANGED);
+        intentFilter.addAction(TtyIntent.TTY_ENABLED_CHANGE_ACTION);
         intentFilter.addAction(Intent.ACTION_DOCK_EVENT);
         intentFilter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
         context.registerReceiver(mReceiver, intentFilter);
@@ -1958,6 +1961,25 @@ public class AudioService extends IAudioService.Stub {
                                 "");
                     }
                 }
+            } else if (action.equals(TtyIntent.TTY_ENABLED_CHANGE_ACTION)) {
+                String tty_mode;
+                switch (Settings.Secure.getInt(mContentResolver,
+                            Settings.Secure.PREFERRED_TTY_MODE,
+                            Phone.TTY_MODE_OFF)) {
+                    case Phone.TTY_MODE_FULL:
+                        tty_mode = "full";
+                        break;
+                    case Phone.TTY_MODE_VCO:
+                        tty_mode = "vco";
+                        break;
+                    case Phone.TTY_MODE_HCO:
+                        tty_mode = "hco";
+                        break;
+                    case Phone.TTY_MODE_OFF:
+                    default:
+                        tty_mode = "off";
+                }
+                AudioSystem.setParameters("tty_mode="+tty_mode);
             } else if (action.equals(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED)) {
                 int state = intent.getIntExtra(BluetoothHeadset.EXTRA_AUDIO_STATE,
                                                BluetoothHeadset.STATE_ERROR);

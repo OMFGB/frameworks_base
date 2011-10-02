@@ -138,18 +138,6 @@ abstract class SipPhoneBase extends PhoneBase {
         return new ArrayList<MmiCode>(0);
     }
 
-    public DataState getDataConnectionState() {
-        return DataState.DISCONNECTED;
-    }
-
-    public DataState getDataConnectionState(String apnType) {
-        return DataState.DISCONNECTED;
-    }
-
-    public DataActivityState getDataActivityState() {
-        return DataActivityState.NONE;
-    }
-
     /**
      * Notify any interested party of a Phone state change {@link Phone.State}
      */

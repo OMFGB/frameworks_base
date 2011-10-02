@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -703,6 +704,20 @@ const ToneGenerator::ToneDescriptor ToneGenerator::sToneDescriptors[] = {
           { segments: { { duration: 0, waveFreq: { 0 }, 0, 0 }},
           repeatCnt: 0,
           repeatSegment: 0 },                            // TONE_CDMA_SIGNAL_OFF
+        { segments: { { duration: 2000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 500, waveFreq: { 0 }, 0, 0 },
+                      { duration: 1000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 500, waveFreq: { 0 }, 0, 0 },
+                      { duration: 1000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 500, waveFreq: { 0 }, 0, 0 },
+                      { duration: 2000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 500, waveFreq: { 0 }, 0, 0 },
+                      { duration: 1000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 500, waveFreq: { 0 }, 0, 0 },
+                      { duration: 1000, waveFreq: { 853, 960 }, 0, 0 },
+                      { duration: 0 , waveFreq: { 0 }, 0, 0}},
+          repeatCnt: 0,
+          repeatSegment: 0 },                              // TONE_CMAS
 
         { segments: { { duration: ToneGenerator::TONEGEN_INF, waveFreq: { 350, 440, 0 }, 0, 0 },
                       { duration: 0 , waveFreq: { 0 }, 0, 0}},

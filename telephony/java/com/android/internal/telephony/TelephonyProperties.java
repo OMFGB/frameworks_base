@@ -147,4 +147,14 @@ public interface TelephonyProperties
      * when there is a radio technology change.
      */
     static final String PROPERTY_RESET_ON_RADIO_TECH_CHANGE = "persist.radio.reset_on_switch";
+
+    static final String PROPERTY_OMH_ENABLED = "persist.omh.enabled";
+
+    /**
+     * Priorities associated with different data services (apn types). These
+     * priorities will be used to determine which data profiles (apns) need to
+     * be used when network is not known to support multiple PDN.
+     * Priorities.
+     */
+    static final String PROPERTY_DATA_SERVICE_PRIORITIES = "persist.telephony.ds.priorities";
 }

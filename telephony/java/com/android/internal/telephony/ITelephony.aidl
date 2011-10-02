@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -164,6 +165,11 @@ interface ITelephony {
     boolean setRadio(boolean turnOn);
 
     /**
+     * Sets the ril power off
+     */
+    void setRilPowerOff();
+
+    /**
      * Request to update location information in service state
      */
     void updateServiceLocation();
@@ -222,6 +228,12 @@ interface ITelephony {
     int getActivePhoneType();
 
     /**
+     * Sends a OEM request to the RIL and returns the response back to the
+     * Caller. The returnValue is negative on failure. 0 or length of response on SUCCESS
+     */
+    int sendOemRilRequestRaw(in byte[] request, out byte[] response);
+
+    /**
      * Returns the CDMA ERI icon index to display
      */
     int getCdmaEriIconIndex();
@@ -252,10 +264,34 @@ interface ITelephony {
       * Returns the network type
       */
     int getNetworkType();
-    
+
+    /**
+     * Checks whether the modem is in power save mode
+     * {@hide}
+     */
+    boolean isModemPowerSave();
+
     /**
      * Return true if an ICC card is present
      */
     boolean hasIccCard();
+
+   /**
+     * Returns Interface Name used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveInterfaceName(String apnType, String ipv);
+
+    /**
+     * Returns Ip address used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveIpAddress(String apnType, String ipv);
+
+    /**
+     * Returns Gateway address used by specified apnType on the specified ip version.
+     * apnType and ipv strings should match the strings defined in the phone interface.
+     */
+    String getActiveGateway(String apnType, String ipv);
 }
 

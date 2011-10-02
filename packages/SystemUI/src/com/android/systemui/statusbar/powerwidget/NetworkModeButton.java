@@ -53,10 +53,10 @@ public class NetworkModeButton extends PowerButton{
             mIcon = R.drawable.stat_2g3g_off;
             break;
         case STATE_ENABLED:
-            if (NETWORK_MODE == Phone.NT_MODE_WCDMA_ONLY) {
+            if (NETWORK_MODE == Phone.NT_MODE_CDMA) {
                 mIcon = R.drawable.stat_3g_on;
             } else {
-                mIcon = R.drawable.stat_2g3g_on;
+                mIcon = R.drawable.stat_4g3g_on;
             }
             break;
         case STATE_INTERMEDIATE:
@@ -66,10 +66,10 @@ public class NetworkModeButton extends PowerButton{
             // user's intent. This is much easier to see in
             // sunlight.
             if (CURRENT_INTERNAL_STATE == STATE_TURNING_ON) {
-                if (INTENDED_NETWORK_MODE == Phone.NT_MODE_WCDMA_ONLY) {
+                if (INTENDED_NETWORK_MODE == Phone.NT_MODE_CDMA) {
                     mIcon = R.drawable.stat_3g_on;
                 } else {
-                    mIcon = R.drawable.stat_2g3g_on;
+                    mIcon = R.drawable.stat_4g3g_on;
                 }
             } else {
                 mIcon = R.drawable.stat_2g3g_off;
@@ -85,32 +85,31 @@ public class NetworkModeButton extends PowerButton{
 
         Intent intent = new Intent(ACTION_MODIFY_NETWORK_MODE);
         switch (NETWORK_MODE) {
-        case Phone.NT_MODE_WCDMA_PREF:
-        case Phone.NT_MODE_GSM_UMTS:
-            intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_GSM_ONLY);
+        case Phone.NT_MODE_CDMA_AND_LTE_EVDO:
+            intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_CDMA);
             CURRENT_INTERNAL_STATE = STATE_TURNING_OFF;
-            INTENDED_NETWORK_MODE=Phone.NT_MODE_GSM_ONLY;
+            INTENDED_NETWORK_MODE=Phone.NT_MODE_CDMA;
             break;
-        case Phone.NT_MODE_WCDMA_ONLY:
+        case Phone.NT_MODE_CDMA:
             if(currentMode == CM_MODE_3GONLY) {
-                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_GSM_ONLY);
+                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_LTE_ONLY);
                 CURRENT_INTERNAL_STATE = STATE_TURNING_OFF;
-                INTENDED_NETWORK_MODE = Phone.NT_MODE_GSM_ONLY;
+                INTENDED_NETWORK_MODE = Phone.NT_MODE_LTE_ONLY;
             } else {
-                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_WCDMA_PREF);
+                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_CDMA_AND_LTE_EVDO);
                 CURRENT_INTERNAL_STATE = STATE_TURNING_ON;
-                INTENDED_NETWORK_MODE = Phone.NT_MODE_WCDMA_PREF;
+                INTENDED_NETWORK_MODE = Phone.NT_MODE_CDMA_AND_LTE_EVDO;
             }
             break;
-        case Phone.NT_MODE_GSM_ONLY:
+        case Phone.NT_MODE_LTE_ONLY:
             if(currentMode == CM_MODE_3GONLY || currentMode == CM_MODE_BOTH) {
-                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_WCDMA_ONLY);
+                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_CDMA);
                 CURRENT_INTERNAL_STATE = STATE_TURNING_ON;
-                INTENDED_NETWORK_MODE = Phone.NT_MODE_WCDMA_ONLY;
+                INTENDED_NETWORK_MODE = Phone.NT_MODE_CDMA;
             } else {
-                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_WCDMA_PREF);
+                intent.putExtra(EXTRA_NETWORK_MODE, Phone.NT_MODE_CDMA_AND_LTE_EVDO);
                 CURRENT_INTERNAL_STATE = STATE_TURNING_ON;
-                INTENDED_NETWORK_MODE = Phone.NT_MODE_WCDMA_PREF;
+                INTENDED_NETWORK_MODE = Phone.NT_MODE_CDMA_AND_LTE_EVDO;
             }
             break;
         }
@@ -179,15 +178,13 @@ public class NetworkModeButton extends PowerButton{
             return STATE_INTERMEDIATE;
 
         switch(NETWORK_MODE) {
-            case Phone.NT_MODE_WCDMA_PREF:
-            case Phone.NT_MODE_WCDMA_ONLY:
-            case Phone.NT_MODE_GSM_UMTS:
-                return STATE_ENABLED;
-            case Phone.NT_MODE_GSM_ONLY:
-                return STATE_DISABLED;
+            case Phone.NT_MODE_CDMA_AND_LTE_EVDO:
             case Phone.NT_MODE_CDMA:
-            case Phone.NT_MODE_CDMA_NO_EVDO:
+            case Phone.NT_MODE_LTE_ONLY:
+                return STATE_ENABLED;
             case Phone.NT_MODE_EVDO_NO_CDMA:
+                return STATE_DISABLED;
+            case Phone.NT_MODE_CDMA_NO_EVDO:
             case Phone.NT_MODE_GLOBAL:
                 // need to check wtf is going on
                 Log.d(TAG, "Unexpected network mode (" + NETWORK_MODE + ")");

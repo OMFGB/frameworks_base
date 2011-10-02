@@ -23,6 +23,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
@@ -48,12 +49,11 @@ import android.util.Log;
 import android.util.TimeUtils;
 
 import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RegStateResponse;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
@@ -62,6 +62,11 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+
+import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.UiccManager;
+import com.android.internal.telephony.UiccConstants.AppState;
+import com.android.internal.telephony.UiccManager.AppFamily;
 
 /**
  * {@hide}
@@ -76,8 +81,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     int mPreferredNetworkType;
     RestrictedState rs;
 
-    private int gprsState = ServiceState.STATE_OUT_OF_SERVICE;
-    private int newGPRSState = ServiceState.STATE_OUT_OF_SERVICE;
+    /* icc stuff */
+    UiccManager mUiccManager = null;
+    UiccCardApplication m3gppApplication = null;
+    SIMRecords mSIMRecords = null;
 
     /**
      *  Values correspond to ServiceStateTracker.DATA_ACCESS_ definitions.
@@ -92,20 +99,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private boolean mGsmRoaming = false;
 
     /**
-     * Data roaming status solely based on TS 27.007 10.1.19 CGREG. Only used by
-     * handlePollStateResult to store CGREG roaming result.
-     */
-    private boolean mDataRoaming = false;
-
-    /**
      * Mark when service state is in emergency call only mode
      */
     private boolean mEmergencyOnly = false;
-
-    private RegistrantList gprsAttachedRegistrants = new RegistrantList();
-    private RegistrantList gprsDetachedRegistrants = new RegistrantList();
-    private RegistrantList psRestrictEnabledRegistrants = new RegistrantList();
-    private RegistrantList psRestrictDisabledRegistrants = new RegistrantList();
+    private boolean mNewEmergencyOnly = false;
 
     /**
      * Sometimes we get the NITZ time before we know what country we
@@ -124,18 +121,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     long mSavedAtTime;
 
     /**
-     * We can't register for SIM_RECORDS_LOADED immediately because the
-     * SIMRecords object may not be instantiated yet.
-     */
-    private boolean mNeedToRegForSimLoaded;
-
-    /** Started the recheck process after finding gprs should registered but not. */
-    private boolean mStartedGprsRegCheck = false;
-
-    /** Already sent the event-log for no gprs register. */
-    private boolean mReportedGprsNoReg = false;
-
-    /**
      * The Notification object given to the NotificationManager.
      */
     private Notification mNotification;
@@ -149,26 +134,24 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private String curPlmn = null;
     private int curSpnRule = 0;
 
-    /** waiting period before recheck gprs and voice registration. */
-    static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
-
     /** Notification type. */
-    static final int PS_ENABLED = 1001;            // Access Control blocks data service
-    static final int PS_DISABLED = 1002;           // Access Control enables data service
     static final int CS_ENABLED = 1003;            // Access Control blocks all voice/sms service
     static final int CS_DISABLED = 1004;           // Access Control enables all voice/sms service
     static final int CS_NORMAL_ENABLED = 1005;     // Access Control blocks normal voice/sms service
     static final int CS_EMERGENCY_ENABLED = 1006;  // Access Control blocks emergency call service
 
     /** Notification id. */
-    static final int PS_NOTIFICATION = 888;  // Id to update and cancel PS restricted
     static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
-
-    static final int MAX_NUM_DATA_STATE_READS = 15;
 
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (!phone.mIsTheCurrentActivePhone) {
+                Log.e(LOG_TAG, "Received Intent " + intent +
+                    " while being destroyed. Ignoring.");
+                return;
+            }
+
             if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
                 // update emergency string whenever locale changed
                 updateSpnDisplay();
@@ -201,26 +184,22 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
 
         cm.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        cm.registerForOn(this, EVENT_RADIO_ON, null);
         cm.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
 
         cm.registerForNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
-        cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
-        cm.registerForSIMReady(this, EVENT_SIM_READY, null);
+        cm.registerForRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
 
-        // system setting property AIRPLANE_MODE_ON is set in Settings.
-        int airplaneMode = Settings.System.getInt(
-                phone.getContext().getContentResolver(),
-                Settings.System.AIRPLANE_MODE_ON, 0);
-        mDesiredPowerState = ! (airplaneMode > 0);
+        mUiccManager = UiccManager.getInstance(phone.getContext(), this.cm);
+        mUiccManager.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
         cr = phone.getContext().getContentResolver();
         cr.registerContentObserver(
                 Settings.System.getUriFor(Settings.System.AUTO_TIME), true,
                 mAutoTimeObserver);
         setSignalStrengthDefaultValues();
-        mNeedToRegForSimLoaded = true;
 
         // Monitor locale change
         IntentFilter filter = new IntentFilter();
@@ -231,38 +210,32 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     public void dispose() {
         // Unregister for all events.
         cm.unregisterForAvailable(this);
+        cm.unregisterForOn(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForNetworkStateChanged(this);
-        cm.unregisterForSIMReady(this);
 
-        phone.mSIMRecords.unregisterForRecordsLoaded(this);
         cm.unSetOnSignalStrengthUpdate(this);
-        cm.unSetOnRestrictedStateChanged(this);
+        cm.unregisterForRestrictedStateChanged(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
+
+        //cleanup icc stuff
+        mUiccManager.unregisterForIccChanged(this);
+        if (m3gppApplication != null) {
+            m3gppApplication.unregisterForReady(this);
+        }
+        if(mSIMRecords != null) {
+            mSIMRecords.unregisterForRecordsEvents(this);
+            mSIMRecords.unregisterForRecordsLoaded(this);
+        }
+        m3gppApplication = null;
+        mUiccManager = null;
+        mSIMRecords = null;
+        phone.getContext().unregisterReceiver(mIntentReceiver);
     }
 
     protected void finalize() {
         if(DBG) Log.d(LOG_TAG, "GsmServiceStateTracker finalized");
-    }
-
-    /**
-     * Registration point for transition into GPRS attached.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForGprsAttached(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        gprsAttachedRegistrants.add(r);
-
-        if (gprsState == ServiceState.STATE_IN_SERVICE) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForGprsAttached(Handler h) {
-        gprsAttachedRegistrants.remove(h);
     }
 
     void registerForNetworkAttach(Handler h, int what, Object obj) {
@@ -278,87 +251,35 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         networkAttachedRegistrants.remove(h);
     }
 
-    /**
-     * Registration point for transition into GPRS detached.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForGprsDetached(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        gprsDetachedRegistrants.add(r);
-
-        if (gprsState == ServiceState.STATE_OUT_OF_SERVICE) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForGprsDetached(Handler h) {
-        gprsDetachedRegistrants.remove(h);
-    }
-
-    /**
-     * Registration point for transition into packet service restricted zone.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForPsRestrictedEnabled(Handler h, int what, Object obj) {
-        Log.d(LOG_TAG, "[DSAC DEB] " + "registerForPsRestrictedEnabled ");
-        Registrant r = new Registrant(h, what, obj);
-        psRestrictEnabledRegistrants.add(r);
-
-        if (rs.isPsRestricted()) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForPsRestrictedEnabled(Handler h) {
-        psRestrictEnabledRegistrants.remove(h);
-    }
-
-    /**
-     * Registration point for transition out of packet service restricted zone.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    void registerForPsRestrictedDisabled(Handler h, int what, Object obj) {
-        Log.d(LOG_TAG, "[DSAC DEB] " + "registerForPsRestrictedDisabled ");
-        Registrant r = new Registrant(h, what, obj);
-        psRestrictDisabledRegistrants.add(r);
-
-        if (rs.isPsRestricted()) {
-            r.notifyRegistrant();
-        }
-    }
-
-    void unregisterForPsRestrictedDisabled(Handler h) {
-        psRestrictDisabledRegistrants.remove(h);
-    }
-
     public void handleMessage (Message msg) {
         AsyncResult ar;
         int[] ints;
         String[] strings;
         Message message;
 
+        if (!phone.mIsTheCurrentActivePhone) {
+            Log.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch (msg.what) {
             case EVENT_RADIO_AVAILABLE:
                 //this is unnecessary
-                //setPowerStateToDesired();
+                break;
+
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
+                break;
+
+            case EVENT_ICC_RECORD_EVENTS:
+                ar = (AsyncResult)msg.obj;
+                processIccRecordEvents((Integer)ar.result);
                 break;
 
             case EVENT_SIM_READY:
                 // The SIM is now ready i.e if it was locked
                 // it has been unlocked. At this stage, the radio is already
                 // powered on.
-                if (mNeedToRegForSimLoaded) {
-                    phone.mSIMRecords.registerForRecordsLoaded(this,
-                            EVENT_SIM_RECORDS_LOADED, null);
-                    mNeedToRegForSimLoaded = false;
-                }
-
                 boolean skipRestoringSelection = phone.getContext().getResources().getBoolean(
                         com.android.internal.R.bool.skip_restoring_network_selection);
 
@@ -374,7 +295,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             case EVENT_RADIO_STATE_CHANGED:
                 // This will do nothing in the radio not
                 // available case
-                setPowerStateToDesired();
                 pollState();
                 break;
 
@@ -386,12 +306,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 // This callback is called when signal strength is polled
                 // all by itself
 
-                if (!(cm.getRadioState().isOn()) || (cm.getRadioState().isCdma())) {
+                if (!(cm.getRadioState().isOn())) {
                     // Polling will continue when radio turns back on and not CDMA
                     return;
                 }
                 ar = (AsyncResult) msg.obj;
-                onSignalStrengthResult(ar);
+                onSignalStrengthResult(ar, phone, true);
                 queueNextSignalStrengthPoll();
 
                 break;
@@ -425,7 +345,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_POLL_STATE_REGISTRATION:
-            case EVENT_POLL_STATE_GPRS:
             case EVENT_POLL_STATE_OPERATOR:
             case EVENT_POLL_STATE_NETWORK_SELECTION_MODE:
                 ar = (AsyncResult) msg.obj;
@@ -458,7 +377,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 // we don't have to ask it
                 dontPollSignalStrength = true;
 
-                onSignalStrengthResult(ar);
+                onSignalStrengthResult(ar, phone, true);
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
@@ -504,23 +423,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 cm.setPreferredNetworkType(toggledNetworkType, message);
                 break;
 
-            case EVENT_CHECK_REPORT_GPRS:
-                if (ss != null && !isGprsConsistent(gprsState, ss.getState())) {
-
-                    // Can't register data service while voice service is ok
-                    // i.e. CREG is ok while CGREG is not
-                    // possible a network or baseband side error
-                    GsmCellLocation loc = ((GsmCellLocation)phone.getCellLocation());
-                    EventLog.writeEvent(EventLogTags.DATA_NETWORK_REGISTRATION_FAIL,
-                            ss.getOperatorNumeric(), loc != null ? loc.getCid() : -1);
-                    mReportedGprsNoReg = true;
-                }
-                mStartedGprsRegCheck = false;
-                break;
-
             case EVENT_RESTRICTED_STATE_CHANGED:
                 // This is a notification from
-                // CommandsInterface.setOnRestrictedStateChanged
+                // CommandsInterface.registerForRestrictedStateChanged
 
                 Log.d(LOG_TAG, "[DSAC DEB] " + "EVENT_RESTRICTED_STATE_CHANGED");
 
@@ -535,83 +440,62 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    protected void setPowerStateToDesired() {
-        // If we want it on and it's off, turn it on
-        if (mDesiredPowerState
-            && cm.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
-            cm.setRadioPower(true, null);
-        } else if (!mDesiredPowerState && cm.getRadioState().isOn()) {
-            DataConnectionTracker dcTracker = phone.mDataConnection;
-            if (! dcTracker.isDataConnectionAsDesired()) {
-                EventLog.writeEvent(EventLogTags.DATA_NETWORK_STATUS_ON_RADIO_OFF,
-                        dcTracker.getStateInString(), dcTracker.getAnyDataEnabled() ? 1 : 0);
+    public void updateEons() {
+        boolean needsUpdate = false;
+        int lac = -1;
+
+        if (cellLoc != null) lac = cellLoc.getLac();
+        if (phone.mSIMRecords == null) return;
+        needsUpdate = phone.mSIMRecords.updateEons(ss.getOperatorNumeric(), lac);
+        if (needsUpdate) {
+            String eonsLong = phone.mSIMRecords.getEons();
+            if (eonsLong != null) {
+                // Update operator long name with EONS Long.
+                ss.setOperatorName(eonsLong, ss.getOperatorAlphaShort(),
+                      ss.getOperatorNumeric());
             }
-            // If it's on and available and we want it off gracefully
-            powerOffRadioSafely();
-        } // Otherwise, we're in the desired state
+            updateSpnDisplay();
+        }
     }
 
-    @Override
-    protected void powerOffRadioSafely() {
-        // clean data connection
-        DataConnectionTracker dcTracker = phone.mDataConnection;
-        Message msg = dcTracker.obtainMessage(DataConnectionTracker.EVENT_CLEAN_UP_CONNECTION);
-        msg.arg1 = 1; // tearDown is true
-        msg.obj = GSMPhone.REASON_RADIO_TURNED_OFF;
-        dcTracker.sendMessage(msg);
+    public void updateSpnDisplay() {
+        if (mSIMRecords == null) {
+            Log.e(LOG_TAG, "mSIMRecords null while updateSpnDisplay was called.");
+            return;
+        }
+            int rule = mSIMRecords.getDisplayRule(ss.getOperatorNumeric());
+            String spn = phone.mSIMRecords.getServiceProviderName();
+            String plmn = ss.getOperatorAlphaLong();
 
-        // poll data state up to 15 times, with a 100ms delay
-        // totaling 1.5 sec. Normal data disable action will finish in 100ms.
-        for (int i = 0; i < MAX_NUM_DATA_STATE_READS; i++) {
-            if (dcTracker.getState() != DataConnectionTracker.State.CONNECTED
-                    && dcTracker.getState() != DataConnectionTracker.State.DISCONNECTING) {
-                Log.d(LOG_TAG, "Data shutdown complete.");
-                break;
+            // For emergency calls only, pass the EmergencyCallsOnly string via
+            // EXTRA_PLMN
+            if (mEmergencyOnly && cm.getRadioState().isOn()) {
+                plmn = Resources.getSystem().getText(
+                        com.android.internal.R.string.emergency_calls_only).toString();
             }
-            SystemClock.sleep(DATA_STATE_POLL_SLEEP_MS);
-        }
 
-        // hang up all active voice calls
-        if (phone.isInCall()) {
-            phone.mCT.ringingCall.hangupIfAlive();
-            phone.mCT.backgroundCall.hangupIfAlive();
-            phone.mCT.foregroundCall.hangupIfAlive();
-        }
+            if (rule != curSpnRule || !TextUtils.equals(spn, curSpn)
+                    || !TextUtils.equals(plmn, curPlmn)) {
 
-        cm.setRadioPower(false, null);
-    }
+                boolean showSpn = !mEmergencyOnly
+                    && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN
+                    && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN
+                    && (ss.getState() == ServiceState.STATE_IN_SERVICE);
+                boolean showPlmn =
+                    (rule & SIMRecords.SPN_RULE_SHOW_PLMN) == SIMRecords.SPN_RULE_SHOW_PLMN;
 
-    protected void updateSpnDisplay() {
-        int rule = phone.mSIMRecords.getDisplayRule(ss.getOperatorNumeric());
-        String spn = phone.mSIMRecords.getServiceProviderName();
-        String plmn = ss.getOperatorAlphaLong();
+                Intent intent = new Intent(Intents.SPN_STRINGS_UPDATED_ACTION);
+                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+                intent.putExtra(Intents.EXTRA_SHOW_SPN, showSpn);
+                intent.putExtra(Intents.EXTRA_SPN, spn);
+                intent.putExtra(Intents.EXTRA_SHOW_PLMN, showPlmn);
+                intent.putExtra(Intents.EXTRA_PLMN, plmn);
+                phone.getContext().sendStickyBroadcast(intent);
+            }
 
-        // For emergency calls only, pass the EmergencyCallsOnly string via EXTRA_PLMN
-        if (mEmergencyOnly && cm.getRadioState().isOn()) {
-            plmn = Resources.getSystem().
-                getText(com.android.internal.R.string.emergency_calls_only).toString();
-        }
-
-        if (rule != curSpnRule
-                || !TextUtils.equals(spn, curSpn)
-                || !TextUtils.equals(plmn, curPlmn)) {
-            boolean showSpn = !mEmergencyOnly
-                && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN;
-            boolean showPlmn =
-                (rule & SIMRecords.SPN_RULE_SHOW_PLMN) == SIMRecords.SPN_RULE_SHOW_PLMN;
-
-            Intent intent = new Intent(Intents.SPN_STRINGS_UPDATED_ACTION);
-            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-            intent.putExtra(Intents.EXTRA_SHOW_SPN, showSpn);
-            intent.putExtra(Intents.EXTRA_SPN, spn);
-            intent.putExtra(Intents.EXTRA_SHOW_PLMN, showPlmn);
-            intent.putExtra(Intents.EXTRA_PLMN, plmn);
-            phone.getContext().sendStickyBroadcast(intent);
-        }
-
-        curSpnRule = rule;
-        curSpn = spn;
-        curPlmn = plmn;
+            curSpnRule = rule;
+            curSpn = spn;
+            curPlmn = plmn;
     }
 
     /**
@@ -652,21 +536,25 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         } else try {
             switch (what) {
                 case EVENT_POLL_STATE_REGISTRATION:
-                    states = (String[])ar.result;
+                    RegStateResponse r = (RegStateResponse)ar.result;
+                    states = r.getRecord(0);
+
                     int lac = -1;
                     int cid = -1;
                     int regState = -1;
                     int psc = -1;
+                    int type = 0;
                     if (states.length > 0) {
                         try {
                             regState = Integer.parseInt(states[0]);
-                            if (states.length >= 3) {
+                            if (states.length >= 4) {
                                 if (states[1] != null && states[1].length() > 0) {
                                     lac = Integer.parseInt(states[1], 16);
                                 }
                                 if (states[2] != null && states[2].length() > 0) {
                                     cid = Integer.parseInt(states[2], 16);
                                 }
+                                type = Integer.parseInt(states[3]);
                             }
                             if (states.length > 14) {
                                 if (states[14] != null && states[14].length() > 0) {
@@ -690,27 +578,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     // LAC and CID are -1 if not avail
                     newCellLoc.setLacAndCid(lac, cid);
                     newCellLoc.setPsc(psc);
-                break;
-
-                case EVENT_POLL_STATE_GPRS:
-                    states = (String[])ar.result;
-
-                    int type = 0;
-                    regState = -1;
-                    if (states.length > 0) {
-                        try {
-                            regState = Integer.parseInt(states[0]);
-
-                            // states[3] (if present) is the current radio technology
-                            if (states.length >= 4 && states[3] != null) {
-                                type = Integer.parseInt(states[3]);
-                            }
-                        } catch (NumberFormatException ex) {
-                            Log.w(LOG_TAG, "error parsing GprsRegistrationState: " + ex);
-                        }
-                    }
-                    newGPRSState = regCodeToServiceState(regState);
-                    mDataRoaming = regCodeIsRoaming(regState);
                     newNetworkType = type;
                     newSS.setRadioTechnology(type);
                 break;
@@ -747,7 +614,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
              *  as roaming while gsm service reports roaming but indeed it is
              *  not roaming between operators.
              */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
+            boolean roaming = mGsmRoaming;
             if (mGsmRoaming && !isRoamingBetweenOperators(mGsmRoaming, newSS)) {
                 roaming = false;
             }
@@ -758,7 +625,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     private void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1, true);
+        mSignalStrength = new SignalStrength();
+        mSignalStrength.setGsm(true);
     }
 
     /**
@@ -790,20 +658,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 pollStateDone();
             break;
 
-            case RUIM_NOT_READY:
-            case RUIM_READY:
-            case RUIM_LOCKED_OR_ABSENT:
-            case NV_NOT_READY:
-            case NV_READY:
-                Log.d(LOG_TAG, "Radio Technology Change ongoing, setting SS to off");
-                newSS.setStateOff();
-                newCellLoc.setStateInvalid();
-                setSignalStrengthDefaultValues();
-                mGotCountryCode = false;
-
-                //NOTE: pollStateDone() is not needed in this case
-                break;
-
             default:
                 // Issue all poll-related commands at once
                 // then count down the responses, which
@@ -813,11 +667,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 cm.getOperator(
                     obtainMessage(
                         EVENT_POLL_STATE_OPERATOR, pollingContext));
-
-                pollingContext[0]++;
-                cm.getGPRSRegistrationState(
-                    obtainMessage(
-                        EVENT_POLL_STATE_GPRS, pollingContext));
 
                 pollingContext[0]++;
                 cm.getRegistrationState(
@@ -870,9 +719,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (DBG) {
             Log.d(LOG_TAG, "Poll ServiceState done: " +
                 " oldSS=[" + ss + "] newSS=[" + newSS +
-                "] oldGprs=" + gprsState + " newGprs=" + newGPRSState +
-                " oldType=" + networkTypeToString(networkType) +
-                " newType=" + networkTypeToString(newNetworkType));
+                "] ");
         }
 
         boolean hasRegistered =
@@ -882,14 +729,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean hasDeregistered =
             ss.getState() == ServiceState.STATE_IN_SERVICE
             && newSS.getState() != ServiceState.STATE_IN_SERVICE;
-
-        boolean hasGprsAttached =
-                gprsState != ServiceState.STATE_IN_SERVICE
-                && newGPRSState == ServiceState.STATE_IN_SERVICE;
-
-        boolean hasGprsDetached =
-                gprsState == ServiceState.STATE_IN_SERVICE
-                && newGPRSState != ServiceState.STATE_IN_SERVICE;
 
         boolean hasNetworkTypeChanged = networkType != newNetworkType;
 
@@ -902,9 +741,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean hasLocationChanged = !newCellLoc.equals(cellLoc);
 
         // Add an event log when connection state changes
-        if (ss.getState() != newSS.getState() || gprsState != newGPRSState) {
+        if (ss.getState() != newSS.getState()) {
             EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
-                ss.getState(), gprsState, newSS.getState(), newGPRSState);
+                ss.getState(), newSS.getState());
         }
 
         ServiceState tss;
@@ -926,29 +765,23 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             GsmCellLocation loc = ((GsmCellLocation)phone.getCellLocation());
             if (loc != null) cid = loc.getCid();
             EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, networkType, newNetworkType);
-            Log.d(LOG_TAG,
-                    "RAT switched " + networkTypeToString(networkType) + " -> "
-                    + networkTypeToString(newNetworkType) + " at cell " + cid);
+            Log.d(LOG_TAG, "RAT switched " + networkType + " -> "
+                    + newNetworkType + " at cell " + cid);
         }
 
-        gprsState = newGPRSState;
         networkType = newNetworkType;
 
         newSS.setStateOutOfService(); // clean slate for next time
-
-        if (hasNetworkTypeChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    networkTypeToString(networkType));
-        }
 
         if (hasRegistered) {
             networkAttachedRegistrants.notifyRegistrants();
         }
 
+        Log.i(LOG_TAG,"Network State Changed, get EONS and update operator name display");
+        updateEons();
+
         if (hasChanged) {
             String operatorNumeric;
-
-            updateSpnDisplay();
 
             phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
                 ss.getOperatorAlphaLong());
@@ -1018,16 +851,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.notifyServiceStateChanged(ss);
         }
 
-        if (hasGprsAttached) {
-            gprsAttachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasGprsDetached) {
-            gprsDetachedRegistrants.notifyRegistrants();
-        }
-
-        if (hasNetworkTypeChanged) {
-            phone.notifyDataConnection(null);
+        if (hasChanged) {
+            updateSpnDisplay();
         }
 
         if (hasRoamingOn) {
@@ -1042,32 +867,49 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.notifyLocationChanged();
         }
 
-        if (! isGprsConsistent(gprsState, ss.getState())) {
-            if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
-                mStartedGprsRegCheck = true;
+    }
 
-                int check_period = Settings.Secure.getInt(
-                        phone.getContext().getContentResolver(),
-                        Settings.Secure.GPRS_REGISTER_CHECK_PERIOD_MS,
-                        DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
-                sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
-                        check_period);
-            }
-        } else {
-            mReportedGprsNoReg = false;
+    private void processIccRecordEvents(int eventCode) {
+        switch (eventCode) {
+            case SIMRecords.EVENT_SPN:
+                updateSpnDisplay();
+                break;
+            case SIMRecords.EVENT_EONS:
+                int lac = -1;
+                if (cellLoc != null) lac = cellLoc.getLac();
+                boolean needsSpnUpdate = phone.mSIMRecords.updateEons(ss.getOperatorNumeric(), lac);
+                if (needsSpnUpdate) {
+                    updateSpnDisplay();
+                }
+                break;
         }
     }
 
-    /**
-     * Check if GPRS got registered while voice is registered.
-     *
-     * @param gprsState for GPRS registration state, i.e. CGREG in GSM
-     * @param serviceState for voice registration state, i.e. CREG in GSM
-     * @return false if device only register to voice but not gprs
-     */
-    private boolean isGprsConsistent(int gprsState, int serviceState) {
-        return !((serviceState == ServiceState.STATE_IN_SERVICE) &&
-                (gprsState != ServiceState.STATE_IN_SERVICE));
+    void updateIccAvailability() {
+
+        UiccCardApplication new3gppApplication = mUiccManager
+                .getCurrentApplication(AppFamily.APP_FAM_3GPP);
+
+        if (m3gppApplication != new3gppApplication) {
+            if (m3gppApplication != null) {
+                log("Removing stale 3gpp Application.");
+                m3gppApplication.unregisterForReady(this);
+                if (mSIMRecords != null) {
+                    mSIMRecords.unregisterForRecordsEvents(this);
+                    mSIMRecords.unregisterForRecordsLoaded(this);
+                    mSIMRecords = null;
+                }
+                m3gppApplication = null;
+            }
+            if (new3gppApplication != null) {
+                log("New 3gpp application found");
+                m3gppApplication = new3gppApplication;
+                m3gppApplication.registerForReady(this, EVENT_SIM_READY, null);
+                mSIMRecords = (SIMRecords) m3gppApplication.getApplicationRecords();
+                mSIMRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
+                mSIMRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
+            }
+        }
     }
 
     /**
@@ -1107,7 +949,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     private void queueNextSignalStrengthPoll() {
-        if (dontPollSignalStrength || (cm.getRadioState().isCdma())) {
+        if (dontPollSignalStrength) {
             // The radio is telling us about signal strength changes
             // we don't have to ask it
             return;
@@ -1122,44 +964,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         // TODO Don't poll signal strength if screen is off
         sendMessageDelayed(msg, POLL_PERIOD_MILLIS);
-    }
-
-    /**
-     *  Send signal-strength-changed notification if changed.
-     *  Called both for solicited and unsolicited signal strength updates.
-     */
-    private void onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
-        int rssi = 99;
-
-        if (ar.exception != null) {
-            // -1 = unknown
-            // most likely radio is resetting/disconnected
-            setSignalStrengthDefaultValues();
-        } else {
-            int[] ints = (int[])ar.result;
-
-            // bug 658816 seems to be a case where the result is 0-length
-            if (ints.length != 0) {
-                rssi = ints[0];
-            } else {
-                Log.e(LOG_TAG, "Bogus signal strength response");
-                rssi = 99;
-            }
-        }
-
-        mSignalStrength = new SignalStrength(rssi, -1, -1, -1,
-                -1, -1, -1, true);
-
-        if (!mSignalStrength.equals(oldSignalStrength)) {
-            try { // This takes care of delayed EVENT_POLL_SIGNAL_STRENGTH (scheduled after
-                  // POLL_PERIOD_MILLIS) during Radio Technology Change)
-                phone.notifySignalStrength();
-           } catch (NullPointerException ex) {
-                log("onSignalStrengthResult() Phone already destroyed: " + ex
-                        + "SignalStrength not notified");
-           }
-        }
     }
 
     /**
@@ -1183,23 +987,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY) != 0) ||
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
             //ignore the normal call and data restricted state before SIM READY
-            if (phone.getIccCard().getState() == IccCard.State.READY) {
+            if (m3gppApplication != null && m3gppApplication.getState() == AppState.APPSTATE_READY) {
                 newRs.setCsNormalRestricted(
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_NORMAL) != 0) ||
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
-                newRs.setPsRestricted(
-                        (state & RILConstants.RIL_RESTRICTED_STATE_PS_ALL)!= 0);
             }
 
             Log.d(LOG_TAG, "[DSAC DEB] " + "new rs "+ newRs);
-
-            if (!rs.isPsRestricted() && newRs.isPsRestricted()) {
-                psRestrictEnabledRegistrants.notifyRegistrants();
-                setNotification(PS_ENABLED);
-            } else if (rs.isPsRestricted() && !newRs.isPsRestricted()) {
-                psRestrictDisabledRegistrants.notifyRegistrants();
-                setNotification(PS_DISABLED);
-            }
 
             /**
              * There are two kind of cs restriction, normal and emergency. So
@@ -1259,8 +1053,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     /** code is registration state 0-5 from TS 27.007 7.2 */
     private int regCodeToServiceState(int code) {
+        phone.setPowerSaveStatus(false);
         switch (code) {
             case 0:
+                phone.setPowerSaveStatus(true);
+                return ServiceState.STATE_OUT_OF_SERVICE;
+
             case 2: // 2 is "searching"
             case 3: // 3 is "registration denied"
             case 4: // 4 is "unknown" no vaild in current baseband
@@ -1342,22 +1140,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         return a*10 + b;
-    }
-
-    /**
-     * @return The current GPRS state. IN_SERVICE is the same as "attached"
-     * and OUT_OF_SERVICE is the same as detached.
-     */
-    int getCurrentGprsState() {
-        return gprsState;
-    }
-
-    /**
-     * @return true if phone is camping on a technology (eg UMTS)
-     * that could support voice and data simultaneously.
-     */
-    boolean isConcurrentVoiceAndData() {
-        return (networkType >= DATA_ACCESS_UMTS);
     }
 
     /**
@@ -1547,6 +1329,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             } finally {
                 mWakeLock.release();
             }
+        } catch (NumberFormatException ex) {
+            Log.e(LOG_TAG, "NITZ: Parsing NITZ time " + nitz, ex);
         } catch (RuntimeException ex) {
             Log.e(LOG_TAG, "NITZ: Parsing NITZ time " + nitz, ex);
         }
@@ -1638,15 +1422,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         int notificationId = CS_NOTIFICATION;
 
         switch (notifyType) {
-        case PS_ENABLED:
-            notificationId = PS_NOTIFICATION;
-            details = context.getText(com.android.internal.R.string.RestrictedOnData);;
-            break;
-        case PS_DISABLED:
-            notificationId = PS_NOTIFICATION;
-            break;
         case CS_ENABLED:
-            details = context.getText(com.android.internal.R.string.RestrictedOnAllVoice);;
+            details = context.getText(com.android.internal.R.string.RestrictedOnAll);;
             break;
         case CS_NORMAL_ENABLED:
             details = context.getText(com.android.internal.R.string.RestrictedOnNormal);;
@@ -1667,7 +1444,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         NotificationManager notificationManager = (NotificationManager)
             context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        if (notifyType == PS_DISABLED || notifyType == CS_DISABLED) {
+        if (notifyType == CS_DISABLED) {
             // cancel previous post notification
             notificationManager.cancel(notificationId);
         } else {

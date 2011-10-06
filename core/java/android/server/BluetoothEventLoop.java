@@ -537,7 +537,6 @@ class BluetoothEventLoop {
             }
         } else if( mBluetoothService.isEnabled() && BluetoothUuid.isHid(uuid)) {
             Log.i(TAG, "Allowing incoming HID connection from " + address);
-            BluetoothDevice device = mAdapter.getRemoteDevice(address);
             authorized = hid.getHidDevicePriority(device) > BluetoothHid.PRIORITY_OFF;
             if (authorized) {
                 Log.i(TAG, "Allowing incoming HID connection from " + address);

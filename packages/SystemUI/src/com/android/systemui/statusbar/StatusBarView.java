@@ -226,8 +226,6 @@ public class StatusBarView extends FrameLayout {
                     ((r - l) * level) / 100, 2);
 
             if (plugged) {
-                mBatteryChargingIndicator.setVisibility(VISIBLE);
-                mBatteryChargingIndicator.setBackgroundColor(0xFF33CC33);
                 int chargingWidth = Math.min(5, ((r - l) * (100 - level)) / 2);
                 mBatteryChargingIndicator.layout(r, t, (r + chargingWidth), t + 2);
 

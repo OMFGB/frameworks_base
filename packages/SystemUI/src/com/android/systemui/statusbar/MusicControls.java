@@ -69,8 +69,6 @@ public class MusicControls extends FrameLayout {
 
     private static final Uri sArtworkUri = Uri.parse("content://media/external/audio/albumart");
 
-    private ArrayList<InfoCallback> mInfoCallbacks = Lists.newArrayList();
-
     private Context mContext;
     private LayoutInflater mInflater;
     private AudioManager mAudioManager;
@@ -78,9 +76,9 @@ public class MusicControls extends FrameLayout {
     private StatusBarService mSBService;
     private AudioManager am = (AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
     private boolean mIsMusicActive = am.isMusicActive();
-    private boolean paused = false;
 
-    private ImageButton mPlayPauseIcon;
+    private ImageButton mPlayIcon;
+    private ImageButton mPauseIcon;
     private ImageButton mRewindIcon;
     private ImageButton mForwardIcon;
     private ImageButton mAlbumArt;
@@ -122,8 +120,10 @@ public class MusicControls extends FrameLayout {
         Slog.d(TAG, "Updating Music Controls Visibility");
         mIsMusicActive = am.isMusicActive();
 
-        mPlayPauseIcon = (ImageButton) findViewById(R.id.musicControlPlayPause);
-        mPlayPauseIcon.setImageResource(R.drawable.stat_media_pause);
+        mPauseIcon = (ImageButton) findViewById(R.id.musicControlPause);
+        mPlayIcon = (ImageButton) findViewById(R.id.musicControlPlay);
+        mPlayIcon.setVisibility(View.INVISIBLE);
+        mPauseIcon.setVisibility(View.VISIBLE);
         mRewindIcon = (ImageButton) findViewById(R.id.musicControlPrevious);
         mForwardIcon = (ImageButton) findViewById(R.id.musicControlNext);
         mNowPlayingInfo = (TextView) findViewById(R.id.musicNowPlayingInfo);
@@ -153,7 +153,6 @@ public class MusicControls extends FrameLayout {
 
     public void updateInfo() {
 	Slog.d(TAG, "Updating Music Controls Info");
-
         // Set album art
         Uri uri = getArtworkUri(getContext(), SongId(), AlbumId());
         if (uri != null) {
@@ -164,29 +163,37 @@ public class MusicControls extends FrameLayout {
 
 	String nowPlayingArtist = NowPlayingArtist();
 	String nowPlayingAlbum = NowPlayingAlbum();
-        if (nowPlayingArtist.equals("PAUSED")) {
-	   mNowPlayingInfo.setText("PAUSED");
-	   mPlayPauseIcon.setImageResource(R.drawable.stat_media_play);
-	} else {
-  	   mNowPlayingInfo.setText(nowPlayingArtist + " -- " + nowPlayingAlbum);
-           mPlayPauseIcon.setImageResource(R.drawable.stat_media_pause);
-	}
+  	mNowPlayingInfo.setText(nowPlayingArtist + " -- " + nowPlayingAlbum);
 
-        mPlayPauseIcon.setOnClickListener(new View.OnClickListener() {
+        mPauseIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+               mPlayIcon.setVisibility(View.VISIBLE);
+               mPauseIcon.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        mPlayIcon.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+	       sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+               mPlayIcon.setVisibility(View.INVISIBLE);
+               mPauseIcon.setVisibility(View.VISIBLE);
             }
         });
 
         mRewindIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+               sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+               mPlayIcon.setVisibility(View.INVISIBLE);
+               mPauseIcon.setVisibility(View.VISIBLE);
             }
         });
 
         mForwardIcon.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
+               sendMediaButtonEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
+               mPlayIcon.setVisibility(View.INVISIBLE);
+               mPauseIcon.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -253,32 +260,28 @@ public class MusicControls extends FrameLayout {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-	    Slog.d(TAG, "RECEIVED!");
             String action = intent.getAction();
             mArtist = intent.getStringExtra("artist");
             mTrack = intent.getStringExtra("track");
             mPlaying = intent.getBooleanExtra("playing", false);
             mSongId = intent.getLongExtra("songid", 0);
             mAlbumId = intent.getLongExtra("albumid", 0);
-	    handleSongUpdate();
             updateInfo();
         }
     };
 
     public static String NowPlayingArtist() {
-        if (mArtist != null && mPlaying) {
-            return (mArtist);
-        } else if (mArtist != null && !mPlaying) {
-	    return "PAUSED";
+        if (mArtist != null) {
+	    return (mArtist);
 	} else {
             return "unknown";
         }
     }
 
     public static String NowPlayingAlbum() {
-        if (mArtist != null && mPlaying) {
-            return (mTrack);
-        } else {
+        if (mArtist != null) {
+	    return (mTrack);
+	} else {
             return "unknown";
         }
     }
@@ -289,21 +292,6 @@ public class MusicControls extends FrameLayout {
 
     public static long AlbumId() {
         return mAlbumId;
-    }
-
-    private void handleSongUpdate() {
-           for (int i = 0; i< mInfoCallbacks.size(); i++) {
-               mInfoCallbacks.get(i).onMusicChanged();
-           }
-    }
-
-    interface InfoCallback {
-	void onMusicChanged();
-    }
-
-    /** {@inheritDoc} */
-    public void onMusicChanged() {
-        updateInfo();
     }
 
     private void sendMediaButtonEvent(int code) {

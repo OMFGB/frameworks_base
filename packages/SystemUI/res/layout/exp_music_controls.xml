@@ -60,12 +60,23 @@
             android:src="@drawable/stat_media_previous"
             android:padding="10px"
             android:background="@color/transparent"
-            android:layout_toLeftOf="@+id/musicControlPlayPause"
+            android:layout_toLeftOf="@+id/musicControlPause"
             android:layout_below="@+id/musicNowPlayingInfo"
             />
 
         <ImageButton
-            android:id="@+id/musicControlPlayPause"
+            android:id="@+id/musicControlPlay"
+            android:src="@drawable/stat_media_play"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:padding="10px"
+            android:background="@color/transparent"
+            android:layout_below="@+id/musicNowPlayingInfo"
+            />
+
+        <ImageButton
+            android:id="@+id/musicControlPause"
             android:src="@drawable/stat_media_pause"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -80,7 +91,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/stat_media_next"
-            android:layout_toRightOf="@+id/musicControlPlayPause"
+            android:layout_toRightOf="@+id/musicControlPause"
             android:padding="10px"
             android:background="@color/transparent"
             android:layout_below="@+id/musicNowPlayingInfo"

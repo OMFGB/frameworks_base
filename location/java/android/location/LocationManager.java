@@ -16,16 +16,16 @@
 
 package android.location;
 
+import com.android.internal.location.DummyLocationProvider;
+
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Looper;
-import android.os.RemoteException;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+import android.os.RemoteException;
 import android.util.Log;
-
-import com.android.internal.location.DummyLocationProvider;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -257,6 +257,14 @@ public class LocationManager {
         mService = service;
     }
 
+    public void setGPSSource(String device) {
+        try {
+            mService.setGPSSource(device);
+        } catch (RemoteException e) {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+    
     private LocationProvider createProvider(String name, Bundle info) {
         DummyLocationProvider provider =
             new DummyLocationProvider(name, mService);

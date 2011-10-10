@@ -16,16 +16,23 @@
 
 package com.android.server;
 
+import com.android.internal.content.PackageMonitor;
+import com.android.server.location.BTGpsLocationProvider;
+import com.android.server.location.GeocoderProxy;
+import com.android.server.location.GpsLocationProvider;
+import com.android.server.location.LocationProviderInterface;
+import com.android.server.location.LocationProviderProxy;
+import com.android.server.location.MockProvider;
+import com.android.server.location.PassiveProvider;
+
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.ContentQueryMap;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -42,7 +49,6 @@ import android.location.LocationManager;
 import android.location.LocationProvider;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
@@ -54,19 +60,10 @@ import android.os.Process;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
-import android.util.Slog;
 import android.util.PrintWriterPrinter;
-
-import com.android.internal.content.PackageMonitor;
-import com.android.internal.location.GpsNetInitiatedHandler;
-
-import com.android.server.location.GeocoderProxy;
-import com.android.server.location.GpsLocationProvider;
-import com.android.server.location.LocationProviderInterface;
-import com.android.server.location.LocationProviderProxy;
-import com.android.server.location.MockProvider;
-import com.android.server.location.PassiveProvider;
+import android.util.Slog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -461,17 +458,50 @@ public class LocationManagerService extends ILocationManager.Stub implements Run
             Slog.e(TAG, "Exception loading providers:", e);
         }
     }
+    
+    public void setGPSSource(String device) {
+        synchronized (mLock) {
+            if (mGpsLocationProvider != null &&
+                    mProvidersByName.containsKey(mGpsLocationProvider.getName())) {
+                Slog.i(TAG, "Disable and removing provider " + mGpsLocationProvider.getName());
+                mGpsLocationProvider.disable();
+                Settings.Secure.setLocationProviderEnabled(mContext.getContentResolver(),
+                        LocationManager.GPS_PROVIDER, false);
+                removeProvider(mGpsLocationProvider);
+                mGpsLocationProvider = null;
+            }
+            Slog.i(TAG, "Setting GPS Source to: " + device);
+            if ("0".equals(device)) {
+                if (mGpsLocationProvider != null && !GpsLocationProvider.isSupported())
+                    return;
+                GpsLocationProvider gpsProvider = new GpsLocationProvider(mContext, this);
+                mGpsStatusProvider = gpsProvider.getGpsStatusProvider();
+                mNetInitiatedListener = gpsProvider.getNetInitiatedListener();
+                addProvider(gpsProvider);
+                mGpsLocationProvider = gpsProvider;
+            } else {
+                BTGpsLocationProvider gpsProvider = new BTGpsLocationProvider(mContext, this);
+                mGpsStatusProvider = gpsProvider.getGpsStatusProvider();
+                mNetInitiatedListener = null;
+                addProvider(gpsProvider);
+                mGpsLocationProvider = gpsProvider;
+            }
+        }
+    }
 
     private void _loadProvidersLocked() {
         // Attempt to load "real" providers first
-        if (GpsLocationProvider.isSupported()) {
-            // Create a gps location provider
-            GpsLocationProvider gpsProvider = new GpsLocationProvider(mContext, this);
-            mGpsStatusProvider = gpsProvider.getGpsStatusProvider();
-            mNetInitiatedListener = gpsProvider.getNetInitiatedListener();
-            addProvider(gpsProvider);
-            mGpsLocationProvider = gpsProvider;
+        // Create a gps location provider based on the setting
+        // EXTERNAL_GPS_BT_DEVICE
+        String btDevice = Settings.System.getString(mContext.getContentResolver(),
+                Settings.System.EXTERNAL_GPS_BT_DEVICE);
+        if (TextUtils.isEmpty(btDevice)) {
+            // default option
+            btDevice = "0";
+            Settings.System.putString(mContext.getContentResolver(),
+                    Settings.System.EXTERNAL_GPS_BT_DEVICE, btDevice);
         }
+        setGPSSource(btDevice);
 
         // create a passive location provider, which is always enabled
         PassiveProvider passiveProvider = new PassiveProvider(this);

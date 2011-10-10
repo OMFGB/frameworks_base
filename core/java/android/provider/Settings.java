@@ -2349,6 +2349,13 @@ public final class Settings {
 		
 		/** @hide */
 		public static final String CUSTOM_LOCKSCREEN_TIMEOUT = "custom_lockscreen_timeout";
+		
+        /**
+         * External BT GPS device
+         * 
+         * @hide
+         */
+        public static final String EXTERNAL_GPS_BT_DEVICE = "0";
         
 		/**
          * Settings to backup. This is here so that it's in the same place as the settings

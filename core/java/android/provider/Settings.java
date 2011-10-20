@@ -1994,6 +1994,13 @@ public final class Settings {
 	   */
 	   public static final String LOCKSCREEN_ALWAYS_BATTERY = "lockscreen_always_battery";
 	 
+        /**
+         * Specifies whether to show share dialog after
+         * taking screenshot
+         * @hide
+         */
+        public static final String SHARE_SCREENSHOT = "share_screenshot";
+
 
 
         /**
